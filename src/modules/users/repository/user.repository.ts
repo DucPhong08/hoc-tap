@@ -1,7 +1,7 @@
 import { EntityManager } from '@mikro-orm/core';
 import { InjectEntityManager } from '@mikro-orm/nestjs';
 import { Injectable, Inject, NotFoundException } from '@nestjs/common';
-import { contexts } from '../../constants';
+import { contexts } from '../../../constants';
 import { User } from '../domain/user.model';
 import { IUserRepository } from '../domain/user.repository.interface';
 import { UserEntity } from './entities/user.entity';

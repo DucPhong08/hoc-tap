@@ -4,7 +4,7 @@ import {
   BadRequestException,
   NotFoundException,
 } from '@nestjs/common';
-import { BaseCrudService } from '../../common/services/base-crud.service';
+import { BaseCrudService } from '../../../common/services/base-crud.service';
 import { User, UserRecord } from './user.model';
 import { UserPolicy } from './user.policy';
 import type { IUserRepository } from './user.repository.interface';

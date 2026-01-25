@@ -5,7 +5,7 @@ import { UserService } from './domain/user.service';
 import { UserRepository } from './repository/user.repository';
 import { UserMapper } from './repository/user.mapper';
 import { UserEntity } from './repository/entities/user.entity';
-import { contexts } from '../constants';
+import { contexts } from '../../constants';
 
 @Module({
   imports: [MikroOrmModule.forFeature([UserEntity], contexts.MAIN)],

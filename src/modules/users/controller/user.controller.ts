@@ -11,14 +11,14 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { User, UserRecord } from '../domain/user.model';
-import { UserService } from '../domain/user.service';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { UpdateUserDto } from '../dto/update-user.dto';
 import { UserResponseDto } from '../dto/user-response.dto';
 import {
-  PaginationDto,
   PaginatedResponseDto,
-} from '../../common/dto/pagination.dto';
+  PaginationDto,
+} from 'src/common/dto/pagination.dto';
+import { UserService } from '../domain/user.service';
 
 @ApiTags('users')
 @Controller('users')
