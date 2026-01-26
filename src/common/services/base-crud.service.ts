@@ -1,5 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import type { BaseRepository, QueryCondition } from '../interfaces/base-repository.interface';
+import type {
+  BaseRepository,
+  QueryCondition,
+} from '../interfaces/base-repository.interface';
 import { BaseEntity } from '../base.entity';
 
 @Injectable()
@@ -35,7 +38,10 @@ export abstract class BaseCrudService<E extends BaseEntity> {
     return this.repository.updateById(id, data);
   }
 
-  async updateOne(conditions: QueryCondition<E>, data: Partial<E>): Promise<E | null> {
+  async updateOne(
+    conditions: QueryCondition<E>,
+    data: Partial<E>,
+  ): Promise<E | null> {
     return this.repository.updateOne(conditions, data);
   }
 

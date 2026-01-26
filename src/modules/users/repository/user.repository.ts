@@ -1,4 +1,9 @@
-import { EntityManager } from '@mikro-orm/core';
+import {
+  EntityManager,
+  FilterQuery,
+  FindOptions,
+  RequiredEntityData,
+} from '@mikro-orm/core';
 import { InjectEntityManager } from '@mikro-orm/nestjs';
 import { Injectable, Inject } from '@nestjs/common';
 import { contexts } from '../../../constants';
@@ -16,13 +21,22 @@ export class UserRepository implements IUserRepository {
     private readonly mapper: UserMapper,
   ) {}
 
-  async findAll(filter?: any, options?: any): Promise<User[]> {
-    const entities = await this.em.find(UserEntity, filter || {}, options || {});
+  async findAll(
+    filter?: FilterQuery<UserEntity>,
+    options?: FindOptions<UserEntity>,
+  ): Promise<User[]> {
+    const entities = await this.em.find(
+      UserEntity,
+      filter || {},
+      options || {},
+    );
     return entities.map((entity) => this.mapper.toModel(entity));
   }
 
   async findOne(id: string): Promise<User | null> {
-    const entity = await this.em.findOne(UserEntity, { _id: id } as any);
+    const entity = await this.em.findOne(UserEntity, {
+      _id: id,
+    } as FilterQuery<UserEntity>);
     return entity ? this.mapper.toModel(entity) : null;
   }
 
@@ -33,13 +47,18 @@ export class UserRepository implements IUserRepository {
 
   async create(data: Partial<User>): Promise<User> {
     const entityData = this.mapper.partialToEntity(data);
-    const entity = this.em.create(UserEntity, entityData as any);
+    const entity = this.em.create(
+      UserEntity,
+      entityData as RequiredEntityData<UserEntity>,
+    );
     await this.em.persist(entity).flush();
     return this.mapper.toModel(entity);
   }
 
   async update(id: string, data: Partial<User>): Promise<User> {
-    const entity = await this.em.findOne(UserEntity, { _id: id } as any);
+    const entity = await this.em.findOne(UserEntity, {
+      _id: id,
+    } as FilterQuery<UserEntity>);
     if (!entity) {
       throw new Error(`User with id ${id} not found`);
     }
@@ -50,7 +69,9 @@ export class UserRepository implements IUserRepository {
   }
 
   async remove(id: string): Promise<void> {
-    const entity = await this.em.findOne(UserEntity, { _id: id } as any);
+    const entity = await this.em.findOne(UserEntity, {
+      _id: id,
+    } as FilterQuery<UserEntity>);
     if (!entity) {
       throw new Error(`User with id ${id} not found`);
     }

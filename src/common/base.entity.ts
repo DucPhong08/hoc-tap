@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
 import { Entity, PrimaryKey, Property } from '@mikro-orm/core';
 import { ObjectId } from '@mikro-orm/mongodb';
 import { v4 } from 'uuid';
@@ -5,7 +7,7 @@ import { v4 } from 'uuid';
 @Entity({ abstract: true })
 export abstract class BaseEntity {
   @PrimaryKey({ type: 'uuid' })
-  _id: ObjectId | string = v4();
+  _id: string | ObjectId = v4();
 
   get id(): string {
     return this._id instanceof ObjectId ? this._id.toHexString() : this._id;

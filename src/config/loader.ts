@@ -1,5 +1,6 @@
 import { merge, set } from 'lodash';
 import * as dotenv from 'dotenv';
+/* eslint-disable @typescript-eslint/no-redundant-type-constituents */
 import { plainToInstance } from 'class-transformer';
 import { validateSync } from 'class-validator';
 import { RootConfig } from './root.config';

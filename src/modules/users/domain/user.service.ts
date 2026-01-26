@@ -51,7 +51,7 @@ export class UserService {
     }
 
     if (data.record?.email && data.record.email !== existingUser.record.email) {
-      if (!UserPolicy.canUpdateEmail(existingUser, data.record.email)) {
+      if (!UserPolicy.canUpdateEmail(existingUser)) {
         throw new BadRequestException(
           'Email can only be updated once per week',
         );

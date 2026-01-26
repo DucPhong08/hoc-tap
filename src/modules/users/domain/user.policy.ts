@@ -1,7 +1,7 @@
 import { User } from './user.model';
 
 export class UserPolicy {
-  static canUpdateEmail(user: User, newEmail: string): boolean {
+  static canUpdateEmail(user: User): boolean {
     const oneWeekAgo = new Date();
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
     return user.updatedAt < oneWeekAgo;

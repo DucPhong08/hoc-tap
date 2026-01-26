@@ -10,7 +10,7 @@ import {
   HttpStatus,
   NotFoundException,
 } from '@nestjs/common';
-import { ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiResponse } from '@nestjs/swagger';
 import { BaseCrudService } from '../services/base-crud.service';
 import { PaginationDto, PaginatedResponseDto } from '../dto/pagination.dto';
 import { BaseEntity } from '../base.entity';
@@ -33,12 +33,7 @@ export abstract class BaseCrudController<
     const page = pagination.page || 1;
     const limit = pagination.limit || 10;
     const result = await this.service.findAll({}, page, limit);
-    return new PaginatedResponseDto(
-      result.data,
-      result.total,
-      page,
-      limit,
-    );
+    return new PaginatedResponseDto(result.data, result.total, page, limit);
   }
 
   @Get(':id')
@@ -57,7 +52,7 @@ export abstract class BaseCrudController<
   @Post()
   @ApiResponse({ status: 201, description: 'Item created' })
   async create(@Body() createDto: TCreateDto): Promise<E> {
-    return this.service.create(createDto as any);
+    return this.service.create(createDto as Partial<E>);
   }
 
   @Patch(':id')
@@ -67,7 +62,7 @@ export abstract class BaseCrudController<
     @Param('id') id: string,
     @Body() updateDto: TUpdateDto,
   ): Promise<E> {
-    const updated = await this.service.updateById(id, updateDto as any);
+    const updated = await this.service.updateById(id, updateDto as Partial<E>);
     if (!updated) {
       throw new NotFoundException(
         `${this.resourceName} with id ${id} not found`,
