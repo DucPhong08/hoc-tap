@@ -5,6 +5,7 @@ import { AppService } from './app.service';
 import loader from './config/loader';
 import { dbModules } from './constants';
 import { UsersModule } from './modules/users/users.module';
+import { ProductModule } from './modules/products/product.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { UsersModule } from './modules/users/users.module';
     }),
     ...dbModules,
     UsersModule,
+    ProductModule,
   ],
   controllers: [AppController],
   providers: [AppService],

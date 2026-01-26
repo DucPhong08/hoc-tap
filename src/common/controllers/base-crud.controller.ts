@@ -9,8 +9,14 @@ import {
   HttpCode,
   HttpStatus,
   NotFoundException,
+  Type,
 } from '@nestjs/common';
-import { ApiResponse } from '@nestjs/swagger';
+import {
+  ApiResponse,
+  ApiQuery,
+  ApiOkResponse,
+  ApiCreatedResponse,
+} from '@nestjs/swagger';
 import { BaseCrudService } from '../services/base-crud.service';
 import { PaginationDto, PaginatedResponseDto } from '../dto/pagination.dto';
 import { BaseEntity } from '../base.entity';
@@ -20,13 +26,26 @@ export abstract class BaseCrudController<
   TCreateDto,
   TUpdateDto,
 > {
+  private entityType: Type<E>;
+  private createDtoType: Type<TCreateDto>;
+  private updateDtoType: Type<TUpdateDto>;
+
   constructor(
     protected readonly service: BaseCrudService<E>,
     protected readonly resourceName: string,
-  ) {}
+    entityType: Type<E>,
+    createDtoType: Type<TCreateDto>,
+    updateDtoType: Type<TUpdateDto>,
+  ) {
+    this.entityType = entityType;
+    this.createDtoType = createDtoType;
+    this.updateDtoType = updateDtoType;
+  }
 
   @Get()
-  @ApiResponse({ status: 200, description: 'Return all items' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiOkResponse({ description: 'Return all items' })
   async findAll(
     @Query() pagination: PaginationDto,
   ): Promise<PaginatedResponseDto<E>> {
@@ -37,7 +56,7 @@ export abstract class BaseCrudController<
   }
 
   @Get(':id')
-  @ApiResponse({ status: 200, description: 'Return item' })
+  @ApiOkResponse({ description: 'Return item' })
   @ApiResponse({ status: 404, description: 'Item not found' })
   async findOne(@Param('id') id: string): Promise<E> {
     const item = await this.service.findById(id);
@@ -50,13 +69,13 @@ export abstract class BaseCrudController<
   }
 
   @Post()
-  @ApiResponse({ status: 201, description: 'Item created' })
+  @ApiCreatedResponse({ description: 'Item created' })
   async create(@Body() createDto: TCreateDto): Promise<E> {
     return this.service.create(createDto as Partial<E>);
   }
 
   @Patch(':id')
-  @ApiResponse({ status: 200, description: 'Item updated' })
+  @ApiOkResponse({ description: 'Item updated' })
   @ApiResponse({ status: 404, description: 'Item not found' })
   async update(
     @Param('id') id: string,

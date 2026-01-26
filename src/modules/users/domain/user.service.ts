@@ -1,80 +1,64 @@
-import {
-  Injectable,
-  Inject,
-  BadRequestException,
-  NotFoundException,
-} from '@nestjs/common';
-import { User, UserRecord } from './user.model';
+import { Injectable, BadRequestException } from '@nestjs/common';
+import { BaseCrudService } from '../../../common/services/base-crud.service';
+import { UserEntity } from '../repository/entities/user.entity';
+import { UserRepository } from '../repository/user.repository';
 import { UserPolicy } from './user.policy';
-import type { IUserRepository } from './user.repository.interface';
 
 @Injectable()
-export class UserService {
-  constructor(
-    @Inject('IUserRepository')
-    protected readonly userRepository: IUserRepository,
-  ) {}
-
-  async findAll(filter?: any, options?: any): Promise<User[]> {
-    return this.userRepository.findAll(filter, options);
+export class UserService extends BaseCrudService<UserEntity> {
+  constructor(private readonly userRepository: UserRepository) {
+    super(userRepository);
   }
 
-  async findById(id: string): Promise<User | null> {
-    return this.userRepository.findOne(id);
-  }
-
-  async create(data: Partial<User>): Promise<User> {
-    const userRecord = new UserRecord(
-      data.record?.firstName || '',
-      data.record?.lastName || '',
-      data.record?.email || '',
-    );
-
-    if (!userRecord.isValidEmail()) {
-      throw new BadRequestException('Invalid email format');
-    }
-
-    const existingUser = await this.userRepository.findByEmail(
-      userRecord.email,
-    );
-    if (existingUser) {
-      throw new BadRequestException('Email already exists');
-    }
-
-    return this.userRepository.create(data);
-  }
-
-  async update(id: string, data: Partial<User>): Promise<User> {
-    const existingUser = await this.findById(id);
-    if (!existingUser) {
-      throw new NotFoundException(`User with id ${id} not found`);
-    }
-
-    if (data.record?.email && data.record.email !== existingUser.record.email) {
-      if (!UserPolicy.canUpdateEmail(existingUser)) {
-        throw new BadRequestException(
-          'Email can only be updated once per week',
-        );
+  async create(data: Partial<UserEntity>): Promise<UserEntity> {
+    if (data.email) {
+      const existingUser = await this.userRepository.findByEmail(data.email);
+      if (existingUser) {
+        throw new BadRequestException('Email already exists');
       }
     }
 
-    return this.userRepository.update(id, data);
+    return super.create(data);
   }
 
-  async remove(id: string): Promise<void> {
-    const user = await this.findById(id);
-    if (!user) {
-      throw new NotFoundException(`User with id ${id} not found`);
+  async updateById(
+    id: string,
+    data: Partial<UserEntity>,
+  ): Promise<UserEntity | null> {
+    if (data.email) {
+      const existingUser = await this.findById(id);
+      if (existingUser && data.email !== existingUser.email) {
+        if (!UserPolicy.canUpdateEmail(existingUser)) {
+          throw new BadRequestException(
+            'Email can only be updated once per week',
+          );
+        }
+
+        const emailExists = await this.userRepository.findByEmail(data.email);
+        if (emailExists) {
+          throw new BadRequestException('Email already exists');
+        }
+      }
     }
 
-    if (!user.canBeDeleted()) {
+    return super.updateById(id, data);
+  }
+
+  async deleteById(id: string): Promise<UserEntity | null> {
+    const user = await this.findById(id);
+    if (!user) {
+      return null;
+    }
+
+    if (!UserPolicy.canDelete(user)) {
       throw new BadRequestException('User can only be deleted after 30 days');
     }
 
-    await this.userRepository.remove(id);
+    await super.deleteById(id);
+    return user;
   }
 
-  async findByEmail(email: string): Promise<User | null> {
+  async findByEmail(email: string): Promise<UserEntity | null> {
     return this.userRepository.findByEmail(email);
   }
 }
