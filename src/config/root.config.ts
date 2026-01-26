@@ -1,5 +1,5 @@
 import { IsIn, IsString, ValidateNested } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Type, Transform, plainToInstance } from 'class-transformer';
 import { HostConfig } from './root/host.config';
 import { CorsConfig } from './root/cors.config';
 import { DatabaseConfig } from './root/database.config';
@@ -13,9 +13,19 @@ export class RootConfig {
   @Type(() => HostConfig)
   host!: HostConfig;
 
-  @ValidateNested({ each: true })
-  @Type(() => DatabaseConfig)
-  databases!: { [s: string]: DatabaseConfig };
+  @Transform(({ value }) => {
+    if (!value || typeof value !== 'object') return value;
+    const result: Record<string, DatabaseConfig> = {};
+    for (const key in value) {
+      if (value.hasOwnProperty(key)) {
+        result[key] = plainToInstance(DatabaseConfig, value[key], {
+          enableImplicitConversion: true,
+        });
+      }
+    }
+    return result;
+  })
+  databases!: Record<string, DatabaseConfig>;
 
   @ValidateNested({ each: true })
   @Type(() => CorsConfig)
