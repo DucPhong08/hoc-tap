@@ -4,18 +4,23 @@ import {
   BadRequestException,
   NotFoundException,
 } from '@nestjs/common';
-import { BaseCrudService } from '../../../common/services/base-crud.service';
 import { User, UserRecord } from './user.model';
 import { UserPolicy } from './user.policy';
 import type { IUserRepository } from './user.repository.interface';
 
 @Injectable()
-export class UserService extends BaseCrudService<User> {
+export class UserService {
   constructor(
     @Inject('IUserRepository')
     protected readonly userRepository: IUserRepository,
-  ) {
-    super(userRepository);
+  ) {}
+
+  async findAll(filter?: any, options?: any): Promise<User[]> {
+    return this.userRepository.findAll(filter, options);
+  }
+
+  async findById(id: string): Promise<User | null> {
+    return this.userRepository.findOne(id);
   }
 
   async create(data: Partial<User>): Promise<User> {
@@ -36,11 +41,11 @@ export class UserService extends BaseCrudService<User> {
       throw new BadRequestException('Email already exists');
     }
 
-    return super.create(data);
+    return this.userRepository.create(data);
   }
 
   async update(id: string, data: Partial<User>): Promise<User> {
-    const existingUser = await this.findOne(id);
+    const existingUser = await this.findById(id);
     if (!existingUser) {
       throw new NotFoundException(`User with id ${id} not found`);
     }
@@ -53,11 +58,11 @@ export class UserService extends BaseCrudService<User> {
       }
     }
 
-    return super.update(id, data);
+    return this.userRepository.update(id, data);
   }
 
   async remove(id: string): Promise<void> {
-    const user = await this.findOne(id);
+    const user = await this.findById(id);
     if (!user) {
       throw new NotFoundException(`User with id ${id} not found`);
     }
@@ -66,7 +71,7 @@ export class UserService extends BaseCrudService<User> {
       throw new BadRequestException('User can only be deleted after 30 days');
     }
 
-    return super.remove(id);
+    await this.userRepository.remove(id);
   }
 
   async findByEmail(email: string): Promise<User | null> {

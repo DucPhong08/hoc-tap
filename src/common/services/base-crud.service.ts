@@ -1,35 +1,57 @@
 import { Injectable } from '@nestjs/common';
-import type { IBaseRepository } from '../interfaces/base-repository.interface';
-import { PaginatedResponseDto } from '../dto/pagination.dto';
+import type { BaseRepository, QueryCondition } from '../interfaces/base-repository.interface';
+import { BaseEntity } from '../base.entity';
 
 @Injectable()
-export abstract class BaseCrudService<TModel> {
-  constructor(protected readonly repository: IBaseRepository<TModel>) {}
+export abstract class BaseCrudService<E extends BaseEntity> {
+  constructor(protected readonly repository: BaseRepository<E>) {}
 
-  async findAll(
-    filter?: any,
-    page: number = 1,
-    limit: number = 10,
-  ): Promise<PaginatedResponseDto<TModel>> {
-    const offset = (page - 1) * limit;
-    const data = await this.repository.findAll(filter, { limit, offset });
-    const total = data.length;
-    return new PaginatedResponseDto(data, total, page, limit);
-  }
-
-  async findOne(id: string): Promise<TModel | null> {
-    return this.repository.findOne(id);
-  }
-
-  async create(data: Partial<TModel>): Promise<TModel> {
+  async create(data: Partial<E>): Promise<E> {
     return this.repository.create(data);
   }
 
-  async update(id: string, data: Partial<TModel>): Promise<TModel> {
-    return this.repository.update(id, data);
+  async findById(id: string): Promise<E | null> {
+    return this.repository.findById(id);
   }
 
-  async remove(id: string): Promise<void> {
-    return this.repository.remove(id);
+  async findOne(conditions: QueryCondition<E>): Promise<E | null> {
+    return this.repository.findOne(conditions);
+  }
+
+  async findAll(
+    conditions?: QueryCondition<E>,
+    page?: number,
+    limit?: number,
+  ): Promise<{ data: E[]; total: number; page?: number; limit?: number }> {
+    if (page !== undefined && limit !== undefined) {
+      return this.repository.findWithPagination(conditions || {}, page, limit);
+    }
+    const data = await this.repository.findAll(conditions);
+    const total = await this.repository.count(conditions);
+    return { data, total };
+  }
+
+  async updateById(id: string, data: Partial<E>): Promise<E | null> {
+    return this.repository.updateById(id, data);
+  }
+
+  async updateOne(conditions: QueryCondition<E>, data: Partial<E>): Promise<E | null> {
+    return this.repository.updateOne(conditions, data);
+  }
+
+  async deleteById(id: string): Promise<E | null> {
+    return this.repository.deleteById(id);
+  }
+
+  async deleteOne(conditions: QueryCondition<E>): Promise<E | null> {
+    return this.repository.deleteOne(conditions);
+  }
+
+  async count(conditions?: QueryCondition<E>): Promise<number> {
+    return this.repository.count(conditions);
+  }
+
+  async exists(conditions: QueryCondition<E>): Promise<boolean> {
+    return this.repository.exists(conditions);
   }
 }

@@ -26,27 +26,24 @@ export class UserController {
   constructor(private readonly userService: UserService) {}
 
   @Get()
-  @ApiOperation({ summary: 'Get all users' })
   @ApiResponse({ status: 200, type: [UserResponseDto] })
   async findAll(
     @Query() pagination: PaginationDto,
   ): Promise<PaginatedResponseDto<UserResponseDto>> {
-    const result = await this.userService.findAll(
-      {},
+    const users = await this.userService.findAll({});
+    const data = users.map((user) => UserResponseDto.fromDomain(user));
+    return new PaginatedResponseDto(
+      data,
+      data.length,
       pagination.page || 1,
       pagination.limit || 10,
     );
-    return {
-      data: result.data.map((user) => UserResponseDto.fromDomain(user)),
-      meta: result.meta,
-    };
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Get user by id' })
   @ApiResponse({ status: 200, type: UserResponseDto })
   async findOne(@Param('id') id: string): Promise<UserResponseDto> {
-    const user = await this.userService.findOne(id);
+    const user = await this.userService.findById(id);
     if (!user) {
       throw new NotFoundException(`User with id ${id} not found`);
     }
@@ -54,7 +51,6 @@ export class UserController {
   }
 
   @Post()
-  @ApiOperation({ summary: 'Create user' })
   @ApiResponse({ status: 201, type: UserResponseDto })
   async create(@Body() createDto: CreateUserDto): Promise<UserResponseDto> {
     const userRecord = new UserRecord(
@@ -74,7 +70,7 @@ export class UserController {
     @Param('id') id: string,
     @Body() updateDto: UpdateUserDto,
   ): Promise<UserResponseDto> {
-    const existingUser = await this.userService.findOne(id);
+    const existingUser = await this.userService.findById(id);
     if (!existingUser) {
       throw new NotFoundException('User not found');
     }

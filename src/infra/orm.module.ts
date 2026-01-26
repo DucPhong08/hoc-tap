@@ -45,6 +45,7 @@ export class OrmModule {
             const baseConfig = {
               driver,
               registerRequestContext: false,
+              allowGlobalContext: true,
               dbName: database,
               ...JSON.parse(JSON.stringify({ ...orm, ...conn })),
               driverOptions,

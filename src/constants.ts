@@ -4,4 +4,6 @@ export const contexts = {
   MAIN: 'main',
 } as const;
 
-export const dbModules = [OrmModule.register(contexts.MAIN)];
+export const dbModules = [
+  OrmModule.register(contexts.MAIN),
+];
