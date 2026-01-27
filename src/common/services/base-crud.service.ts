@@ -21,17 +21,16 @@ export abstract class BaseCrudService<E extends BaseEntity> {
     return this.repository.getOne(conditions);
   }
 
-  async getMany(
-    conditions?: QueryCondition<E>,
-    page?: number,
-    limit?: number,
-  ): Promise<{ data: E[]; total: number; page?: number; limit?: number }> {
-    if (page !== undefined && limit !== undefined) {
-      return this.repository.getPage(conditions || {}, page, limit);
-    }
-    const data = await this.repository.getMany(conditions);
-    const total = await this.repository.count(conditions);
-    return { data, total };
+  async getMany(conditions?: QueryCondition<E>): Promise<E[]> {
+    return this.repository.getMany(conditions);
+  }
+
+  async getPage(
+    conditions: QueryCondition<E>,
+    page: number,
+    limit: number,
+  ): Promise<{ data: E[]; total: number; page: number; limit: number }> {
+    return this.repository.getPage(conditions, page, limit);
   }
 
   async updateById(id: string, data: Partial<E>): Promise<E | null> {

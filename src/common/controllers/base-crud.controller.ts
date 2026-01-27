@@ -21,10 +21,7 @@ import {
 import { BaseCrudService } from '../services/base-crud.service';
 import { PaginationDto, PaginatedResponseDto } from '../dto/pagination.dto';
 import { BaseEntity } from '../base.entity';
-import {
-  HTTP_STATUS,
-  HTTP_STATUS_MESSAGE,
-} from '../constants/http-status.constant';
+import { HTTP_STATUS } from '../constants/http-status.constant';
 
 // Mixin function để tạo base controller với proper Swagger decorators
 export function BaseCrudControllerFactory<E extends BaseEntity>(
@@ -49,30 +46,37 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
 
     @Get()
     @HttpCode(HTTP_STATUS.OK)
+    @ApiOkResponse({
+      description: 'Return all items without pagination',
+      type: [entityType],
+    })
+    async getMany(): Promise<E[]> {
+      return this.service.getMany();
+    }
+
+    @Get('page')
+    @HttpCode(HTTP_STATUS.OK)
     @ApiQuery({ name: 'page', required: false, type: Number })
     @ApiQuery({ name: 'limit', required: false, type: Number })
     @ApiOkResponse({
-      description: HTTP_STATUS_MESSAGE[HTTP_STATUS.OK],
+      description: 'Return paginated items',
       type: PaginatedResponseDto,
     })
-    async findAll(
+    async getPage(
       @Query() pagination: PaginationDto,
     ): Promise<PaginatedResponseDto<E>> {
       const page = pagination.page || 1;
       const limit = pagination.limit || 10;
-      const result = await this.service.getMany({}, page, limit);
+      const result = await this.service.getPage({}, page, limit);
       return new PaginatedResponseDto(result.data, result.total, page, limit);
     }
 
     @Get(':id')
     @HttpCode(HTTP_STATUS.OK)
-    @ApiOkResponse({
-      description: HTTP_STATUS_MESSAGE[HTTP_STATUS.OK],
-      type: entityType,
-    })
+    @ApiOkResponse({ description: 'Return item', type: entityType })
     @ApiResponse({
       status: HTTP_STATUS.NOT_FOUND,
-      description: HTTP_STATUS_MESSAGE[HTTP_STATUS.NOT_FOUND],
+      description: 'Item not found',
     })
     async findOne(@Param('id') id: string): Promise<E> {
       const item = await this.service.getById(id);
@@ -86,10 +90,7 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
 
     @Post()
     @HttpCode(HTTP_STATUS.CREATED)
-    @ApiCreatedResponse({
-      description: HTTP_STATUS_MESSAGE[HTTP_STATUS.CREATED],
-      type: entityType,
-    })
+    @ApiCreatedResponse({ description: 'Item created', type: entityType })
     @ApiBody({ type: CreateDto })
     async create(
       @Body() createDto: InstanceType<typeof CreateDto>,
@@ -99,13 +100,10 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
 
     @Patch(':id')
     @HttpCode(HTTP_STATUS.OK)
-    @ApiOkResponse({
-      description: HTTP_STATUS_MESSAGE[HTTP_STATUS.OK],
-      type: entityType,
-    })
+    @ApiOkResponse({ description: 'Item updated', type: entityType })
     @ApiResponse({
       status: HTTP_STATUS.NOT_FOUND,
-      description: HTTP_STATUS_MESSAGE[HTTP_STATUS.NOT_FOUND],
+      description: 'Item not found',
     })
     @ApiBody({ type: UpdateDto })
     async update(
@@ -128,11 +126,11 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
     @HttpCode(HTTP_STATUS.NO_CONTENT)
     @ApiResponse({
       status: HTTP_STATUS.NO_CONTENT,
-      description: HTTP_STATUS_MESSAGE[HTTP_STATUS.NO_CONTENT],
+      description: 'Item deleted',
     })
     @ApiResponse({
       status: HTTP_STATUS.NOT_FOUND,
-      description: HTTP_STATUS_MESSAGE[HTTP_STATUS.NOT_FOUND],
+      description: 'Item not found',
     })
     async remove(@Param('id') id: string): Promise<void> {
       const deleted = await this.service.deleteById(id);
