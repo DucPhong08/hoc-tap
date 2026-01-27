@@ -3,34 +3,65 @@ import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
+import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
+import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
+import { AppConfig } from './config/root/app.config';
+import { SwaggerConfig } from './config/root/swagger.config';
+import { ValidationConfig } from './config/root/validation.config';
+import { CorsConfig } from './config/root/cors.config';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    bufferLogs: true,
+  });
+
   const configService = app.get(ConfigService);
 
-  const corsOrigins = configService.get<{ origins: string[] }>('cors');
+  // App config
+  const appConfig = configService.get<AppConfig>('app');
+  if (appConfig?.apiPrefix) {
+    app.setGlobalPrefix(appConfig.apiPrefix);
+  }
+
+  // CORS
+  const corsConfig = configService.get<CorsConfig>('cors');
   app.enableCors({
-    origin: corsOrigins?.origins || ['http://localhost:3000'],
+    origin: corsConfig?.origins || ['http://localhost:3000'],
     credentials: true,
   });
 
+  // Validation
+  const validationConfig = configService.get<ValidationConfig>('validation');
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true,
-      forbidNonWhitelisted: true,
-      transform: true,
+      whitelist: validationConfig?.whitelist ?? true,
+      forbidNonWhitelisted: validationConfig?.forbidNonWhitelisted ?? true,
+      transform: validationConfig?.transform ?? true,
     }),
   );
 
-  const config = new DocumentBuilder()
-    .setTitle('Hoc Tap API')
-    .setDescription('NestJS Clean Architecture Boilerplate with MikroORM')
-    .setVersion('1.0')
-    .addTag('users')
-    .addTag('products')
-    .build();
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api', app, document);
+  // Global filters
+  app.useGlobalFilters(new AllExceptionsFilter(), new HttpExceptionFilter());
+
+  // Global interceptors
+  app.useGlobalInterceptors(new LoggingInterceptor());
+
+  // Swagger
+  const swaggerConfig = configService.get<SwaggerConfig>('swagger');
+  if (swaggerConfig?.enabled) {
+    const config = new DocumentBuilder()
+      .setTitle(swaggerConfig.title)
+      .setDescription(swaggerConfig.description)
+      .setVersion(swaggerConfig.version)
+      .addBearerAuth()
+      .addTag('auth')
+      .addTag('users')
+      .addTag('products')
+      .build();
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup(swaggerConfig.path, app, document);
+  }
 
   const host = configService.get<{ host: string; port: number }>('host');
   const port = host?.port || 3000;
@@ -39,4 +70,5 @@ async function bootstrap() {
   console.log(`Application is running on: http://localhost:${port}`);
   console.log(`Swagger documentation: http://localhost:${port}/api`);
 }
+
 void bootstrap();

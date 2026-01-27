@@ -1,0 +1,120 @@
+import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
+import * as bcrypt from 'bcrypt';
+import { UserService } from '../users/domain/user.service';
+import { AuthConfig } from '../../config/root/auth.config';
+import { JwtPayload } from './strategies/jwt.strategy';
+
+export interface LoginResponse {
+  accessToken: string;
+  refreshToken: string;
+  user: {
+    id: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+  };
+}
+
+@Injectable()
+export class AuthService {
+  constructor(
+    private userService: UserService,
+    private jwtService: JwtService,
+    private configService: ConfigService,
+  ) {}
+
+  async register(
+    email: string,
+    password: string,
+    firstName: string,
+    lastName: string,
+  ): Promise<LoginResponse> {
+    const authConfig = this.configService.get<AuthConfig>('auth');
+    const hashedPassword = await bcrypt.hash(
+      password,
+      authConfig?.bcryptRounds || 10,
+    );
+
+    const user = await this.userService.create({
+      email,
+      password: hashedPassword,
+      firstName,
+      lastName,
+      isActive: true,
+    });
+
+    return this.generateTokens(user);
+  }
+
+  async login(email: string, password: string): Promise<LoginResponse> {
+    const user = await this.userService.findByEmail(email);
+
+    if (!user) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    if (!user.password) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    if (!user.isActive) {
+      throw new UnauthorizedException('User is inactive');
+    }
+
+    return this.generateTokens(user);
+  }
+
+  async refreshToken(refreshToken: string): Promise<LoginResponse> {
+    try {
+      const authConfig = this.configService.get<AuthConfig>('auth');
+      const payload = this.jwtService.verify<JwtPayload>(refreshToken, {
+        secret: authConfig?.jwtRefreshSecret,
+      });
+
+      const user = await this.userService.getById(payload.sub);
+
+      if (!user) {
+        throw new UnauthorizedException('User not found');
+      }
+
+      return this.generateTokens(user);
+    } catch {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+  }
+
+  private generateTokens(user: any): LoginResponse {
+    const authConfig = this.configService.get<AuthConfig>('auth');
+
+    const payload: JwtPayload = {
+      sub: user._id,
+      email: user.email,
+    };
+
+    const accessToken = this.jwtService.sign(payload);
+
+    const refreshToken = this.jwtService.sign(payload, {
+      secret: authConfig?.jwtRefreshSecret || 'default-refresh-secret',
+      expiresIn: (authConfig?.jwtRefreshExpiresIn || '7d') as any,
+    });
+
+    return {
+      accessToken,
+      refreshToken,
+      user: {
+        id: user._id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+      },
+    };
+  }
+}
