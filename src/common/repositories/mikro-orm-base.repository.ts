@@ -26,15 +26,15 @@ export abstract class MikroOrmBaseRepository<
     return entity;
   }
 
-  async findById(id: string): Promise<E | null> {
+  async getById(id: string): Promise<E | null> {
     return this.repository.findOne({ _id: id } as FilterQuery<E>);
   }
 
-  async findOne(conditions: QueryCondition<E>): Promise<E | null> {
+  async getOne(conditions: QueryCondition<E>): Promise<E | null> {
     return this.repository.findOne(this.buildFilter(conditions));
   }
 
-  async findAll(
+  async getMany(
     conditions?: QueryCondition<E>,
     options?: FindOptions,
   ): Promise<E[]> {
@@ -48,7 +48,7 @@ export abstract class MikroOrmBaseRepository<
     });
   }
 
-  async findWithPagination(
+  async getPage(
     conditions: QueryCondition<E>,
     page: number,
     limit: number,
@@ -65,7 +65,7 @@ export abstract class MikroOrmBaseRepository<
   }
 
   async updateById(id: string, update: UpdateDocument<E>): Promise<E | null> {
-    const entity = await this.findById(id);
+    const entity = await this.getById(id);
     if (!entity) return null;
 
     this.applyUpdate(entity, update);
@@ -77,7 +77,7 @@ export abstract class MikroOrmBaseRepository<
     conditions: QueryCondition<E>,
     update: UpdateDocument<E>,
   ): Promise<E | null> {
-    const entity = await this.findOne(conditions);
+    const entity = await this.getOne(conditions);
     if (!entity) return null;
 
     this.applyUpdate(entity, update);
@@ -89,7 +89,7 @@ export abstract class MikroOrmBaseRepository<
     conditions: QueryCondition<E>,
     update: UpdateDocument<E>,
   ): Promise<{ affected: number }> {
-    const entities = await this.findAll(conditions);
+    const entities = await this.getMany(conditions);
 
     entities.forEach((entity) => {
       this.applyUpdate(entity, update);
@@ -100,7 +100,7 @@ export abstract class MikroOrmBaseRepository<
   }
 
   async deleteById(id: string): Promise<E | null> {
-    const entity = await this.findById(id);
+    const entity = await this.getById(id);
     if (!entity) return null;
 
     await this.em.remove(entity).flush();
@@ -108,7 +108,7 @@ export abstract class MikroOrmBaseRepository<
   }
 
   async deleteOne(conditions: QueryCondition<E>): Promise<E | null> {
-    const entity = await this.findOne(conditions);
+    const entity = await this.getOne(conditions);
     if (!entity) return null;
 
     await this.em.remove(entity).flush();
@@ -118,7 +118,7 @@ export abstract class MikroOrmBaseRepository<
   async deleteMany(
     conditions: QueryCondition<E>,
   ): Promise<{ deleted: number }> {
-    const entities = await this.findAll(conditions);
+    const entities = await this.getMany(conditions);
     await this.em.remove(entities).flush();
     return { deleted: entities.length };
   }

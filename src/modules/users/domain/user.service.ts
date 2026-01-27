@@ -26,7 +26,7 @@ export class UserService extends BaseCrudService<UserEntity> {
     data: Partial<UserEntity>,
   ): Promise<UserEntity | null> {
     if (data.email) {
-      const existingUser = await this.findById(id);
+      const existingUser = await this.getById(id);
       if (existingUser && data.email !== existingUser.email) {
         if (!UserPolicy.canUpdateEmail(existingUser)) {
           throw new BadRequestException(
@@ -45,7 +45,7 @@ export class UserService extends BaseCrudService<UserEntity> {
   }
 
   async deleteById(id: string): Promise<UserEntity | null> {
-    const user = await this.findById(id);
+    const user = await this.getById(id);
     if (!user) {
       return null;
     }

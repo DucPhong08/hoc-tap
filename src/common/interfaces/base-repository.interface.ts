@@ -20,13 +20,13 @@ export interface FindOptions {
 export interface BaseRepository<E extends BaseEntity> {
   create(data: Partial<E>): Promise<E>;
 
-  findById(id: string): Promise<E | null>;
+  getById(id: string): Promise<E | null>;
 
-  findOne(conditions: QueryCondition<E>): Promise<E | null>;
+  getOne(conditions: QueryCondition<E>): Promise<E | null>;
 
-  findAll(conditions?: QueryCondition<E>, options?: FindOptions): Promise<E[]>;
+  getMany(conditions?: QueryCondition<E>, options?: FindOptions): Promise<E[]>;
 
-  findWithPagination(
+  getPage(
     conditions: QueryCondition<E>,
     page: number,
     limit: number,

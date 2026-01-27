@@ -13,23 +13,23 @@ export abstract class BaseCrudService<E extends BaseEntity> {
     return this.repository.create(data);
   }
 
-  async findById(id: string): Promise<E | null> {
-    return this.repository.findById(id);
+  async getById(id: string): Promise<E | null> {
+    return this.repository.getById(id);
   }
 
-  async findOne(conditions: QueryCondition<E>): Promise<E | null> {
-    return this.repository.findOne(conditions);
+  async getOne(conditions: QueryCondition<E>): Promise<E | null> {
+    return this.repository.getOne(conditions);
   }
 
-  async findAll(
+  async getMany(
     conditions?: QueryCondition<E>,
     page?: number,
     limit?: number,
   ): Promise<{ data: E[]; total: number; page?: number; limit?: number }> {
     if (page !== undefined && limit !== undefined) {
-      return this.repository.findWithPagination(conditions || {}, page, limit);
+      return this.repository.getPage(conditions || {}, page, limit);
     }
-    const data = await this.repository.findAll(conditions);
+    const data = await this.repository.getMany(conditions);
     const total = await this.repository.count(conditions);
     return { data, total };
   }

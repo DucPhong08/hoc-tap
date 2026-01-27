@@ -51,7 +51,7 @@ export abstract class BaseCrudController<
   ): Promise<PaginatedResponseDto<E>> {
     const page = pagination.page || 1;
     const limit = pagination.limit || 10;
-    const result = await this.service.findAll({}, page, limit);
+    const result = await this.service.getMany({}, page, limit);
     return new PaginatedResponseDto(result.data, result.total, page, limit);
   }
 
@@ -59,7 +59,7 @@ export abstract class BaseCrudController<
   @ApiOkResponse({ description: 'Return item' })
   @ApiResponse({ status: 404, description: 'Item not found' })
   async findOne(@Param('id') id: string): Promise<E> {
-    const item = await this.service.findById(id);
+    const item = await this.service.getById(id);
     if (!item) {
       throw new NotFoundException(
         `${this.resourceName} with id ${id} not found`,
