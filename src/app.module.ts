@@ -9,6 +9,7 @@ import { UsersModule } from './modules/users/users.module';
 import { ProductModule } from './modules/products/product.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
+import { TransactionModule } from './common/transaction/transaction.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
       },
     }),
     ...dbModules,
+    TransactionModule,
     AuthModule,
     UsersModule,
     ProductModule,

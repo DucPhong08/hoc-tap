@@ -6,10 +6,11 @@ import { UpdateProductDto } from './dto/update-product.dto';
 import { ProductService } from './product.service';
 import { ProductEntity } from './entities/product.entity';
 
-const BaseController = BaseCrudControllerFactory(ProductEntity, {
-  createDtoType: CreateProductDto,
-  updateDtoType: UpdateProductDto,
-});
+const BaseController = BaseCrudControllerFactory(
+  ProductEntity,
+  CreateProductDto,
+  UpdateProductDto,
+);
 
 @ApiTags('products')
 @Controller('products')

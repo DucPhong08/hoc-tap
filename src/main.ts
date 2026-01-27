@@ -60,7 +60,11 @@ async function bootstrap() {
       .addTag('products')
       .build();
     const document = SwaggerModule.createDocument(app, config);
-    SwaggerModule.setup(swaggerConfig.path, app, document);
+    SwaggerModule.setup(swaggerConfig.path, app, document, {
+      swaggerOptions: {
+        defaultModelsExpandDepth: -1,
+      },
+    });
   }
 
   const host = configService.get<{ host: string; port: number }>('host');

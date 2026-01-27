@@ -5,7 +5,7 @@ export interface CurrentUserData {
   email: string;
 }
 
-export const CurrentUser = createParamDecorator(
+export const ReqUser = createParamDecorator(
   (data: keyof CurrentUserData | undefined, ctx: ExecutionContext) => {
     const request = ctx.switchToHttp().getRequest();
     const user = request.user as CurrentUserData;
