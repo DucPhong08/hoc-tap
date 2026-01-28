@@ -37,7 +37,6 @@ export class RootConfig {
     if (!value || typeof value !== 'object') return value;
     const result: Record<string, DatabaseConfig> = {};
     for (const key in value) {
-      // eslint-disable-next-line no-prototype-builtins
       if (value.hasOwnProperty(key)) {
         result[key] = plainToInstance(DatabaseConfig, value[key], {
           enableImplicitConversion: true,

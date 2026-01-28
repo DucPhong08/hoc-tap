@@ -3,14 +3,14 @@ import { EntityManager, EntityRepository } from '@mikro-orm/core';
 import { InjectEntityManager, InjectRepository } from '@mikro-orm/nestjs';
 import { MikroOrmBaseRepository } from '../../../common/repositories/mikro-orm-base.repository';
 import { UserEntity } from '../entities/user.entity';
-import { contexts } from '../../../constants';
+import { DB_CONTEXTS } from 'src/database/constants';
 
 @Injectable()
 export class UserRepository extends MikroOrmBaseRepository<UserEntity> {
   constructor(
-    @InjectEntityManager(contexts.MAIN)
+    @InjectEntityManager(DB_CONTEXTS.MAIN)
     em: EntityManager,
-    @InjectRepository(UserEntity, contexts.MAIN)
+    @InjectRepository(UserEntity, DB_CONTEXTS.MAIN)
     repository: EntityRepository<UserEntity>,
   ) {
     super(em, repository);

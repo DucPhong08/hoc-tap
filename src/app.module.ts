@@ -4,13 +4,13 @@ import { APP_GUARD } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import loader from './config/loader';
-import { dbModules } from './constants';
 import { UsersModule } from './modules/users/users.module';
 import { ProductModule } from './modules/products/product.module';
 import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { TransactionModule } from './common/transaction/transaction.module';
+import { DatabaseModule } from './database/database.module';
 
 @Module({
   imports: [
@@ -23,7 +23,7 @@ import { TransactionModule } from './common/transaction/transaction.module';
         abortEarly: true,
       },
     }),
-    ...dbModules,
+    DatabaseModule,
     TransactionModule,
     AuthModule.forRoot(),
     UsersModule,

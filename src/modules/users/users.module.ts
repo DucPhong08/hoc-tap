@@ -1,17 +1,11 @@
 import { Module } from '@nestjs/common';
-import { MikroOrmModule } from '@mikro-orm/nestjs';
 import { UserController } from './controller/user.controller';
 import { UserService } from './domain/user.service';
 import { UserRepository } from './repository/user.repository';
-import { UserEntity } from './entities/user.entity';
-import { contexts } from '../../constants';
 import { TransactionModule } from '../../common/transaction/transaction.module';
 
 @Module({
-  imports: [
-    MikroOrmModule.forFeature([UserEntity], contexts.MAIN),
-    TransactionModule,
-  ],
+  imports: [TransactionModule],
   controllers: [UserController],
   providers: [UserService, UserRepository],
   exports: [UserService],

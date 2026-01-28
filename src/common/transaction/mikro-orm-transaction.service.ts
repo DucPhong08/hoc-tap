@@ -5,11 +5,13 @@ import {
   BaseTransaction,
   TransactionOption,
 } from './base-transaction.interface';
-import { contexts } from 'src/constants';
+import { DB_CONTEXTS } from 'src/database/constants';
 
 @Injectable()
 export class MikroOrmTransactionService implements BaseTransaction<EntityManager> {
-  constructor(@InjectMikroORM(contexts.MAIN) private readonly orm: MikroORM) {}
+  constructor(
+    @InjectMikroORM(DB_CONTEXTS.MAIN) private readonly orm: MikroORM,
+  ) {}
 
   async startTransaction(
     options?: TransactionOption<EntityManager>,
