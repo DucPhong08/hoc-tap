@@ -45,6 +45,7 @@ export type BaseRoute =
 export interface RouteConfig {
   enabled?: boolean;
   roles?: string[];
+  public?: boolean; // Route công khai, không cần auth
 }
 
 export interface CrudOptions {
@@ -57,14 +58,15 @@ function normalizeRouteConfig(
   config: boolean | RouteConfig | undefined,
 ): RouteConfig {
   if (config === undefined || config === true) {
-    return { enabled: true, roles: [] };
+    return { enabled: true, roles: [], public: false };
   }
   if (config === false) {
-    return { enabled: false, roles: [] };
+    return { enabled: false, roles: [], public: false };
   }
   return {
     enabled: config.enabled !== false,
     roles: config.roles || [],
+    public: config.public || false,
   };
 }
 export function BaseCrudControllerFactory<E extends BaseEntity>(
@@ -367,9 +369,9 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
   }
 
   const applyAuthToRoute = (methodName: string, config: RouteConfig) => {
-    if (!config.roles || config.roles.length === 0) return;
+    if (!config.enabled) return;
 
-    Authorize(...config.roles)(
+    Authorize(...(config.roles || []))(
       BaseCrudControllerHost.prototype,
       methodName,
       Object.getOwnPropertyDescriptor(
