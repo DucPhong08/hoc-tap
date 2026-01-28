@@ -18,8 +18,7 @@ export class MigrationService implements OnModuleInit {
     const devConfig = this.configService.get('databases.main.dev', {
       infer: true,
     });
-    const autoMigrate =
-      devConfig?.automigrate === 'true' || devConfig?.autoMigrate === true;
+    const autoMigrate = devConfig?.autoMigrate === true;
 
     if (mode !== 'production' && autoMigrate) {
       const migrator = this.orm.migrator;
