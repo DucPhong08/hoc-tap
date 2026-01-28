@@ -3,13 +3,12 @@ import {
   Delete,
   Get,
   Param,
-  Patch,
   Post,
+  Put,
   Query,
   HttpCode,
   NotFoundException,
   Type,
-  UseGuards,
 } from '@nestjs/common';
 import {
   ApiResponse,
@@ -18,7 +17,6 @@ import {
   ApiCreatedResponse,
   ApiBody,
   OmitType,
-  ApiBearerAuth,
 } from '@nestjs/swagger';
 import { BaseCrudService } from '../services/base-crud.service';
 import { PaginationDto, PaginatedResponseDto } from '../dto/pagination.dto';
@@ -27,42 +25,45 @@ import {
   HTTP_STATUS,
   HTTP_STATUS_MESSAGE,
 } from '../constants/http-status.constant';
+import { Authorize } from '../decorators/authorize.decorator';
+import { ReqUser } from '../decorators/request-user.decorator';
+import type { CurrentUserData } from '../decorators/request-user.decorator';
+
+export type BaseRoute =
+  | 'create'
+  | 'getMany'
+  | 'getPage'
+  | 'getById'
+  | 'getOne'
+  | 'updateById'
+  | 'updateByIds'
+  | 'upsert'
+  | 'getOneOrUpsert'
+  | 'deleteById'
+  | 'deleteByIds';
 
 export interface RouteConfig {
   enabled?: boolean;
-  authorize?: boolean;
   roles?: string[];
 }
 
 export interface CrudOptions {
   routes?: {
-    getMany?: boolean | RouteConfig;
-    getPage?: boolean | RouteConfig;
-    getOne?: boolean | RouteConfig;
-    create?: boolean | RouteConfig;
-    update?: boolean | RouteConfig;
-    delete?: boolean | RouteConfig;
-  };
-
-  guards?: {
-    authorize?: Type<any>;
-    roles?: Type<any>;
+    [key in BaseRoute]?: boolean | RouteConfig;
   };
 }
 
-// Helper để normalize route config
 function normalizeRouteConfig(
   config: boolean | RouteConfig | undefined,
 ): RouteConfig {
   if (config === undefined || config === true) {
-    return { enabled: true, authorize: false, roles: [] };
+    return { enabled: true, roles: [] };
   }
   if (config === false) {
-    return { enabled: false, authorize: false, roles: [] };
+    return { enabled: false, roles: [] };
   }
   return {
     enabled: config.enabled !== false,
-    authorize: config.authorize || false,
     roles: config.roles || [],
   };
 }
@@ -73,14 +74,18 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
   update?: Type<any>,
   options?: CrudOptions,
 ) {
-  // Normalize all route configs
-  const routeConfigs = {
+  const routeConfigs: Record<BaseRoute, RouteConfig> = {
+    create: normalizeRouteConfig(options?.routes?.create),
     getMany: normalizeRouteConfig(options?.routes?.getMany),
     getPage: normalizeRouteConfig(options?.routes?.getPage),
+    getById: normalizeRouteConfig(options?.routes?.getById),
     getOne: normalizeRouteConfig(options?.routes?.getOne),
-    create: normalizeRouteConfig(options?.routes?.create),
-    update: normalizeRouteConfig(options?.routes?.update),
-    delete: normalizeRouteConfig(options?.routes?.delete),
+    updateById: normalizeRouteConfig(options?.routes?.updateById),
+    updateByIds: normalizeRouteConfig(options?.routes?.updateByIds),
+    upsert: normalizeRouteConfig(options?.routes?.upsert),
+    getOneOrUpsert: normalizeRouteConfig(options?.routes?.getOneOrUpsert),
+    deleteById: normalizeRouteConfig(options?.routes?.deleteById),
+    deleteByIds: normalizeRouteConfig(options?.routes?.deleteByIds),
   };
 
   const CreateDto =
@@ -96,7 +101,24 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
       public readonly resourceName: string,
     ) {}
 
-    @Get()
+    @Post()
+    @HttpCode(HTTP_STATUS.CREATED)
+    @ApiCreatedResponse({
+      description: HTTP_STATUS_MESSAGE[HTTP_STATUS.CREATED],
+      type: entityType,
+    })
+    @ApiBody({ type: CreateDto })
+    async create(
+      @ReqUser() _user: CurrentUserData,
+      @Body() createDto: InstanceType<typeof CreateDto>,
+    ): Promise<E> {
+      if (!routeConfigs.create.enabled) {
+        throw new NotFoundException('Route not available');
+      }
+      return this.service.create(createDto as Partial<E>);
+    }
+
+    @Get('many')
     @HttpCode(HTTP_STATUS.OK)
     @ApiOkResponse({
       description: HTTP_STATUS_MESSAGE[HTTP_STATUS.OK],
@@ -118,6 +140,7 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
       type: PaginatedResponseDto,
     })
     async getPage(
+      @ReqUser() _user: CurrentUserData,
       @Query() pagination: PaginationDto,
     ): Promise<PaginatedResponseDto<E>> {
       if (!routeConfigs.getPage.enabled) {
@@ -127,6 +150,19 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
       const limit = pagination.limit || 10;
       const result = await this.service.getPage({}, page, limit);
       return new PaginatedResponseDto(result.data, result.total, page, limit);
+    }
+
+    @Get('one')
+    @HttpCode(HTTP_STATUS.OK)
+    @ApiOkResponse({
+      description: HTTP_STATUS_MESSAGE[HTTP_STATUS.OK],
+      type: entityType,
+    })
+    async getOne(): Promise<E | null> {
+      if (!routeConfigs.getOne.enabled) {
+        throw new NotFoundException('Route not available');
+      }
+      return this.service.getOne({});
     }
 
     @Get(':id')
@@ -139,8 +175,11 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
       status: HTTP_STATUS.NOT_FOUND,
       description: HTTP_STATUS_MESSAGE[HTTP_STATUS.NOT_FOUND],
     })
-    async findOne(@Param('id') id: string): Promise<E> {
-      if (!routeConfigs.getOne.enabled) {
+    async getById(
+      @ReqUser() _user: CurrentUserData,
+      @Param('id') id: string,
+    ): Promise<E> {
+      if (!routeConfigs.getById.enabled) {
         throw new NotFoundException('Route not available');
       }
       const item = await this.service.getById(id);
@@ -152,23 +191,7 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
       return item;
     }
 
-    @Post()
-    @HttpCode(HTTP_STATUS.CREATED)
-    @ApiCreatedResponse({
-      description: HTTP_STATUS_MESSAGE[HTTP_STATUS.CREATED],
-      type: entityType,
-    })
-    @ApiBody({ type: CreateDto })
-    async create(
-      @Body() createDto: InstanceType<typeof CreateDto>,
-    ): Promise<E> {
-      if (!routeConfigs.create.enabled) {
-        throw new NotFoundException('Route not available');
-      }
-      return this.service.create(createDto as Partial<E>);
-    }
-
-    @Patch(':id')
+    @Put(':id')
     @HttpCode(HTTP_STATUS.OK)
     @ApiOkResponse({
       description: HTTP_STATUS_MESSAGE[HTTP_STATUS.OK],
@@ -179,11 +202,12 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
       description: HTTP_STATUS_MESSAGE[HTTP_STATUS.NOT_FOUND],
     })
     @ApiBody({ type: UpdateDto })
-    async update(
+    async updateById(
+      @ReqUser() _user: CurrentUserData,
       @Param('id') id: string,
       @Body() updateDto: InstanceType<typeof UpdateDto>,
     ): Promise<E> {
-      if (!routeConfigs.update.enabled) {
+      if (!routeConfigs.updateById.enabled) {
         throw new NotFoundException('Route not available');
       }
 
@@ -199,6 +223,93 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
       return updated;
     }
 
+    @Put('many/ids')
+    @HttpCode(HTTP_STATUS.OK)
+    @ApiOkResponse({
+      description: HTTP_STATUS_MESSAGE[HTTP_STATUS.OK],
+    })
+    @ApiBody({
+      schema: {
+        type: 'object',
+        properties: {
+          ids: { type: 'array', items: { type: 'string' } },
+          update: { type: 'object' },
+        },
+      },
+    })
+    async updateByIds(
+      @ReqUser() _user: CurrentUserData,
+      @Body() dto: { ids: string[]; update: Partial<E> },
+    ): Promise<{ updated: number }> {
+      if (!routeConfigs.updateByIds.enabled) {
+        throw new NotFoundException('Route not available');
+      }
+
+      let updated = 0;
+      for (const id of dto.ids) {
+        const result = await this.service.updateById(id, dto.update);
+        if (result) updated++;
+      }
+
+      return { updated };
+    }
+
+    @Post('upsert')
+    @HttpCode(HTTP_STATUS.OK)
+    @ApiOkResponse({
+      description: HTTP_STATUS_MESSAGE[HTTP_STATUS.OK],
+      type: entityType,
+    })
+    @ApiBody({ type: UpdateDto })
+    async upsert(
+      @ReqUser() _user: CurrentUserData,
+      @Body() dto: InstanceType<typeof UpdateDto>,
+    ): Promise<E> {
+      if (!routeConfigs.upsert.enabled) {
+        throw new NotFoundException('Route not available');
+      }
+
+      const data = dto;
+      if (data.id || data._id) {
+        const id = data.id || data._id;
+        const existing = await this.service.getById(id);
+        if (existing) {
+          const result = await this.service.updateById(id, data);
+          if (!result) {
+            throw new NotFoundException(
+              `${this.resourceName} with id ${id} not found`,
+            );
+          }
+          return result;
+        }
+      }
+
+      return this.service.create(data);
+    }
+
+    @Post('one/upsert')
+    @HttpCode(HTTP_STATUS.OK)
+    @ApiOkResponse({
+      description: HTTP_STATUS_MESSAGE[HTTP_STATUS.OK],
+      type: entityType,
+    })
+    @ApiBody({ type: UpdateDto })
+    async getOneOrUpsert(
+      @ReqUser() _user: CurrentUserData,
+      @Body() dto: InstanceType<typeof UpdateDto>,
+    ): Promise<E> {
+      if (!routeConfigs.getOneOrUpsert.enabled) {
+        throw new NotFoundException('Route not available');
+      }
+
+      const existing = await this.service.getOne({});
+      if (existing) {
+        return existing;
+      }
+
+      return this.service.create(dto as Partial<E>);
+    }
+
     @Delete(':id')
     @HttpCode(HTTP_STATUS.NO_CONTENT)
     @ApiResponse({
@@ -209,8 +320,11 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
       status: HTTP_STATUS.NOT_FOUND,
       description: HTTP_STATUS_MESSAGE[HTTP_STATUS.NOT_FOUND],
     })
-    async deleteById(@Param('id') id: string): Promise<void> {
-      if (!routeConfigs.delete.enabled) {
+    async deleteById(
+      @ReqUser() _user: CurrentUserData,
+      @Param('id') id: string,
+    ): Promise<void> {
+      if (!routeConfigs.deleteById.enabled) {
         throw new NotFoundException('Route not available');
       }
 
@@ -221,50 +335,62 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
         );
       }
     }
+
+    @Delete('many/ids')
+    @HttpCode(HTTP_STATUS.OK)
+    @ApiOkResponse({
+      description: HTTP_STATUS_MESSAGE[HTTP_STATUS.OK],
+    })
+    @ApiBody({
+      schema: {
+        type: 'object',
+        properties: {
+          ids: { type: 'array', items: { type: 'string' } },
+        },
+      },
+    })
+    async deleteByIds(
+      @ReqUser() _user: CurrentUserData,
+      @Body() dto: { ids: string[] },
+    ): Promise<{ deleted: number }> {
+      if (!routeConfigs.deleteByIds.enabled) {
+        throw new NotFoundException('Route not available');
+      }
+
+      let deleted = 0;
+      for (const id of dto.ids) {
+        const result = await this.service.deleteById(id);
+        if (result) deleted++;
+      }
+
+      return { deleted };
+    }
   }
 
-  const applyGuardsToRoute = (methodName: string, config: RouteConfig) => {
-    if (!config.authorize || !options?.guards?.authorize) return;
+  const applyAuthToRoute = (methodName: string, config: RouteConfig) => {
+    if (!config.roles || config.roles.length === 0) return;
 
-    const guards: Type<any>[] = [options.guards.authorize];
-
-    if (config.roles && config.roles.length > 0 && options.guards?.roles) {
-      guards.push(options.guards.roles);
-    }
-
-    UseGuards(...guards)(
+    Authorize(...config.roles)(
       BaseCrudControllerHost.prototype,
       methodName,
       Object.getOwnPropertyDescriptor(
         BaseCrudControllerHost.prototype,
         methodName,
-      )!,
+      ),
     );
-
-    ApiBearerAuth()(
-      BaseCrudControllerHost.prototype,
-      methodName,
-      Object.getOwnPropertyDescriptor(
-        BaseCrudControllerHost.prototype,
-        methodName,
-      )!,
-    );
-
-    if (config.roles && config.roles.length > 0) {
-      Reflect.defineMetadata(
-        'roles',
-        config.roles,
-        BaseCrudControllerHost.prototype[methodName],
-      );
-    }
   };
 
-  applyGuardsToRoute('getMany', routeConfigs.getMany);
-  applyGuardsToRoute('getPage', routeConfigs.getPage);
-  applyGuardsToRoute('findOne', routeConfigs.getOne);
-  applyGuardsToRoute('create', routeConfigs.create);
-  applyGuardsToRoute('update', routeConfigs.update);
-  applyGuardsToRoute('deleteById', routeConfigs.delete);
+  applyAuthToRoute('create', routeConfigs.create);
+  applyAuthToRoute('getMany', routeConfigs.getMany);
+  applyAuthToRoute('getPage', routeConfigs.getPage);
+  applyAuthToRoute('getById', routeConfigs.getById);
+  applyAuthToRoute('getOne', routeConfigs.getOne);
+  applyAuthToRoute('updateById', routeConfigs.updateById);
+  applyAuthToRoute('updateByIds', routeConfigs.updateByIds);
+  applyAuthToRoute('upsert', routeConfigs.upsert);
+  applyAuthToRoute('getOneOrUpsert', routeConfigs.getOneOrUpsert);
+  applyAuthToRoute('deleteById', routeConfigs.deleteById);
+  applyAuthToRoute('deleteByIds', routeConfigs.deleteByIds);
 
   return BaseCrudControllerHost;
 }

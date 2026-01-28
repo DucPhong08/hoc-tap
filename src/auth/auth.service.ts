@@ -2,9 +2,11 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
-import { UserService } from '../users/domain/user.service';
-import { AuthConfig } from '../../config/root/auth.config';
+import { UserService } from '../modules/users/domain/user.service';
+import { AuthConfig } from '../config/root/auth.config';
 import { JwtPayload } from './strategies/jwt.strategy';
+import { OAuthProfile } from './interfaces/oauth-profile.interface';
+import { AuthProvider } from './enums/auth-provider.enum';
 
 export interface LoginResponse {
   accessToken: string;
@@ -14,6 +16,7 @@ export interface LoginResponse {
     email: string;
     firstName: string;
     lastName: string;
+    provider: AuthProvider;
   };
 }
 
@@ -43,6 +46,7 @@ export class AuthService {
       firstName,
       lastName,
       isActive: true,
+      provider: AuthProvider.LOCAL,
     });
 
     return this.generateTokens(user);
@@ -51,7 +55,7 @@ export class AuthService {
   async login(email: string, password: string): Promise<LoginResponse> {
     const user = await this.userService.findByEmail(email);
 
-    if (!user) {
+    if (!user || user.provider !== AuthProvider.LOCAL) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
@@ -70,6 +74,38 @@ export class AuthService {
     }
 
     return this.generateTokens(user);
+  }
+
+  async validateOAuthUser(profile: OAuthProfile): Promise<any> {
+    let user = await this.userService.getOne({
+      provider: profile.provider,
+      providerId: profile.providerId,
+    });
+
+    if (!user) {
+      user = await this.userService.getOne({ email: profile.email });
+
+      if (user) {
+        const updated = await this.userService.updateById(user._id.toString(), {
+          provider: profile.provider,
+          providerId: profile.providerId,
+          avatar: profile.avatar,
+        });
+        user = updated || user;
+      } else {
+        user = await this.userService.create({
+          email: profile.email,
+          firstName: profile.firstName,
+          lastName: profile.lastName,
+          provider: profile.provider,
+          providerId: profile.providerId,
+          avatar: profile.avatar,
+          isActive: true,
+        });
+      }
+    }
+
+    return user;
   }
 
   async refreshToken(refreshToken: string): Promise<LoginResponse> {
@@ -91,12 +127,13 @@ export class AuthService {
     }
   }
 
-  private generateTokens(user: any): LoginResponse {
+  generateTokens(user: any): LoginResponse {
     const authConfig = this.configService.get<AuthConfig>('auth');
 
     const payload: JwtPayload = {
       sub: user._id,
       email: user.email,
+      roles: user.roles || ['user'],
     };
 
     const accessToken = this.jwtService.sign(payload);
@@ -114,6 +151,7 @@ export class AuthService {
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
+        provider: user.provider || AuthProvider.LOCAL,
       },
     };
   }

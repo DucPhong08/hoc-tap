@@ -10,6 +10,21 @@ const BaseController = BaseCrudControllerFactory(
   ProductEntity,
   CreateProductDto,
   UpdateProductDto,
+  {
+    routes: {
+      create: true,
+      getMany: true,
+      getPage: true,
+      getById: true,
+      getOne: true,
+      updateById: true,
+      updateByIds: true,
+      upsert: true,
+      getOneOrUpsert: true,
+      deleteById: true,
+      deleteByIds: true,
+    },
+  },
 );
 
 @ApiTags('products')

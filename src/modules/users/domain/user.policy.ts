@@ -1,4 +1,4 @@
-import { UserEntity } from '../repository/entities/user.entity';
+import { UserEntity } from '../entities/user.entity';
 
 export class UserPolicy {
   static canUpdateEmail(user: UserEntity): boolean {

@@ -1,4 +1,11 @@
-import { IsString, IsNumber, Min, Max, IsIn } from 'class-validator';
+import {
+  IsString,
+  IsNumber,
+  Min,
+  Max,
+  IsIn,
+  IsOptional,
+} from 'class-validator';
 
 export class AppConfig {
   @IsString()
@@ -18,4 +25,8 @@ export class AppConfig {
 
   @IsString()
   appVersion!: string;
+
+  @IsString()
+  @IsOptional()
+  timezone?: string;
 }
