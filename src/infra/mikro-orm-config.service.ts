@@ -1,65 +1,45 @@
-import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { MikroOrmModuleOptions } from '@mikro-orm/nestjs';
 import { PostgreSqlDriver } from '@mikro-orm/postgresql';
 import { MongoDriver } from '@mikro-orm/mongodb';
 import { RootConfig } from '../config/root.config';
 
-@Injectable()
 export class MikroOrmConfigService {
   constructor(private readonly configService: ConfigService<RootConfig>) {}
 
   createMikroOrmOptions(contextName: string = 'main'): MikroOrmModuleOptions {
     const databases = this.configService.get('databases', { infer: true });
-
-    if (!databases) {
-      throw new Error('Database config not found');
-    }
+    if (!databases) throw new Error('Database config not found');
 
     const dbConfig = databases[contextName];
-
-    if (!dbConfig) {
+    if (!dbConfig)
       throw new Error(`Database config for context ${contextName} not found`);
-    }
 
+    const { orm, connection, driverOptions, dev } = dbConfig;
     const {
-      orm,
-      connection: { database, connection, host, port, user, password },
-      driverOptions,
-      dev,
-    } = dbConfig;
+      database,
+      connection: dbType,
+      host,
+      port,
+      user,
+      password,
+    } = connection;
 
+    // Lấy config chung
     const mode = this.configService.get('mode', { infer: true });
     const timezone = this.configService.get('app.timezone', { infer: true });
     const isProduction = mode === 'production';
 
-    const ormConfig = orm || {};
-
-    const migrationsRaw = ormConfig.migrations as any;
+    // Xử lý migrations config (config loader chuyển key thành lowercase)
+    const migrationsRaw = orm?.migrations as any;
     const migrations = migrationsRaw
       ? {
           path: migrationsRaw.path,
           pathTs: migrationsRaw.pathts || migrationsRaw.pathTs,
-          allOrNothing:
-            migrationsRaw.allornothing === 'true' ||
-            migrationsRaw.allOrNothing === true,
-          dropTables:
-            migrationsRaw.droptables === 'true' ||
-            migrationsRaw.dropTables === true,
-          disableForeignKeys:
-            migrationsRaw.disableforeignkeys === 'true' ||
-            migrationsRaw.disableForeignKeys === true,
-          safe: migrationsRaw.safe === true || migrationsRaw.safe === 'true',
-          snapshot:
-            migrationsRaw.snapshot === true ||
-            migrationsRaw.snapshot === 'true',
-          transactional:
-            migrationsRaw.transactional === true ||
-            migrationsRaw.transactional === 'true',
         }
       : undefined;
 
-    let driver: typeof PostgreSqlDriver | typeof MongoDriver;
+    // Config cơ bản
     const baseConfig: MikroOrmModuleOptions = {
       registerRequestContext: false,
       allowGlobalContext: true,
@@ -68,49 +48,41 @@ export class MikroOrmConfigService {
       migrations,
     };
 
-    if (connection === 'postgresql') {
-      driver = PostgreSqlDriver;
-
-      Object.assign(baseConfig, {
-        driver,
+    // Config theo loại database
+    if (dbType === 'postgresql') {
+      return {
+        ...baseConfig,
+        driver: PostgreSqlDriver,
         host,
         port,
         user,
         password,
         driverOptions: {
           ...driverOptions,
-          connection: {
-            timezone: timezone || '+07:00',
-          },
+          connection: { timezone: timezone || '+07:00' },
         },
-        pool: {
-          min: 2,
-          max: 10,
-        },
-      });
-    } else if (connection === 'mongodb') {
-      driver = MongoDriver;
+        pool: { min: 2, max: 10 },
+        ...(dev?.autoMigrate &&
+          !isProduction && {
+            schemaGenerator: {
+              disableForeignKeys: false,
+              createForeignKeyConstraints: true,
+            },
+            ensureDatabase: true,
+          }),
+      };
+    }
 
+    if (dbType === 'mongodb') {
       const authPart = user && password ? `${user}:${password}@` : '';
-      Object.assign(baseConfig, {
-        driver,
+      return {
+        ...baseConfig,
+        driver: MongoDriver,
         clientUrl: `mongodb://${authPart}${host}:${port}/${database}`,
         driverOptions,
-      });
-    } else {
-      throw new Error(`Unsupported database connection: ${connection}`);
+      };
     }
 
-    if (!isProduction && dev?.autoMigrate) {
-      Object.assign(baseConfig, {
-        schemaGenerator: {
-          disableForeignKeys: false,
-          createForeignKeyConstraints: true,
-        },
-        ensureDatabase: true,
-      });
-    }
-
-    return baseConfig;
+    throw new Error(`Unsupported database connection: ${dbType}`);
   }
 }

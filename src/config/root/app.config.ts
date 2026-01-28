@@ -1,22 +1,6 @@
-import {
-  IsString,
-  IsNumber,
-  Min,
-  Max,
-  IsIn,
-  IsOptional,
-} from 'class-validator';
+import { IsString, IsOptional } from 'class-validator';
 
 export class AppConfig {
-  @IsString()
-  @IsIn(['development', 'staging', 'production'])
-  nodeEnv!: string;
-
-  @IsNumber()
-  @Min(1)
-  @Max(65535)
-  port!: number;
-
   @IsString()
   apiPrefix!: string;
 

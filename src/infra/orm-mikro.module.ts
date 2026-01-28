@@ -4,8 +4,8 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MikroOrmConfigService } from './mikro-orm-config.service';
 import { MigrationService } from './migration.service';
 import { RootConfig } from '../config/root.config';
-import { DB_CONTEXTS } from '../common/database/constants';
-import { MainEntities } from 'src/common/database/entities/main.entities';
+import { MainEntities } from '../modules/database/entities/main.entities';
+import { DB_CONTEXTS } from 'src/modules/database/constants';
 
 @Global()
 @Module({
