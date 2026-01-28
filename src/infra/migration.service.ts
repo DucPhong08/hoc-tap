@@ -15,16 +15,32 @@ export class MigrationService implements OnModuleInit {
 
   async onModuleInit() {
     const mode = this.configService.get('mode', { infer: true });
-    const autoMigrate = this.configService.get(
-      'databases.main.dev.autoMigrate',
-      { infer: true },
-    );
+    const devConfig = this.configService.get('databases.main.dev', {
+      infer: true,
+    });
+    const autoMigrate =
+      devConfig?.automigrate === 'true' || devConfig?.autoMigrate === true;
 
     if (mode !== 'production' && autoMigrate) {
       const migrator = this.orm.migrator;
+      const pending = await migrator.getPendingMigrations();
 
-      await migrator.up();
-      console.log('Migrations executed successfully');
+      if (pending.length > 0) {
+        console.log(
+          `\n🔄 Auto-migration: Found ${pending.length} pending migration(s)`,
+        );
+        pending.forEach((migration) => {
+          console.log(`   - ${migration.name}`);
+        });
+
+        const executed = await migrator.up();
+
+        if (executed.length > 0) {
+          console.log(
+            `✅ Auto-migration: Executed ${executed.length} migration(s) successfully\n`,
+          );
+        }
+      }
     }
   }
 }

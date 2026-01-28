@@ -34,4 +34,10 @@ export class ProductEntity extends BaseEntity {
   @Min(0)
   @Property({ type: 'integer', default: 0 })
   stock: number = 0;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @Property({ type: 'varchar', length: 50, nullable: true })
+  sku?: string;
 }

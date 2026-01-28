@@ -35,13 +35,37 @@ export class MikroOrmConfigService {
 
     const ormConfig = orm || {};
 
+    const migrationsRaw = ormConfig.migrations as any;
+    const migrations = migrationsRaw
+      ? {
+          path: migrationsRaw.path,
+          pathTs: migrationsRaw.pathts || migrationsRaw.pathTs,
+          allOrNothing:
+            migrationsRaw.allornothing === 'true' ||
+            migrationsRaw.allOrNothing === true,
+          dropTables:
+            migrationsRaw.droptables === 'true' ||
+            migrationsRaw.dropTables === true,
+          disableForeignKeys:
+            migrationsRaw.disableforeignkeys === 'true' ||
+            migrationsRaw.disableForeignKeys === true,
+          safe: migrationsRaw.safe === true || migrationsRaw.safe === 'true',
+          snapshot:
+            migrationsRaw.snapshot === true ||
+            migrationsRaw.snapshot === 'true',
+          transactional:
+            migrationsRaw.transactional === true ||
+            migrationsRaw.transactional === 'true',
+        }
+      : undefined;
+
     let driver: typeof PostgreSqlDriver | typeof MongoDriver;
     const baseConfig: MikroOrmModuleOptions = {
       registerRequestContext: false,
       allowGlobalContext: true,
       dbName: database,
       debug: !isProduction && (dev?.debug || false),
-      migrations: ormConfig.migrations,
+      migrations,
     };
 
     if (connection === 'postgresql') {

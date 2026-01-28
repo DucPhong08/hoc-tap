@@ -67,7 +67,6 @@ function normalizeRouteConfig(
     roles: config.roles || [],
   };
 }
-
 export function BaseCrudControllerFactory<E extends BaseEntity>(
   entityType: Type<E>,
   create?: Type<any>,
