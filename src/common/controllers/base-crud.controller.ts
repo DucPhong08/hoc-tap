@@ -20,7 +20,7 @@ import {
 } from '@nestjs/swagger';
 import { BaseCrudService } from '../services/base-crud.service';
 import { PaginationDto, PaginatedResponseDto } from '../dto/pagination.dto';
-import { BaseEntity } from '../base.entity';
+import { BaseEntity } from '../entity/base.entity';
 import {
   HTTP_STATUS,
   HTTP_STATUS_MESSAGE,

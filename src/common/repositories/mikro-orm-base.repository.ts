@@ -4,7 +4,7 @@ import {
   FilterQuery,
   wrap,
 } from '@mikro-orm/core';
-import { BaseEntity } from '../base.entity';
+import { BaseEntity } from '../entity/base.entity';
 import {
   BaseRepository,
   FindOptions,

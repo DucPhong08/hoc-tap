@@ -4,7 +4,7 @@ import type {
   BaseRepository,
   QueryCondition,
 } from '../interfaces/base-repository.interface';
-import { BaseEntity } from '../base.entity';
+import { BaseEntity } from '../entity/base.entity';
 import { InjectTransaction } from '../transaction/transaction.provider';
 import type { BaseTransaction } from '../transaction/base-transaction.interface';
 

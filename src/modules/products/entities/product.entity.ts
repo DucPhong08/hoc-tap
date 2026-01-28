@@ -7,7 +7,7 @@ import {
   Min,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { BaseEntity } from '../../../common/base.entity';
+import { BaseEntity } from '../../../common/entity/base.entity';
 
 @Entity({ tableName: 'products' })
 export class ProductEntity extends BaseEntity {

@@ -1,4 +1,4 @@
-import { BaseEntity } from '../base.entity';
+import { BaseEntity } from '../entity/base.entity';
 
 export type QueryCondition<E = any> = {
   [P in keyof E]?: E[P] | { $in?: E[P][]; $ne?: E[P]; $gt?: E[P]; $lt?: E[P] };

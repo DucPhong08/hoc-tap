@@ -9,7 +9,7 @@ import {
   IsEnum,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { BaseEntity } from '../../../common/base.entity';
+import { BaseEntity } from '../../../common/entity/base.entity';
 import { AuthProvider } from '../../../auth/enums/auth-provider.enum';
 
 @Entity({ tableName: 'users' })
