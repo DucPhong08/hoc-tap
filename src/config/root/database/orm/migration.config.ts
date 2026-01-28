@@ -1,4 +1,4 @@
-import { IsBoolean, IsString } from 'class-validator';
+import { IsString } from 'class-validator';
 
 export class MigrationOrmConfig {
   @IsString()
@@ -6,22 +6,4 @@ export class MigrationOrmConfig {
 
   @IsString()
   pathTs!: string;
-
-  @IsBoolean()
-  allOrNothing!: boolean;
-
-  @IsBoolean()
-  dropTables!: boolean;
-
-  @IsBoolean()
-  disableForeignKeys!: boolean;
-
-  @IsBoolean()
-  safe!: boolean;
-
-  @IsBoolean()
-  snapshot!: boolean;
-
-  @IsBoolean()
-  transactional!: boolean;
 }

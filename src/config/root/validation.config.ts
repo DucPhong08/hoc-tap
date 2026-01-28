@@ -9,7 +9,4 @@ export class ValidationConfig {
 
   @IsBoolean()
   transform!: boolean;
-
-  @IsBoolean()
-  transformOptions!: boolean;
 }
