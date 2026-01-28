@@ -33,13 +33,15 @@ export class MikroOrmConfigService {
     const timezone = this.configService.get('app.timezone', { infer: true });
     const isProduction = mode === 'production';
 
+    const ormConfig = orm || {};
+
     let driver: typeof PostgreSqlDriver | typeof MongoDriver;
     const baseConfig: MikroOrmModuleOptions = {
       registerRequestContext: false,
       allowGlobalContext: true,
       dbName: database,
       debug: !isProduction && (dev?.debug || false),
-      ...orm,
+      migrations: ormConfig.migrations,
     };
 
     if (connection === 'postgresql') {
@@ -73,6 +75,16 @@ export class MikroOrmConfigService {
       });
     } else {
       throw new Error(`Unsupported database connection: ${connection}`);
+    }
+
+    if (!isProduction && dev?.autoMigrate) {
+      Object.assign(baseConfig, {
+        schemaGenerator: {
+          disableForeignKeys: false,
+          createForeignKeyConstraints: true,
+        },
+        ensureDatabase: true,
+      });
     }
 
     return baseConfig;

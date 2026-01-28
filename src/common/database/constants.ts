@@ -1,6 +1,5 @@
 export const DB_CONTEXTS = {
   MAIN: 'main',
-  ANALYTICS: 'analytics',
   LOGS: 'logs',
 } as const;
 

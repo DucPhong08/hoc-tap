@@ -5,7 +5,7 @@ import {
   BaseTransaction,
   TransactionOption,
 } from './base-transaction.interface';
-import { DB_CONTEXTS } from 'src/database/constants';
+import { DB_CONTEXTS } from 'src/common/database/constants';
 
 @Injectable()
 export class MikroOrmTransactionService implements BaseTransaction<EntityManager> {

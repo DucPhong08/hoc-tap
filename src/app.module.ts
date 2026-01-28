@@ -10,7 +10,7 @@ import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { TransactionModule } from './common/transaction/transaction.module';
-import { DatabaseModule } from './database/database.module';
+import { OrmMikroModule } from './infra/orm-mikro.module';
 
 @Module({
   imports: [
@@ -23,7 +23,7 @@ import { DatabaseModule } from './database/database.module';
         abortEarly: true,
       },
     }),
-    DatabaseModule,
+    OrmMikroModule,
     TransactionModule,
     AuthModule.forRoot(),
     UsersModule,
