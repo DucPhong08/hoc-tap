@@ -3,7 +3,6 @@ import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
-import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { AppConfig } from './config/root/app.config';
@@ -14,6 +13,7 @@ import { CorsConfig } from './config/root/cors.config';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     bufferLogs: true,
+    logger: ['error', 'warn'],
   });
 
   const configService = app.get(ConfigService);
@@ -41,8 +41,8 @@ async function bootstrap() {
     }),
   );
 
-  // Global filters
-  app.useGlobalFilters(new AllExceptionsFilter(), new HttpExceptionFilter());
+  // Global filters - chỉ dùng AllExceptionsFilter
+  app.useGlobalFilters(new AllExceptionsFilter());
 
   // Global interceptors
   app.useGlobalInterceptors(new LoggingInterceptor());

@@ -10,7 +10,6 @@ import { map } from 'rxjs/operators';
 export interface Response<T> {
   success: boolean;
   data: T;
-  timestamp: string;
 }
 
 @Injectable()
@@ -26,7 +25,6 @@ export class TransformInterceptor<T> implements NestInterceptor<
       map((data) => ({
         success: true,
         data,
-        timestamp: new Date().toISOString(),
       })),
     );
   }

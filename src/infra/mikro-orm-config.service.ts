@@ -30,7 +30,6 @@ export class MikroOrmConfigService {
     const timezone = this.configService.get('app.timezone', { infer: true });
     const isProduction = mode === 'production';
 
-    // Xử lý migrations config (config loader chuyển key thành lowercase)
     const migrationsRaw = orm?.migrations as any;
     const migrations = migrationsRaw
       ? {
@@ -39,13 +38,20 @@ export class MikroOrmConfigService {
         }
       : undefined;
 
-    // Config cơ bản
     const baseConfig: MikroOrmModuleOptions = {
       registerRequestContext: false,
       allowGlobalContext: true,
       dbName: database,
       debug: !isProduction && (dev?.debug || false),
       migrations,
+      discovery: {
+        disableDynamicFileAccess: true,
+      },
+      logger: (message: string) => {
+        if (message.includes('[error]')) {
+          console.error(message);
+        }
+      },
     };
 
     // Config theo loại database
