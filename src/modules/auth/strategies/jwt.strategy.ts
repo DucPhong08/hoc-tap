@@ -28,14 +28,14 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: JwtPayload) {
-    const user = await this.userService.getById(null, payload.sub);
+    const user = await this.userService.getByIdOrNull(null, payload.sub);
 
     if (!user) {
-      throw new UnauthorizedException('User not found');
+      throw new UnauthorizedException('Không tìm thấy người dùng');
     }
 
     if (!user.isActive) {
-      throw new UnauthorizedException('User is inactive');
+      throw new UnauthorizedException('Tài khoản đã bị vô hiệu hóa');
     }
 
     return {

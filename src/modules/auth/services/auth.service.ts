@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import { UserService } from '../../users/services/user.service';
+import { UserEntity } from '../../users/entities/user.entity';
 import { AuthConfig } from '../../../config/root/auth.config';
 import { JwtPayload } from '../strategies/jwt.strategy';
 import { OAuthProfile } from '../interfaces/oauth-profile.interface';
@@ -53,49 +54,46 @@ export class AuthService {
   }
 
   async login(email: string, password: string): Promise<LoginResponse> {
-    const user = await this.userService.findByEmail(null, email);
+    const user = await this.userService.findByEmail(email);
 
     if (!user || user.provider !== AuthProvider.LOCAL) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException('Thông tin đăng nhập không hợp lệ');
     }
 
     if (!user.password) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException('Thông tin đăng nhập không hợp lệ');
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException('Thông tin đăng nhập không hợp lệ');
     }
 
     if (!user.isActive) {
-      throw new UnauthorizedException('User is inactive');
+      throw new UnauthorizedException('Tài khoản đã bị vô hiệu hóa');
     }
 
     return this.generateTokens(user);
   }
 
-  async validateOAuthUser(profile: OAuthProfile): Promise<any> {
-    let user = await this.userService.getOne(null, {
+  async validateOAuthUser(profile: OAuthProfile): Promise<UserEntity> {
+    let user = await this.userService.getOneOrNull(null, {
       provider: profile.provider,
       providerId: profile.providerId,
     });
 
     if (!user) {
-      user = await this.userService.getOne(null, { email: profile.email });
+      user = await this.userService.getOneOrNull(null, {
+        email: profile.email,
+      });
 
       if (user) {
-        const updated = await this.userService.updateById(
-          null,
-          user._id.toString(),
-          {
-            provider: profile.provider,
-            providerId: profile.providerId,
-            avatar: profile.avatar,
-          },
-        );
-        user = updated || user;
+        user = await this.userService.updateById(null, user._id.toString(), {
+          provider: profile.provider,
+          providerId: profile.providerId,
+          avatar: profile.avatar,
+        });
       } else {
         user = await this.userService.create(null, {
           email: profile.email,
@@ -119,15 +117,15 @@ export class AuthService {
         secret: authConfig?.jwtRefreshSecret,
       });
 
-      const user = await this.userService.getById(null, payload.sub);
+      const user = await this.userService.getByIdOrNull(null, payload.sub);
 
       if (!user) {
-        throw new UnauthorizedException('User not found');
+        throw new UnauthorizedException('Không tìm thấy người dùng');
       }
 
       return this.generateTokens(user);
     } catch {
-      throw new UnauthorizedException('Invalid refresh token');
+      throw new UnauthorizedException('Refresh token không hợp lệ');
     }
   }
 

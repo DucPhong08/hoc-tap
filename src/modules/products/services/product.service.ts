@@ -6,6 +6,9 @@ import { ProductRepository } from '../repositories/product.repository';
 @Injectable()
 export class ProductService extends BaseCrudService<ProductEntity> {
   constructor(repository: ProductRepository) {
-    super(repository);
+    super(repository, {
+      entityName: 'Sản phẩm',
+      notFoundMessage: 'Không tìm thấy sản phẩm',
+    });
   }
 }

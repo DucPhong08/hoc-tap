@@ -37,7 +37,7 @@ export abstract class MikroOrmBaseRepository<
 
   async create(
     document: Partial<E>,
-    query?: CreateQuery<E> & BaseCommandOption<T>,
+    query?: CreateQuery & BaseCommandOption<T>,
   ): Promise<E> {
     const entity = this.repository.create(document as any);
     await this.em.persist(entity).flush();
@@ -54,7 +54,7 @@ export abstract class MikroOrmBaseRepository<
 
   async insertMany(
     documents: Partial<E>[],
-    query?: InsertManyQuery<E> & BaseCommandOption<T>,
+    query?: InsertManyQuery & BaseCommandOption<T>,
   ): Promise<{ n: number }> {
     void query; // Mark as intentionally unused
     const entities = documents.map((doc) => this.repository.create(doc as any));
@@ -129,7 +129,7 @@ export abstract class MikroOrmBaseRepository<
   async updateById(
     id: string,
     data: UpdateData<E>,
-    query?: UpdateByIdQuery<E> & BaseCommandOption<T>,
+    query?: UpdateByIdQuery & BaseCommandOption<T>,
   ): Promise<E | null> {
     const entity = await this.getById(id);
     if (!entity) return null;
@@ -150,7 +150,7 @@ export abstract class MikroOrmBaseRepository<
   async updateOne(
     condition: QueryCondition<E>,
     data: UpdateData<E>,
-    query?: UpdateOneQuery<E> & BaseCommandOption<T>,
+    query?: UpdateOneQuery & BaseCommandOption<T>,
   ): Promise<E | null> {
     const entity = await this.getOne(condition);
     if (!entity) return null;
@@ -172,7 +172,7 @@ export abstract class MikroOrmBaseRepository<
   async updateMany(
     condition: QueryCondition<E>,
     data: UpdateData<E>,
-    query?: UpdateManyQuery<E> & BaseCommandOption<T>,
+    query?: UpdateManyQuery & BaseCommandOption<T>,
   ): Promise<UpdateManyResult> {
     void query; // Mark as intentionally unused
     const entities = await this.getMany(condition);
@@ -189,7 +189,7 @@ export abstract class MikroOrmBaseRepository<
 
   async deleteById(
     id: string,
-    query?: DeleteByIdQuery<E> & BaseCommandOption<T>,
+    query?: DeleteByIdQuery & BaseCommandOption<T>,
   ): Promise<E | null> {
     const entity = await this.getById(id);
     if (!entity) return null;
@@ -208,7 +208,7 @@ export abstract class MikroOrmBaseRepository<
 
   async deleteOne(
     condition: QueryCondition<E>,
-    query?: DeleteOneQuery<E> & BaseCommandOption<T>,
+    query?: DeleteOneQuery & BaseCommandOption<T>,
   ): Promise<E | null> {
     const entity = await this.getOne(condition);
     if (!entity) return null;
@@ -227,7 +227,7 @@ export abstract class MikroOrmBaseRepository<
 
   async deleteMany(
     condition: QueryCondition<E>,
-    query?: DeleteManyQuery<E> & BaseCommandOption<T>,
+    query?: DeleteManyQuery & BaseCommandOption<T>,
   ): Promise<DeleteManyResult> {
     const entities = await this.getMany(condition);
     const soft = query?.soft !== false;
@@ -248,7 +248,7 @@ export abstract class MikroOrmBaseRepository<
 
   async count(
     condition?: QueryCondition<E>,
-    query?: CountQuery<E> & BaseQueryOption<T>,
+    query?: CountQuery & BaseQueryOption<T>,
   ): Promise<number> {
     const filter = condition
       ? FilterBuilder.build(condition, { withDeleted: query?.withDeleted })
@@ -260,7 +260,7 @@ export abstract class MikroOrmBaseRepository<
 
   async exists(
     condition: QueryCondition<E>,
-    query?: ExistsQuery<E> & BaseQueryOption<T>,
+    query?: ExistsQuery & BaseQueryOption<T>,
   ): Promise<boolean> {
     const count = await this.count(condition, query);
     return count > 0;

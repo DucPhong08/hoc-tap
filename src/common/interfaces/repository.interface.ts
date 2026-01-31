@@ -47,85 +47,79 @@ export type {
   BaseCommandOption,
 };
 
-export interface IBaseRepository<E extends BaseEntity, T = unknown> {
+export interface IBaseRepository<E extends BaseEntity, TContext = unknown> {
   create(
     document: Partial<E>,
-    query?: CreateQuery<E> & BaseCommandOption<T>,
+    query?: CreateQuery & BaseCommandOption<TContext>,
   ): Promise<E>;
 
   insertMany(
     documents: Partial<E>[],
-    query?: InsertManyQuery<E> & BaseCommandOption<T>,
+    query?: InsertManyQuery & BaseCommandOption<TContext>,
   ): Promise<{ n: number }>;
-
-  // ============= GET =============
 
   getById(
     id: string,
-    query?: GetByIdQuery<E> & BaseQueryOption<T>,
+    query?: GetByIdQuery<E> & BaseQueryOption<TContext>,
   ): Promise<E | null>;
 
   getOne(
     condition: QueryCondition<E>,
-    query?: GetOneQuery<E> & BaseQueryOption<T>,
+    query?: GetOneQuery<E> & BaseQueryOption<TContext>,
   ): Promise<E | null>;
 
   getMany(
     condition: QueryCondition<E>,
-    query?: GetManyQuery<E> & BaseQueryOption<T>,
+    query?: GetManyQuery<E> & BaseQueryOption<TContext>,
   ): Promise<E[]>;
 
   getPage(
     condition: QueryCondition<E>,
-    query: GetPageQuery<E> & BaseQueryOption<T>,
+    query: GetPageQuery<E> & BaseQueryOption<TContext>,
   ): Promise<PaginationResult<E>>;
-
-  // ============= UPDATE =============
 
   updateById(
     id: string,
     data: UpdateData<E>,
-    query?: UpdateByIdQuery<E> & BaseCommandOption<T>,
+    query?: UpdateByIdQuery & BaseCommandOption<TContext>,
   ): Promise<E | null>;
 
   updateOne(
     condition: QueryCondition<E>,
     data: UpdateData<E>,
-    query?: UpdateOneQuery<E> & BaseCommandOption<T>,
+    query?: UpdateOneQuery & BaseCommandOption<TContext>,
   ): Promise<E | null>;
 
   updateMany(
     condition: QueryCondition<E>,
     data: UpdateData<E>,
-    query?: UpdateManyQuery<E> & BaseCommandOption<T>,
+    query?: UpdateManyQuery & BaseCommandOption<TContext>,
   ): Promise<UpdateManyResult>;
-
-  // ============= DELETE =============
 
   deleteById(
     id: string,
-    query?: DeleteByIdQuery<E> & BaseCommandOption<T>,
+    query?: DeleteByIdQuery & BaseCommandOption<TContext>,
   ): Promise<E | null>;
 
   deleteOne(
     condition: QueryCondition<E>,
-    query?: DeleteOneQuery<E> & BaseCommandOption<T>,
+    query?: DeleteOneQuery & BaseCommandOption<TContext>,
   ): Promise<E | null>;
 
   deleteMany(
     condition: QueryCondition<E>,
-    query?: DeleteManyQuery<E> & BaseCommandOption<T>,
+    query?: DeleteManyQuery & BaseCommandOption<TContext>,
   ): Promise<DeleteManyResult>;
 
   count(
     condition?: QueryCondition<E>,
-    query?: CountQuery<E> & BaseQueryOption<T>,
+    query?: CountQuery & BaseQueryOption<TContext>,
   ): Promise<number>;
 
   exists(
     condition: QueryCondition<E>,
-    query?: ExistsQuery<E> & BaseQueryOption<T>,
+    query?: ExistsQuery & BaseQueryOption<TContext>,
   ): Promise<boolean>;
 
-  restore(id: string, query?: BaseCommandOption<T>): Promise<E | null>;
+  restore(id: string, query?: BaseCommandOption<TContext>): Promise<E | null>;
 }

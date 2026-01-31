@@ -1,121 +1,72 @@
 import { PopulateInput } from './options.interface';
 
-/**
- * Get By ID Query
- */
-export interface GetByIdQuery<E = any> {
-  select?: (keyof E | string)[];
+export interface GetByIdQuery<E> {
+  select?: (keyof E)[];
   populate?: PopulateInput;
   withDeleted?: boolean;
 }
 
-/**
- * Get One Query
- */
-export interface GetOneQuery<E = any> {
-  select?: (keyof E | string)[];
+export interface GetOneQuery<E> {
+  select?: (keyof E)[];
   populate?: PopulateInput;
-  sort?: Record<string, 1 | -1>;
+  sort?: Partial<Record<keyof E, 1 | -1>>;
   withDeleted?: boolean;
 }
 
-export interface GetManyQuery<E = any> {
-  select?: (keyof E | string)[];
+export interface GetManyQuery<E> {
+  select?: (keyof E)[];
   populate?: PopulateInput;
-  sort?: Record<string, 1 | -1>;
+  sort?: Partial<Record<keyof E, 1 | -1>>;
   limit?: number;
   offset?: number;
   withDeleted?: boolean;
 }
 
-/**
- * Get Page Query
- */
-export interface GetPageQuery<E = any> {
-  select?: (keyof E | string)[];
+export interface GetPageQuery<E> {
+  select?: (keyof E)[];
   populate?: PopulateInput;
-  sort?: Record<string, 1 | -1>;
+  sort?: Partial<Record<keyof E, 1 | -1>>;
   page: number;
   limit: number;
   withDeleted?: boolean;
 }
 
-/**
- * Count Query
- */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export interface CountQuery<E = any> {
+export interface CountQuery {
   withDeleted?: boolean;
 }
 
-/**
- * Exists Query
- */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export interface ExistsQuery<E = any> {
+export interface ExistsQuery {
   withDeleted?: boolean;
 }
 
-/**
- * Create Query
- */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export interface CreateQuery<E = any> {
+export interface CreateQuery {
   populate?: PopulateInput;
 }
 
-/**
- * Insert Many Query
- */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-empty-object-type
-export interface InsertManyQuery<E = any> {
-  // Options for bulk insert
+export interface InsertManyQuery {
+  ordered?: boolean;
 }
 
-/**
- * Update By ID Query
- */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export interface UpdateByIdQuery<E = any> {
+export interface UpdateByIdQuery {
   populate?: PopulateInput;
 }
 
-/**
- * Update One Query
- */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export interface UpdateOneQuery<E = any> {
+export interface UpdateOneQuery {
   populate?: PopulateInput;
 }
 
-/**
- * Update Many Query
- */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-empty-object-type
-export interface UpdateManyQuery<E = any> {
-  // Options for bulk update
+export interface UpdateManyQuery {
+  ordered?: boolean;
 }
 
-/**
- * Delete By ID Query
- */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export interface DeleteByIdQuery<E = any> {
+export interface DeleteByIdQuery {
   soft?: boolean;
 }
 
-/**
- * Delete One Query
- */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export interface DeleteOneQuery<E = any> {
+export interface DeleteOneQuery {
   soft?: boolean;
 }
 
-/**
- * Delete Many Query
- */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export interface DeleteManyQuery<E = any> {
+export interface DeleteManyQuery {
   soft?: boolean;
 }

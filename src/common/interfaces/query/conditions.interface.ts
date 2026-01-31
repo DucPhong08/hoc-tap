@@ -1,6 +1,3 @@
-/**
- * Comparison Operators for Query Conditions
- */
 export type ComparisonOperator<T> = {
   $eq?: T;
   $ne?: T;
@@ -17,24 +14,14 @@ export type ComparisonOperator<T> = {
   $not?: ComparisonOperator<T>;
 };
 
-/**
- * Field Condition - Can be direct value or comparison operator
- */
 export type FieldCondition<T> = T | ComparisonOperator<T>;
 
-/**
- * Where Condition with logical operators
- */
-export type WhereCondition<E = any> = {
+export type WhereCondition<E> = {
   [P in keyof E]?: FieldCondition<E[P]>;
 } & {
   $and?: WhereCondition<E>[];
   $or?: WhereCondition<E>[];
   $not?: WhereCondition<E>;
-  [key: string]: any;
 };
 
-/**
- * Query Condition - Alias for WhereCondition
- */
-export type QueryCondition<E = any> = WhereCondition<E>;
+export type QueryCondition<E> = WhereCondition<E>;

@@ -3,20 +3,25 @@ import { BaseCrudService } from '../../../common/services/base-crud.service';
 import { UserEntity } from '../entities/user.entity';
 import { UserRepository } from '../repositories/user.repository';
 import { UserPolicy } from './user.policy';
+import type { UserContext } from '../../../common/types/user.type';
 
 @Injectable()
 export class UserService extends BaseCrudService<UserEntity> {
   constructor(private readonly userRepository: UserRepository) {
     super(userRepository, {
-      notFoundCode: 'USER_NOT_FOUND',
+      entityName: 'Người dùng',
+      notFoundMessage: 'Không tìm thấy người dùng',
     });
   }
 
-  async create(user: any, data: Partial<UserEntity>): Promise<UserEntity> {
+  async create(
+    user: UserContext,
+    data: Partial<UserEntity>,
+  ): Promise<UserEntity> {
     if (data.email) {
       const existingUser = await this.userRepository.findByEmail(data.email);
       if (existingUser) {
-        throw new BadRequestException('Email already exists');
+        throw new BadRequestException('Email đã tồn tại');
       }
     }
 
@@ -24,22 +29,22 @@ export class UserService extends BaseCrudService<UserEntity> {
   }
 
   async updateById(
-    user: any,
+    user: UserContext,
     id: string,
     data: Partial<UserEntity>,
-  ): Promise<UserEntity | null> {
+  ): Promise<UserEntity> {
     if (data.email) {
       const existingUser = await this.getById(user, id);
-      if (existingUser && data.email !== existingUser.email) {
+      if (data.email !== existingUser.email) {
         if (!UserPolicy.canUpdateEmail(existingUser)) {
           throw new BadRequestException(
-            'Email can only be updated once per week',
+            'Email chỉ có thể cập nhật một lần mỗi tuần',
           );
         }
 
         const emailExists = await this.userRepository.findByEmail(data.email);
         if (emailExists) {
-          throw new BadRequestException('Email already exists');
+          throw new BadRequestException('Email đã tồn tại');
         }
       }
     }
@@ -47,21 +52,17 @@ export class UserService extends BaseCrudService<UserEntity> {
     return super.updateById(user, id, data);
   }
 
-  async deleteById(user: any, id: string): Promise<UserEntity | null> {
+  async deleteById(user: UserContext, id: string): Promise<UserEntity> {
     const userEntity = await this.getById(user, id);
-    if (!userEntity) {
-      return null;
-    }
 
     if (!UserPolicy.canDelete(userEntity)) {
-      throw new BadRequestException('User can only be deleted after 30 days');
+      throw new BadRequestException('Người dùng chỉ có thể xóa sau 30 ngày');
     }
 
-    await super.deleteById(user, id);
-    return userEntity;
+    return super.deleteById(user, id);
   }
 
-  async findByEmail(user: any, email: string): Promise<UserEntity | null> {
+  async findByEmail(email: string): Promise<UserEntity | null> {
     return this.userRepository.findByEmail(email);
   }
 }

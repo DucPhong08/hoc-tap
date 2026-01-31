@@ -122,7 +122,7 @@ export abstract class CachedBaseRepository<
   async updateById(
     id: string,
     data: UpdateData<E>,
-    query?: UpdateByIdQuery<E> & BaseCommandOption<unknown>,
+    query?: UpdateByIdQuery & BaseCommandOption<unknown>,
   ): Promise<E | null> {
     const entity = await super.updateById(id, data, query);
     if (entity) {
@@ -134,7 +134,7 @@ export abstract class CachedBaseRepository<
   async updateOne(
     condition: QueryCondition<E>,
     data: UpdateData<E>,
-    query?: UpdateOneQuery<E> & BaseCommandOption<unknown>,
+    query?: UpdateOneQuery & BaseCommandOption<unknown>,
   ): Promise<E | null> {
     const entity = await super.updateOne(condition, data, query);
     if (entity) {
@@ -146,7 +146,7 @@ export abstract class CachedBaseRepository<
   async updateMany(
     condition: QueryCondition<E>,
     data: UpdateData<E>,
-    query?: UpdateManyQuery<E> & BaseCommandOption<unknown>,
+    query?: UpdateManyQuery & BaseCommandOption<unknown>,
   ): Promise<{ affected: number }> {
     const result = await super.updateMany(condition, data, query);
     await this.invalidateCache([this.entityName]);
@@ -155,7 +155,7 @@ export abstract class CachedBaseRepository<
 
   async deleteById(
     id: string,
-    query?: DeleteByIdQuery<E> & BaseCommandOption<unknown>,
+    query?: DeleteByIdQuery & BaseCommandOption<unknown>,
   ): Promise<E | null> {
     const entity = await super.deleteById(id, query);
     if (entity) {
@@ -166,7 +166,7 @@ export abstract class CachedBaseRepository<
 
   async deleteOne(
     condition: QueryCondition<E>,
-    query?: DeleteOneQuery<E> & BaseCommandOption<unknown>,
+    query?: DeleteOneQuery & BaseCommandOption<unknown>,
   ): Promise<E | null> {
     const entity = await super.deleteOne(condition, query);
     if (entity) {
@@ -177,7 +177,7 @@ export abstract class CachedBaseRepository<
 
   async deleteMany(
     condition: QueryCondition<E>,
-    query?: DeleteManyQuery<E> & BaseCommandOption<unknown>,
+    query?: DeleteManyQuery & BaseCommandOption<unknown>,
   ): Promise<{ deleted: number }> {
     const result = await super.deleteMany(condition, query);
     await this.invalidateCache([this.entityName]);

@@ -497,7 +497,7 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
       if (!routeConfigs.updateByIds.enabled) {
         throw new NotFoundException('Route not available');
       }
-      return this.service.updateManyByIds(user, dto);
+      return this.service.updateManyByIds(user, dto.ids, dto.update);
     }
 
     // ============= UPSERT =============
@@ -551,24 +551,14 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
       if (!routeConfigs.getOneOrUpsert.enabled) {
         throw new NotFoundException('Route not available');
       }
-      const upsertKeys = this.service.property?.upsertKeys || [];
-      const data = dto as Record<string, unknown>;
-      const condition: Record<string, unknown> = {};
 
-      for (const key of upsertKeys) {
-        if (data[key] !== undefined) {
-          condition[key] = data[key];
-        }
-      }
+      const existing = await this.service.getOneOrNull(
+        user,
+        dto as QueryCondition<E>,
+      );
 
-      if (Object.keys(condition).length > 0) {
-        const existing = await this.service.getOne(
-          user,
-          condition as QueryCondition<E>,
-        );
-        if (existing) {
-          return existing;
-        }
+      if (existing) {
+        return existing;
       }
 
       return this.service.create(user, dto as Partial<E>);
@@ -615,7 +605,7 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
       if (!routeConfigs.deleteByIds.enabled) {
         throw new NotFoundException('Route not available');
       }
-      return this.service.deleteManyByIds(user, dto);
+      return this.service.deleteManyByIds(user, dto.ids);
     }
   }
 

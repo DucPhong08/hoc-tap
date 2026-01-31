@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { EntityManager } from '@mikro-orm/core';
 import type {
   QueryCondition,
@@ -21,400 +21,229 @@ import type {
 import type { IBaseRepository } from '../interfaces/repository.interface';
 import { BaseEntity } from '../entity/base.entity';
 import type { BaseTransaction } from '../transaction/base-transaction.interface';
+import type { UserContext } from '../types/user.type';
 
-export interface BaseCrudServiceProperty {
-  notFoundCode?: string;
+export interface BaseCrudServiceConfig {
+  entityName: string;
+  notFoundMessage?: string;
   transaction?: BaseTransaction<EntityManager>;
-  upsertKeys?: string[];
 }
 
 @Injectable()
 export abstract class BaseCrudService<E extends BaseEntity> {
-  constructor(
-    protected readonly repository: IBaseRepository<E>,
-    public readonly property: BaseCrudServiceProperty = {},
-  ) {}
+  protected readonly entityName: string;
+  protected readonly notFoundMessage: string;
+  protected readonly transaction?: BaseTransaction<EntityManager>;
 
-  // ============= CREATE =============
+  constructor(
+    protected readonly repository: IBaseRepository<E, EntityManager>,
+    config: BaseCrudServiceConfig,
+  ) {
+    this.entityName = config.entityName;
+    this.notFoundMessage =
+      config.notFoundMessage || `Không tìm thấy ${config.entityName}`;
+    this.transaction = config.transaction;
+  }
 
   async create(
-    user: any,
+    user: UserContext,
     dto: Partial<E>,
-    query?: CreateQuery<E> & BaseCommandOption<EntityManager>,
+    query?: CreateQuery & BaseCommandOption<EntityManager>,
   ): Promise<E> {
-    query = query || {};
-    const internalTransaction = !query.transaction;
-
-    if (internalTransaction && this.property.transaction) {
-      query.transaction = await this.property.transaction.startTransaction();
-    }
-
-    const { transaction } = query;
-
-    try {
-      const res = await this.repository.create(dto, query);
-
-      if (internalTransaction && this.property.transaction) {
-        await this.property.transaction.commitTransaction(transaction!);
-      }
-
-      return res;
-    } catch (err) {
-      if (internalTransaction && this.property.transaction) {
-        await this.property.transaction.abortTransaction(transaction!);
-      }
-      throw err;
-    }
+    return this.executeWithTransaction(query, async (txQuery) => {
+      return this.repository.create(dto, txQuery);
+    });
   }
 
   async insertMany(
-    user: any,
+    user: UserContext,
     list: Partial<E>[],
     query?: BaseCommandOption<EntityManager>,
   ): Promise<{ n: number }> {
-    query = query || {};
-    const internalTransaction = !query.transaction;
-
-    if (internalTransaction && this.property.transaction) {
-      query.transaction = await this.property.transaction.startTransaction();
-    }
-
-    const { transaction } = query;
-
-    try {
-      const res = await this.repository.insertMany(list, query);
-
-      if (internalTransaction && this.property.transaction) {
-        await this.property.transaction.commitTransaction(transaction!);
-      }
-
-      return res;
-    } catch (err) {
-      if (internalTransaction && this.property.transaction) {
-        await this.property.transaction.abortTransaction(transaction!);
-      }
-      throw err;
-    }
+    return this.executeWithTransaction(query, async (txQuery) => {
+      return this.repository.insertMany(list, txQuery);
+    });
   }
 
   async getById(
-    user: any,
+    user: UserContext,
+    id: string,
+    query?: GetByIdQuery<E> & BaseQueryOption<EntityManager>,
+  ): Promise<E> {
+    const entity = await this.repository.getById(id, query);
+
+    if (!entity) {
+      throw new NotFoundException(`${this.notFoundMessage} với ID: ${id}`);
+    }
+
+    return entity;
+  }
+
+  async getByIdOrNull(
+    user: UserContext,
     id: string,
     query?: GetByIdQuery<E> & BaseQueryOption<EntityManager>,
   ): Promise<E | null> {
-    const res = await this.repository.getById(id, query);
-
-    if (!res && this.property.notFoundCode) {
-      throw new Error(this.property.notFoundCode);
-    }
-
-    return res;
+    return this.repository.getById(id, query);
   }
 
   async getOne(
-    user: any,
+    user: UserContext,
+    condition: QueryCondition<E>,
+    query?: GetOneQuery<E> & BaseQueryOption<EntityManager>,
+  ): Promise<E> {
+    const entity = await this.repository.getOne(condition, query);
+
+    if (!entity) {
+      throw new NotFoundException(this.notFoundMessage);
+    }
+
+    return entity;
+  }
+
+  async getOneOrNull(
+    user: UserContext,
     condition: QueryCondition<E>,
     query?: GetOneQuery<E> & BaseQueryOption<EntityManager>,
   ): Promise<E | null> {
-    const res = await this.repository.getOne(condition, query);
-
-    if (!res && this.property.notFoundCode) {
-      throw new Error(this.property.notFoundCode);
-    }
-
-    return res;
+    return this.repository.getOne(condition, query);
   }
 
-  getMany(
-    user: any,
+  async getMany(
+    user: UserContext,
     condition: QueryCondition<E>,
     query?: GetManyQuery<E> & BaseQueryOption<EntityManager>,
   ): Promise<E[]> {
     return this.repository.getMany(condition, query);
   }
 
-  getPage(
-    user: any,
+  async getPage(
+    user: UserContext,
     condition: QueryCondition<E>,
     query: GetPageQuery<E> & BaseQueryOption<EntityManager>,
   ): Promise<PaginationResult<E>> {
     return this.repository.getPage(condition, query);
   }
 
-  // ============= UPDATE =============
-
   async updateById(
-    user: any,
+    user: UserContext,
     id: string,
     update: UpdateData<E>,
-    query?: UpdateByIdQuery<E> & BaseCommandOption<EntityManager>,
-  ): Promise<E | null> {
-    query = query || {};
-    const internalTransaction = !query.transaction;
+    query?: UpdateByIdQuery & BaseCommandOption<EntityManager>,
+  ): Promise<E> {
+    return this.executeWithTransaction(query, async (txQuery) => {
+      const entity = await this.repository.updateById(id, update, txQuery);
 
-    if (internalTransaction && this.property.transaction) {
-      query.transaction = await this.property.transaction.startTransaction();
-    }
-
-    const { transaction } = query;
-
-    try {
-      const res = await this.repository.updateById(id, update, query);
-
-      if (!res && this.property.notFoundCode) {
-        throw new Error(this.property.notFoundCode);
+      if (!entity) {
+        throw new NotFoundException(`${this.notFoundMessage} với ID: ${id}`);
       }
 
-      if (internalTransaction && this.property.transaction) {
-        await this.property.transaction.commitTransaction(transaction!);
-      }
-
-      return res;
-    } catch (err) {
-      if (internalTransaction && this.property.transaction) {
-        await this.property.transaction.abortTransaction(transaction!);
-      }
-      throw err;
-    }
+      return entity;
+    });
   }
 
   async updateOne(
-    user: any,
+    user: UserContext,
     condition: QueryCondition<E>,
     update: UpdateData<E>,
-    query?: UpdateOneQuery<E> & BaseCommandOption<EntityManager>,
-  ): Promise<E | null> {
-    query = query || {};
-    const internalTransaction = !query.transaction;
+    query?: UpdateOneQuery & BaseCommandOption<EntityManager>,
+  ): Promise<E> {
+    return this.executeWithTransaction(query, async (txQuery) => {
+      const entity = await this.repository.updateOne(
+        condition,
+        update,
+        txQuery,
+      );
 
-    if (internalTransaction && this.property.transaction) {
-      query.transaction = await this.property.transaction.startTransaction();
-    }
-
-    const { transaction } = query;
-
-    try {
-      const res = await this.repository.updateOne(condition, update, query);
-
-      if (!res && this.property.notFoundCode) {
-        throw new Error(this.property.notFoundCode);
+      if (!entity) {
+        throw new NotFoundException(this.notFoundMessage);
       }
 
-      if (internalTransaction && this.property.transaction) {
-        await this.property.transaction.commitTransaction(transaction!);
-      }
-
-      return res;
-    } catch (err) {
-      if (internalTransaction && this.property.transaction) {
-        await this.property.transaction.abortTransaction(transaction!);
-      }
-      throw err;
-    }
+      return entity;
+    });
   }
 
   async updateMany(
-    user: any,
+    user: UserContext,
     condition: QueryCondition<E>,
     update: UpdateData<E>,
-    query?: UpdateManyQuery<E> & BaseCommandOption<EntityManager>,
+    query?: UpdateManyQuery & BaseCommandOption<EntityManager>,
   ): Promise<{ affected: number }> {
-    query = query || {};
-    const internalTransaction = !query.transaction;
-
-    if (internalTransaction && this.property.transaction) {
-      query.transaction = await this.property.transaction.startTransaction();
-    }
-
-    const { transaction } = query;
-
-    try {
-      const res = await this.repository.updateMany(condition, update, query);
-
-      if (internalTransaction && this.property.transaction) {
-        await this.property.transaction.commitTransaction(transaction!);
-      }
-
-      return res;
-    } catch (err) {
-      if (internalTransaction && this.property.transaction) {
-        await this.property.transaction.abortTransaction(transaction!);
-      }
-      throw err;
-    }
+    return this.executeWithTransaction(query, async (txQuery) => {
+      return this.repository.updateMany(condition, update, txQuery);
+    });
   }
 
   async updateManyByIds(
-    user: any,
-    dto: { ids: string[]; update: UpdateData<E> },
-    query?: UpdateManyQuery<E> & BaseCommandOption<EntityManager>,
+    user: UserContext,
+    ids: string[],
+    update: UpdateData<E>,
+    query?: UpdateManyQuery & BaseCommandOption<EntityManager>,
   ): Promise<{ affected: number }> {
-    query = query || {};
-    const internalTransaction = !query.transaction;
-
-    if (internalTransaction && this.property.transaction) {
-      query.transaction = await this.property.transaction.startTransaction();
-    }
-
-    const { transaction } = query;
-
-    try {
-      const res = await this.repository.updateMany(
-        { _id: { $in: dto.ids } } as any,
-        dto.update,
-        query,
-      );
-
-      if (internalTransaction && this.property.transaction) {
-        await this.property.transaction.commitTransaction(transaction!);
-      }
-
-      return res;
-    } catch (err) {
-      if (internalTransaction && this.property.transaction) {
-        await this.property.transaction.abortTransaction(transaction!);
-      }
-      throw err;
-    }
+    return this.updateMany(
+      user,
+      { _id: { $in: ids } } as QueryCondition<E>,
+      update,
+      query,
+    );
   }
 
-  // ============= DELETE =============
-
   async deleteById(
-    user: any,
+    user: UserContext,
     id: string,
-    query?: DeleteByIdQuery<E> & BaseCommandOption<EntityManager>,
-  ): Promise<E | null> {
-    query = query || {};
-    const internalTransaction = !query.transaction;
+    query?: DeleteByIdQuery & BaseCommandOption<EntityManager>,
+  ): Promise<E> {
+    return this.executeWithTransaction(query, async (txQuery) => {
+      const entity = await this.repository.deleteById(id, txQuery);
 
-    if (internalTransaction && this.property.transaction) {
-      query.transaction = await this.property.transaction.startTransaction();
-    }
-
-    const { transaction } = query;
-
-    try {
-      const res = await this.repository.deleteById(id, query);
-
-      if (!res && this.property.notFoundCode) {
-        throw new Error(this.property.notFoundCode);
+      if (!entity) {
+        throw new NotFoundException(`${this.notFoundMessage} với ID: ${id}`);
       }
 
-      if (internalTransaction && this.property.transaction) {
-        await this.property.transaction.commitTransaction(transaction!);
-      }
-
-      return res;
-    } catch (err) {
-      if (internalTransaction && this.property.transaction) {
-        await this.property.transaction.abortTransaction(transaction!);
-      }
-      throw err;
-    }
+      return entity;
+    });
   }
 
   async deleteOne(
-    user: any,
+    user: UserContext,
     condition: QueryCondition<E>,
-    query?: DeleteOneQuery<E> & BaseCommandOption<EntityManager>,
-  ): Promise<E | null> {
-    query = query || {};
-    const internalTransaction = !query.transaction;
+    query?: DeleteOneQuery & BaseCommandOption<EntityManager>,
+  ): Promise<E> {
+    return this.executeWithTransaction(query, async (txQuery) => {
+      const entity = await this.repository.deleteOne(condition, txQuery);
 
-    if (internalTransaction && this.property.transaction) {
-      query.transaction = await this.property.transaction.startTransaction();
-    }
-
-    const { transaction } = query;
-
-    try {
-      const res = await this.repository.deleteOne(condition, query);
-
-      if (!res && this.property.notFoundCode) {
-        throw new Error(this.property.notFoundCode);
+      if (!entity) {
+        throw new NotFoundException(this.notFoundMessage);
       }
 
-      if (internalTransaction && this.property.transaction) {
-        await this.property.transaction.commitTransaction(transaction!);
-      }
-
-      return res;
-    } catch (err) {
-      if (internalTransaction && this.property.transaction) {
-        await this.property.transaction.abortTransaction(transaction!);
-      }
-      throw err;
-    }
+      return entity;
+    });
   }
 
   async deleteMany(
-    user: any,
+    user: UserContext,
     condition: QueryCondition<E>,
-    query?: DeleteManyQuery<E> & BaseCommandOption<EntityManager>,
+    query?: DeleteManyQuery & BaseCommandOption<EntityManager>,
   ): Promise<{ deleted: number }> {
-    query = query || {};
-    const internalTransaction = !query.transaction;
-
-    if (internalTransaction && this.property.transaction) {
-      query.transaction = await this.property.transaction.startTransaction();
-    }
-
-    const { transaction } = query;
-
-    try {
-      const res = await this.repository.deleteMany(condition, query);
-
-      if (internalTransaction && this.property.transaction) {
-        await this.property.transaction.commitTransaction(transaction!);
-      }
-
-      return res;
-    } catch (err) {
-      if (internalTransaction && this.property.transaction) {
-        await this.property.transaction.abortTransaction(transaction!);
-      }
-      throw err;
-    }
+    return this.executeWithTransaction(query, async (txQuery) => {
+      return this.repository.deleteMany(condition, txQuery);
+    });
   }
 
   async deleteManyByIds(
-    user: any,
-    dto: { ids: string[] },
-    query?: DeleteManyQuery<E> & BaseCommandOption<EntityManager>,
+    user: UserContext,
+    ids: string[],
+    query?: DeleteManyQuery & BaseCommandOption<EntityManager>,
   ): Promise<{ deleted: number }> {
-    query = query || {};
-    const internalTransaction = !query.transaction;
-
-    if (internalTransaction && this.property.transaction) {
-      query.transaction = await this.property.transaction.startTransaction();
-    }
-
-    const { transaction } = query;
-
-    try {
-      const res = await this.repository.deleteMany(
-        { _id: { $in: dto.ids } } as any,
-        query,
-      );
-
-      if (internalTransaction && this.property.transaction) {
-        await this.property.transaction.commitTransaction(transaction!);
-      }
-
-      return res;
-    } catch (err) {
-      if (internalTransaction && this.property.transaction) {
-        await this.property.transaction.abortTransaction(transaction!);
-      }
-      throw err;
-    }
+    return this.deleteMany(
+      user,
+      { _id: { $in: ids } } as QueryCondition<E>,
+      query,
+    );
   }
 
-  // ============= UTILITY =============
-
   async count(
-    user: any,
+    user: UserContext,
     condition?: QueryCondition<E>,
     query?: BaseQueryOption<EntityManager>,
   ): Promise<number> {
@@ -422,46 +251,37 @@ export abstract class BaseCrudService<E extends BaseEntity> {
   }
 
   async exists(
-    user: any,
+    user: UserContext,
     condition: QueryCondition<E>,
     query?: BaseQueryOption<EntityManager>,
   ): Promise<boolean> {
     return this.repository.exists(condition, query);
   }
 
-  // ============= RESTORE (Soft Delete) =============
+  protected async executeWithTransaction<T>(
+    query: BaseCommandOption<EntityManager> | undefined,
+    callback: (txQuery: BaseCommandOption<EntityManager>) => Promise<T>,
+  ): Promise<T> {
+    const hasExternalTransaction = Boolean(query?.transaction);
+    const txQuery = query || {};
 
-  async restore(
-    user: any,
-    id: string,
-    query?: BaseCommandOption<EntityManager>,
-  ): Promise<E | null> {
-    query = query || {};
-    const internalTransaction = !query.transaction;
-
-    if (internalTransaction && this.property.transaction) {
-      query.transaction = await this.property.transaction.startTransaction();
+    if (!hasExternalTransaction && this.transaction) {
+      txQuery.transaction = await this.transaction.startTransaction();
     }
 
-    const { transaction } = query;
-
     try {
-      const res = await this.repository.restore(id, query);
+      const result = await callback(txQuery);
 
-      if (!res && this.property.notFoundCode) {
-        throw new Error(this.property.notFoundCode);
+      if (!hasExternalTransaction && this.transaction && txQuery.transaction) {
+        await this.transaction.commitTransaction(txQuery.transaction);
       }
 
-      if (internalTransaction && this.property.transaction) {
-        await this.property.transaction.commitTransaction(transaction!);
+      return result;
+    } catch (error) {
+      if (!hasExternalTransaction && this.transaction && txQuery.transaction) {
+        await this.transaction.abortTransaction(txQuery.transaction);
       }
-
-      return res;
-    } catch (err) {
-      if (internalTransaction && this.property.transaction) {
-        await this.property.transaction.abortTransaction(transaction!);
-      }
-      throw err;
+      throw error;
     }
   }
 }

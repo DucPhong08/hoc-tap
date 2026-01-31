@@ -5,8 +5,6 @@ import { UserEntity } from '../entities/user.entity';
 import { UserService } from '../services/user.service';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { UpdateUserDto } from '../dto/update-user.dto';
-import { ReqUser } from '../../../common/decorators/request-user.decorator';
-import type { CurrentUserData } from '../../../common/decorators/request-user.decorator';
 
 const BaseController = BaseCrudControllerFactory(
   UserEntity,
@@ -39,10 +37,7 @@ export class UserController extends BaseController {
   @Get('email/:email')
   @ApiOperation({ summary: 'Find user by email' })
   @ApiResponse({ status: 200, type: UserEntity })
-  async findByEmail(
-    @ReqUser() user: CurrentUserData,
-    @Param('email') email: string,
-  ): Promise<UserEntity | null> {
-    return this.userService.findByEmail(user, email);
+  async findByEmail(@Param('email') email: string): Promise<UserEntity | null> {
+    return this.userService.findByEmail(email);
   }
 }
