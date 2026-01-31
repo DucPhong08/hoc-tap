@@ -119,12 +119,10 @@ export abstract class MikroOrmBaseRepository<
 
     return {
       data: data as E[],
-      meta: {
-        page,
-        limit,
-        total,
-        totalPages,
-      },
+      total,
+      page,
+      limit,
+      totalPages,
     };
   }
 

@@ -149,13 +149,7 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
       }
       const page = pagination.page || 1;
       const limit = pagination.limit || 10;
-      const result = await this.service.getPage(user, {}, { page, limit });
-      return new PaginatedResponseDto(
-        result.data,
-        result.meta.total,
-        page,
-        limit,
-      );
+      return this.service.getPage(user, {}, { page, limit });
     }
 
     @Get('one')
