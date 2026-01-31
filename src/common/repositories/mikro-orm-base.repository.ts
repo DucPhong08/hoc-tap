@@ -1,211 +1,284 @@
-import {
-  EntityManager,
-  EntityRepository,
-  FilterQuery,
-  wrap,
-} from '@mikro-orm/core';
+import { EntityManager, EntityRepository, FilterQuery } from '@mikro-orm/core';
 import { BaseEntity } from '../entity/base.entity';
-import {
-  BaseRepository,
+import type {
+  IBaseRepository,
   QueryCondition,
-  QueryOptions,
+  GetByIdQuery,
+  GetOneQuery,
+  GetManyQuery,
+  GetPageQuery,
+  CountQuery,
+  ExistsQuery,
+  CreateQuery,
+  InsertManyQuery,
+  UpdateByIdQuery,
+  UpdateOneQuery,
+  UpdateManyQuery,
+  DeleteByIdQuery,
+  DeleteOneQuery,
+  DeleteManyQuery,
   PaginationResult,
-  UpdateDocument,
-} from '../interfaces/base-repository.interface';
+  UpdateManyResult,
+  DeleteManyResult,
+  UpdateData,
+  BaseQueryOption,
+  BaseCommandOption,
+} from '../interfaces/repository.interface';
+import { FilterBuilder, OptionsBuilder, UpdateHelper } from './mikro-orm';
 
 export abstract class MikroOrmBaseRepository<
   E extends BaseEntity,
-> implements BaseRepository<E> {
+  T = unknown,
+> implements IBaseRepository<E, T> {
   constructor(
     protected readonly em: EntityManager,
     protected readonly repository: EntityRepository<E>,
   ) {}
 
-  async create(data: Partial<E>): Promise<E> {
-    const entity = this.repository.create(data as any);
+  async create(
+    document: Partial<E>,
+    query?: CreateQuery<E> & BaseCommandOption<T>,
+  ): Promise<E> {
+    const entity = this.repository.create(document as any);
     await this.em.persist(entity).flush();
-    return entity;
+
+    if (query?.populate) {
+      await this.em.populate(
+        entity,
+        OptionsBuilder.buildPopulate(query.populate),
+      );
+    }
+
+    return query?.plain ? (entity as any).toJSON() : entity;
   }
 
-  async getById(id: string, options?: QueryOptions<E>): Promise<E | null> {
-    return this.repository.findOne({ _id: id } as FilterQuery<E>, {
-      fields: options?.select as any,
-      populate: this.buildPopulate(options?.populate),
+  async insertMany(
+    documents: Partial<E>[],
+    query?: InsertManyQuery<E> & BaseCommandOption<T>,
+  ): Promise<{ n: number }> {
+    void query; // Mark as intentionally unused
+    const entities = documents.map((doc) => this.repository.create(doc as any));
+    await this.em.persist(entities).flush();
+    return { n: entities.length };
+  }
+
+  async getById(
+    id: string,
+    query?: GetByIdQuery<E> & BaseQueryOption<T>,
+  ): Promise<E | null> {
+    const filter = FilterBuilder.build({ _id: id } as QueryCondition<E>, {
+      withDeleted: query?.withDeleted,
     });
+    return this.repository.findOne(
+      filter,
+      OptionsBuilder.build(query) as any,
+    ) as Promise<E | null>;
   }
 
   async getOne(
-    conditions: QueryCondition<E>,
-    options?: QueryOptions<E>,
+    condition: QueryCondition<E>,
+    query?: GetOneQuery<E> & BaseQueryOption<T>,
   ): Promise<E | null> {
-    return this.repository.findOne(this.buildFilter(conditions), {
-      fields: options?.select as any,
-      populate: this.buildPopulate(options?.populate),
-      orderBy: options?.sort as any,
+    const filter = FilterBuilder.build(condition, {
+      withDeleted: query?.withDeleted,
     });
+    const options = OptionsBuilder.build(query);
+    return this.repository.findOne(filter, options as any) as Promise<E | null>;
   }
 
   async getMany(
-    conditions?: QueryCondition<E>,
-    options?: QueryOptions<E>,
+    condition: QueryCondition<E>,
+    query?: GetManyQuery<E> & BaseQueryOption<T>,
   ): Promise<E[]> {
-    const filter = conditions ? this.buildFilter(conditions) : {};
-    return this.repository.findAll({
-      where: filter,
-      limit: options?.limit,
-      offset: options?.offset,
-      orderBy: options?.sort as any,
-      populate: this.buildPopulate(options?.populate),
-      fields: options?.select as any,
+    const filter = FilterBuilder.build(condition, {
+      withDeleted: query?.withDeleted,
     });
+    const options = OptionsBuilder.build(query);
+    return this.repository.find(filter, options as any) as Promise<E[]>;
   }
 
   async getPage(
-    conditions: QueryCondition<E>,
-    page: number,
-    limit: number,
-    options?: QueryOptions<E>,
+    condition: QueryCondition<E>,
+    query: GetPageQuery<E> & BaseQueryOption<T>,
   ): Promise<PaginationResult<E>> {
+    const { page, limit } = query;
     const offset = (page - 1) * limit;
-    const filter = this.buildFilter(conditions);
+
+    const filter = FilterBuilder.build(condition, {
+      withDeleted: query?.withDeleted,
+    });
+    const options = OptionsBuilder.build(query);
 
     const [data, total] = await this.repository.findAndCount(filter, {
+      ...options,
       limit,
       offset,
-      orderBy: options?.sort as any,
-      populate: this.buildPopulate(options?.populate),
-      fields: options?.select as any,
-    });
+    } as any);
 
     const totalPages = Math.ceil(total / limit);
 
     return {
-      data,
-      total,
-      page,
-      limit,
-      totalPages,
-      hasNext: page < totalPages,
-      hasPrev: page > 1,
+      data: data as E[],
+      meta: {
+        page,
+        limit,
+        total,
+        totalPages,
+      },
     };
   }
 
-  async updateById(id: string, update: UpdateDocument<E>): Promise<E | null> {
+  async updateById(
+    id: string,
+    data: UpdateData<E>,
+    query?: UpdateByIdQuery<E> & BaseCommandOption<T>,
+  ): Promise<E | null> {
     const entity = await this.getById(id);
     if (!entity) return null;
 
-    this.applyUpdate(entity, update);
+    UpdateHelper.apply(entity, data);
     await this.em.flush();
-    return entity;
+
+    if (query?.populate) {
+      await this.em.populate(
+        entity,
+        OptionsBuilder.buildPopulate(query.populate),
+      );
+    }
+
+    return query?.plain ? (entity as any).toJSON() : entity;
   }
 
   async updateOne(
-    conditions: QueryCondition<E>,
-    update: UpdateDocument<E>,
+    condition: QueryCondition<E>,
+    data: UpdateData<E>,
+    query?: UpdateOneQuery<E> & BaseCommandOption<T>,
   ): Promise<E | null> {
-    const entity = await this.getOne(conditions);
+    const entity = await this.getOne(condition);
     if (!entity) return null;
 
-    this.applyUpdate(entity, update);
+    UpdateHelper.apply(entity, data);
     await this.em.flush();
-    return entity;
+
+    // Populate if needed
+    if (query?.populate) {
+      await this.em.populate(
+        entity,
+        OptionsBuilder.buildPopulate(query.populate),
+      );
+    }
+
+    return query?.plain ? (entity as any).toJSON() : entity;
   }
 
   async updateMany(
-    conditions: QueryCondition<E>,
-    update: UpdateDocument<E>,
-  ): Promise<{ affected: number }> {
-    const entities = await this.getMany(conditions);
+    condition: QueryCondition<E>,
+    data: UpdateData<E>,
+    query?: UpdateManyQuery<E> & BaseCommandOption<T>,
+  ): Promise<UpdateManyResult> {
+    void query; // Mark as intentionally unused
+    const entities = await this.getMany(condition);
 
     entities.forEach((entity) => {
-      this.applyUpdate(entity, update);
+      UpdateHelper.apply(entity, data);
     });
 
     await this.em.flush();
     return { affected: entities.length };
   }
 
-  async deleteById(id: string): Promise<E | null> {
+  // ============= DELETE =============
+
+  async deleteById(
+    id: string,
+    query?: DeleteByIdQuery<E> & BaseCommandOption<T>,
+  ): Promise<E | null> {
     const entity = await this.getById(id);
     if (!entity) return null;
 
-    await this.em.remove(entity).flush();
-    return entity;
+    const soft = query?.soft !== false;
+
+    if (soft && 'deletedAt' in entity) {
+      (entity as any).deletedAt = new Date();
+      await this.em.flush();
+    } else {
+      await this.em.remove(entity).flush();
+    }
+
+    return query?.plain ? (entity as any).toJSON() : entity;
   }
 
-  async deleteOne(conditions: QueryCondition<E>): Promise<E | null> {
-    const entity = await this.getOne(conditions);
+  async deleteOne(
+    condition: QueryCondition<E>,
+    query?: DeleteOneQuery<E> & BaseCommandOption<T>,
+  ): Promise<E | null> {
+    const entity = await this.getOne(condition);
     if (!entity) return null;
 
-    await this.em.remove(entity).flush();
-    return entity;
+    const soft = query?.soft !== false;
+
+    if (soft && 'deletedAt' in entity) {
+      (entity as any).deletedAt = new Date();
+      await this.em.flush();
+    } else {
+      await this.em.remove(entity).flush();
+    }
+
+    return query?.plain ? (entity as any).toJSON() : entity;
   }
 
   async deleteMany(
-    conditions: QueryCondition<E>,
-  ): Promise<{ deleted: number }> {
-    const entities = await this.getMany(conditions);
-    await this.em.remove(entities).flush();
+    condition: QueryCondition<E>,
+    query?: DeleteManyQuery<E> & BaseCommandOption<T>,
+  ): Promise<DeleteManyResult> {
+    const entities = await this.getMany(condition);
+    const soft = query?.soft !== false;
+
+    if (soft) {
+      entities.forEach((entity) => {
+        if ('deletedAt' in entity) {
+          (entity as any).deletedAt = new Date();
+        }
+      });
+      await this.em.flush();
+    } else {
+      await this.em.remove(entities).flush();
+    }
+
     return { deleted: entities.length };
   }
 
-  async count(conditions?: QueryCondition<E>): Promise<number> {
-    const filter = conditions ? this.buildFilter(conditions) : {};
+  async count(
+    condition?: QueryCondition<E>,
+    query?: CountQuery<E> & BaseQueryOption<T>,
+  ): Promise<number> {
+    const filter = condition
+      ? FilterBuilder.build(condition, { withDeleted: query?.withDeleted })
+      : FilterBuilder.build({} as QueryCondition<E>, {
+          withDeleted: query?.withDeleted,
+        });
     return this.repository.count(filter);
   }
 
-  async exists(conditions: QueryCondition<E>): Promise<boolean> {
-    const count = await this.count(conditions);
+  async exists(
+    condition: QueryCondition<E>,
+    query?: ExistsQuery<E> & BaseQueryOption<T>,
+  ): Promise<boolean> {
+    const count = await this.count(condition, query);
     return count > 0;
   }
 
-  protected buildFilter(conditions: QueryCondition<E>): FilterQuery<E> {
-    const filter: any = {};
+  async restore(id: string, _query?: BaseCommandOption<T>): Promise<E | null> {
+    const entity = await this.repository.findOne(
+      { _id: id } as FilterQuery<E>,
+      { filters: false } as any,
+    );
 
-    for (const [key, value] of Object.entries(conditions)) {
-      if (
-        value &&
-        typeof value === 'object' &&
-        !Array.isArray(value) &&
-        !(value instanceof Date)
-      ) {
-        // Handle operators like $in, $ne, $gt, $lt
-        filter[key] = value;
-      } else {
-        filter[key] = value;
-      }
-    }
+    if (!entity || !('deletedAt' in entity)) return null;
 
-    return filter as FilterQuery<E>;
-  }
+    (entity as any).deletedAt = null;
+    await this.em.flush();
 
-  protected buildPopulate(
-    populate?: string[] | Record<string, boolean | QueryOptions>,
-  ): any {
-    if (!populate) return undefined;
-    if (Array.isArray(populate)) return populate;
-    // For complex populate, return as is
-    return populate;
-  }
-
-  protected applyUpdate(entity: E, update: UpdateDocument<E>): void {
-    if ('$set' in update && update.$set) {
-      wrap(entity).assign(update.$set as any);
-    } else if ('$inc' in update && update.$inc) {
-      // Handle $inc operator
-      for (const [key, value] of Object.entries(update.$inc)) {
-        if (typeof entity[key] === 'number' && typeof value === 'number') {
-          (entity as any)[key] += value;
-        }
-      }
-    } else if ('$unset' in update && update.$unset) {
-      // Handle $unset operator
-      for (const key of Object.keys(update.$unset)) {
-        (entity as any)[key] = undefined;
-      }
-    } else {
-      // Regular update
-      wrap(entity).assign(update as any);
-    }
+    return _query?.plain ? (entity as any).toJSON() : entity;
   }
 }

@@ -5,6 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
+import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import { AppConfig } from './config/root/app.config';
 import { SwaggerConfig } from './config/root/swagger.config';
 import { ValidationConfig } from './config/root/validation.config';
@@ -44,8 +45,10 @@ export async function bootstrap() {
   // Global filters - chỉ dùng AllExceptionsFilter
   app.useGlobalFilters(new AllExceptionsFilter());
 
-  // Global interceptors
-  app.useGlobalInterceptors(new LoggingInterceptor());
+  app.useGlobalInterceptors(
+    new TransformInterceptor(), // Transform response first
+    new LoggingInterceptor(), // Then log
+  );
 
   // Swagger
   const swaggerConfig = configService.get<SwaggerConfig>('swagger');

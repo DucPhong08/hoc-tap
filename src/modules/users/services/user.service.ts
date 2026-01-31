@@ -7,10 +7,12 @@ import { UserPolicy } from './user.policy';
 @Injectable()
 export class UserService extends BaseCrudService<UserEntity> {
   constructor(private readonly userRepository: UserRepository) {
-    super(userRepository);
+    super(userRepository, {
+      notFoundCode: 'USER_NOT_FOUND',
+    });
   }
 
-  async create(data: Partial<UserEntity>): Promise<UserEntity> {
+  async create(user: any, data: Partial<UserEntity>): Promise<UserEntity> {
     if (data.email) {
       const existingUser = await this.userRepository.findByEmail(data.email);
       if (existingUser) {
@@ -18,15 +20,16 @@ export class UserService extends BaseCrudService<UserEntity> {
       }
     }
 
-    return super.create(data);
+    return super.create(user, data);
   }
 
   async updateById(
+    user: any,
     id: string,
     data: Partial<UserEntity>,
   ): Promise<UserEntity | null> {
     if (data.email) {
-      const existingUser = await this.getById(id);
+      const existingUser = await this.getById(user, id);
       if (existingUser && data.email !== existingUser.email) {
         if (!UserPolicy.canUpdateEmail(existingUser)) {
           throw new BadRequestException(
@@ -41,24 +44,24 @@ export class UserService extends BaseCrudService<UserEntity> {
       }
     }
 
-    return super.updateById(id, data);
+    return super.updateById(user, id, data);
   }
 
-  async deleteById(id: string): Promise<UserEntity | null> {
-    const user = await this.getById(id);
-    if (!user) {
+  async deleteById(user: any, id: string): Promise<UserEntity | null> {
+    const userEntity = await this.getById(user, id);
+    if (!userEntity) {
       return null;
     }
 
-    if (!UserPolicy.canDelete(user)) {
+    if (!UserPolicy.canDelete(userEntity)) {
       throw new BadRequestException('User can only be deleted after 30 days');
     }
 
-    await super.deleteById(id);
-    return user;
+    await super.deleteById(user, id);
+    return userEntity;
   }
 
-  async findByEmail(email: string): Promise<UserEntity | null> {
+  async findByEmail(user: any, email: string): Promise<UserEntity | null> {
     return this.userRepository.findByEmail(email);
   }
 }

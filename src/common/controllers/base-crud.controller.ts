@@ -110,13 +110,13 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
     })
     @ApiBody({ type: CreateDto })
     async create(
-      @ReqUser() _user: CurrentUserData,
+      @ReqUser() user: CurrentUserData,
       @Body() createDto: InstanceType<typeof CreateDto>,
     ): Promise<E> {
       if (!routeConfigs.create.enabled) {
         throw new NotFoundException('Route not available');
       }
-      return this.service.create(createDto as Partial<E>);
+      return this.service.create(user, createDto as Partial<E>);
     }
 
     @Get('many')
@@ -125,11 +125,11 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
       description: HTTP_STATUS_MESSAGE[HTTP_STATUS.OK],
       type: [entityType],
     })
-    async getMany(): Promise<E[]> {
+    async getMany(@ReqUser() user: CurrentUserData): Promise<E[]> {
       if (!routeConfigs.getMany.enabled) {
         throw new NotFoundException('Route not available');
       }
-      return this.service.getMany();
+      return this.service.getMany(user, {});
     }
 
     @Get('page')
@@ -141,7 +141,7 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
       type: PaginatedResponseDto,
     })
     async getPage(
-      @ReqUser() _user: CurrentUserData,
+      @ReqUser() user: CurrentUserData,
       @Query() pagination: PaginationDto,
     ): Promise<PaginatedResponseDto<E>> {
       if (!routeConfigs.getPage.enabled) {
@@ -149,8 +149,13 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
       }
       const page = pagination.page || 1;
       const limit = pagination.limit || 10;
-      const result = await this.service.getPage({}, page, limit);
-      return new PaginatedResponseDto(result.data, result.total, page, limit);
+      const result = await this.service.getPage(user, {}, { page, limit });
+      return new PaginatedResponseDto(
+        result.data,
+        result.meta.total,
+        page,
+        limit,
+      );
     }
 
     @Get('one')
@@ -159,11 +164,11 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
       description: HTTP_STATUS_MESSAGE[HTTP_STATUS.OK],
       type: entityType,
     })
-    async getOne(): Promise<E | null> {
+    async getOne(@ReqUser() user: CurrentUserData): Promise<E | null> {
       if (!routeConfigs.getOne.enabled) {
         throw new NotFoundException('Route not available');
       }
-      return this.service.getOne({});
+      return this.service.getOne(user, {});
     }
 
     @Get(':id')
@@ -177,13 +182,13 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
       description: HTTP_STATUS_MESSAGE[HTTP_STATUS.NOT_FOUND],
     })
     async getById(
-      @ReqUser() _user: CurrentUserData,
+      @ReqUser() user: CurrentUserData,
       @Param('id') id: string,
     ): Promise<E> {
       if (!routeConfigs.getById.enabled) {
         throw new NotFoundException('Route not available');
       }
-      const item = await this.service.getById(id);
+      const item = await this.service.getById(user, id);
       if (!item) {
         throw new NotFoundException(
           `${this.resourceName} with id ${id} not found`,
@@ -204,7 +209,7 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
     })
     @ApiBody({ type: UpdateDto })
     async updateById(
-      @ReqUser() _user: CurrentUserData,
+      @ReqUser() user: CurrentUserData,
       @Param('id') id: string,
       @Body() updateDto: InstanceType<typeof UpdateDto>,
     ): Promise<E> {
@@ -213,6 +218,7 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
       }
 
       const updated = await this.service.updateById(
+        user,
         id,
         updateDto as Partial<E>,
       );
@@ -239,7 +245,7 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
       },
     })
     async updateByIds(
-      @ReqUser() _user: CurrentUserData,
+      @ReqUser() user: CurrentUserData,
       @Body() dto: { ids: string[]; update: Partial<E> },
     ): Promise<{ updated: number }> {
       if (!routeConfigs.updateByIds.enabled) {
@@ -248,7 +254,7 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
 
       let updated = 0;
       for (const id of dto.ids) {
-        const result = await this.service.updateById(id, dto.update);
+        const result = await this.service.updateById(user, id, dto.update);
         if (result) updated++;
       }
 
@@ -263,19 +269,23 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
     })
     @ApiBody({ type: UpdateDto })
     async upsert(
-      @ReqUser() _user: CurrentUserData,
+      @ReqUser() user: CurrentUserData,
       @Body() dto: InstanceType<typeof UpdateDto>,
     ): Promise<E> {
       if (!routeConfigs.upsert.enabled) {
         throw new NotFoundException('Route not available');
       }
 
-      const data = dto;
-      if (data.id || data._id) {
-        const id = data.id || data._id;
-        const existing = await this.service.getById(id);
+      const data = dto as Record<string, any>;
+      const id = data.id || data._id;
+      if (id) {
+        const existing = await this.service.getById(user, id);
         if (existing) {
-          const result = await this.service.updateById(id, data);
+          const result = await this.service.updateById(
+            user,
+            id,
+            data as Partial<E>,
+          );
           if (!result) {
             throw new NotFoundException(
               `${this.resourceName} with id ${id} not found`,
@@ -285,7 +295,7 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
         }
       }
 
-      return this.service.create(data);
+      return this.service.create(user, data as Partial<E>);
     }
 
     @Post('one/upsert')
@@ -296,19 +306,33 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
     })
     @ApiBody({ type: UpdateDto })
     async getOneOrUpsert(
-      @ReqUser() _user: CurrentUserData,
+      @ReqUser() user: CurrentUserData,
       @Body() dto: InstanceType<typeof UpdateDto>,
     ): Promise<E> {
       if (!routeConfigs.getOneOrUpsert.enabled) {
         throw new NotFoundException('Route not available');
       }
 
-      const existing = await this.service.getOne({});
-      if (existing) {
-        return existing;
+      // Build condition from upsertKeys defined in service property
+      const upsertKeys = this.service.property?.upsertKeys || [];
+      const data = dto as Record<string, any>;
+      const condition: Record<string, any> = {};
+
+      for (const key of upsertKeys) {
+        if (data[key] !== undefined) {
+          condition[key] = data[key];
+        }
       }
 
-      return this.service.create(dto as Partial<E>);
+      // Only search if we have valid condition keys
+      if (Object.keys(condition).length > 0) {
+        const existing = await this.service.getOne(user, condition);
+        if (existing) {
+          return existing;
+        }
+      }
+
+      return this.service.create(user, dto as Partial<E>);
     }
 
     @Delete(':id')
@@ -322,14 +346,14 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
       description: HTTP_STATUS_MESSAGE[HTTP_STATUS.NOT_FOUND],
     })
     async deleteById(
-      @ReqUser() _user: CurrentUserData,
+      @ReqUser() user: CurrentUserData,
       @Param('id') id: string,
     ): Promise<void> {
       if (!routeConfigs.deleteById.enabled) {
         throw new NotFoundException('Route not available');
       }
 
-      const deleted = await this.service.deleteById(id);
+      const deleted = await this.service.deleteById(user, id);
       if (!deleted) {
         throw new NotFoundException(
           `${this.resourceName} with id ${id} not found`,
@@ -351,7 +375,7 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
       },
     })
     async deleteByIds(
-      @ReqUser() _user: CurrentUserData,
+      @ReqUser() user: CurrentUserData,
       @Body() dto: { ids: string[] },
     ): Promise<{ deleted: number }> {
       if (!routeConfigs.deleteByIds.enabled) {
@@ -360,7 +384,7 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
 
       let deleted = 0;
       for (const id of dto.ids) {
-        const result = await this.service.deleteById(id);
+        const result = await this.service.deleteById(user, id);
         if (result) deleted++;
       }
 

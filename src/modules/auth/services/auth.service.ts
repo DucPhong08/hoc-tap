@@ -40,7 +40,7 @@ export class AuthService {
       authConfig?.bcryptRounds || 10,
     );
 
-    const user = await this.userService.create({
+    const user = await this.userService.create(null, {
       email,
       password: hashedPassword,
       firstName,
@@ -53,7 +53,7 @@ export class AuthService {
   }
 
   async login(email: string, password: string): Promise<LoginResponse> {
-    const user = await this.userService.findByEmail(email);
+    const user = await this.userService.findByEmail(null, email);
 
     if (!user || user.provider !== AuthProvider.LOCAL) {
       throw new UnauthorizedException('Invalid credentials');
@@ -77,23 +77,27 @@ export class AuthService {
   }
 
   async validateOAuthUser(profile: OAuthProfile): Promise<any> {
-    let user = await this.userService.getOne({
+    let user = await this.userService.getOne(null, {
       provider: profile.provider,
       providerId: profile.providerId,
     });
 
     if (!user) {
-      user = await this.userService.getOne({ email: profile.email });
+      user = await this.userService.getOne(null, { email: profile.email });
 
       if (user) {
-        const updated = await this.userService.updateById(user._id.toString(), {
-          provider: profile.provider,
-          providerId: profile.providerId,
-          avatar: profile.avatar,
-        });
+        const updated = await this.userService.updateById(
+          null,
+          user._id.toString(),
+          {
+            provider: profile.provider,
+            providerId: profile.providerId,
+            avatar: profile.avatar,
+          },
+        );
         user = updated || user;
       } else {
-        user = await this.userService.create({
+        user = await this.userService.create(null, {
           email: profile.email,
           firstName: profile.firstName,
           lastName: profile.lastName,
@@ -115,7 +119,7 @@ export class AuthService {
         secret: authConfig?.jwtRefreshSecret,
       });
 
-      const user = await this.userService.getById(payload.sub);
+      const user = await this.userService.getById(null, payload.sub);
 
       if (!user) {
         throw new UnauthorizedException('User not found');
