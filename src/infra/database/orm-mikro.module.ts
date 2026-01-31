@@ -3,8 +3,8 @@ import { MikroOrmModule } from '@mikro-orm/nestjs';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MikroOrmConfigService } from './mikro-orm-config.service';
 import { MigrationService } from './migration.service';
-import { RootConfig } from '../config/root.config';
-import { MainEntities } from '../modules/database/entities/main.entities';
+import { RootConfig } from '../../config/root.config';
+import { MainEntities } from '../../modules/database/entities/main.entities';
 import { DB_CONTEXTS } from 'src/modules/database/constants';
 
 @Global()

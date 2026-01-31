@@ -2,10 +2,10 @@ import { Type } from '@nestjs/common';
 import { OmitType, PartialType, ApiProperty } from '@nestjs/swagger';
 import { Type as TransformType } from 'class-transformer';
 import { IsString, ValidateNested } from 'class-validator';
-import { BaseEntity } from '../../entity/base.entity';
-import type { UpdateData } from '../../interfaces/repository.interface';
-import { AbstractValidationPipe } from '../../pipes/abstract-validation.pipe';
-import { DeleteManyByIdsDto } from '../../dto/delete-many-byIds.dto';
+import { BaseEntity } from '../../../common/entity/base.entity';
+import type { UpdateData } from '../../../common/interfaces/repository.interface';
+import { AbstractValidationPipe } from '../../../common/pipes/abstract-validation.pipe';
+import { DeleteManyByIdsDto } from '../../../common/dto/delete-many-byIds.dto';
 import { ClassName } from './helpers';
 
 export interface DtoFactoryResult {

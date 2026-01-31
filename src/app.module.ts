@@ -5,15 +5,14 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import loader from './config/loader';
 import { UsersModule } from './modules/users/users.module';
-import { ProductModule } from './modules/products/product.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
-import { TransactionModule } from './common/transaction/transaction.module';
-import { OrmMikroModule } from './infra/orm-mikro.module';
-import { CacheModule } from './common/cache/cache.module';
+import { TransactionModule } from './infra/transaction/transaction.module';
+import { OrmMikroModule } from './infra/database/orm-mikro.module';
+import { CacheModule } from './infra/cache/cache.module';
 import { LoggingModule } from './common/logging/logging.module';
-import { MonitoringModule } from './common/monitoring/monitoring.module';
+import { MonitoringModule } from './infra/monitoring/monitoring.module';
 
 @Module({
   imports: [
@@ -33,7 +32,6 @@ import { MonitoringModule } from './common/monitoring/monitoring.module';
     MonitoringModule,
     AuthModule.forRoot(),
     UsersModule,
-    ProductModule,
   ],
   controllers: [AppController],
   providers: [

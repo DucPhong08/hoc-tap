@@ -1,5 +1,5 @@
 import { wrap } from '@mikro-orm/core';
-import type { UpdateData } from '../../interfaces/query';
+import type { UpdateData } from '../../../common/interfaces/query';
 
 /**
  * Update Helper - Applies update operations to entity

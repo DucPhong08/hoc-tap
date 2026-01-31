@@ -1,5 +1,5 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
-import { BaseCrudService } from '../../../common/services/base-crud.service';
+import { BaseCrudService } from '../../../infra/services/base-crud.service';
 import { UserEntity } from '../entities/user.entity';
 import { UserRepository } from '../repositories/user.repository';
 import { UserPolicy } from './user.policy';

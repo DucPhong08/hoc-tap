@@ -2,8 +2,8 @@ import { Injectable, OnModuleInit } from '@nestjs/common';
 import { InjectMikroORM } from '@mikro-orm/nestjs';
 import { MikroORM } from '@mikro-orm/core';
 import { ConfigService } from '@nestjs/config';
-import { RootConfig } from '../config/root.config';
 import { DB_CONTEXTS } from 'src/modules/database/constants';
+import { RootConfig } from 'src/config/root.config';
 
 @Injectable()
 export class MigrationService implements OnModuleInit {

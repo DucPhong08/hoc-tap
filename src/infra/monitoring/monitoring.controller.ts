@@ -1,7 +1,7 @@
 import { Controller, Get } from '@nestjs/common';
-import { Public } from '../decorators/public.decorator';
 import * as fs from 'fs';
 import * as path from 'path';
+import { Public } from 'src/common/decorators/public.decorator';
 
 @Controller('monitoring')
 export class MonitoringController {

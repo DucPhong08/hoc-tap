@@ -17,11 +17,11 @@ import type {
   DeleteManyQuery,
   BaseQueryOption,
   BaseCommandOption,
-} from '../interfaces/repository.interface';
-import type { IBaseRepository } from '../interfaces/repository.interface';
-import { BaseEntity } from '../entity/base.entity';
+} from '../../common/interfaces/repository.interface';
+import type { IBaseRepository } from '../../common/interfaces/repository.interface';
+import { BaseEntity } from '../../common/entity/base.entity';
 import type { BaseTransaction } from '../transaction/base-transaction.interface';
-import type { UserContext } from '../types/user.type';
+import type { UserContext } from '../../common/types/user.type';
 
 export interface BaseCrudServiceConfig {
   entityName: string;

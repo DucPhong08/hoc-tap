@@ -1,5 +1,5 @@
 import { FindOptions } from '@mikro-orm/core';
-import type { PopulateOptions } from '../../interfaces/query';
+import type { PopulateOptions } from '../../../common/interfaces/query';
 
 /**
  * Options Builder - Converts Query options to MikroORM FindOptions

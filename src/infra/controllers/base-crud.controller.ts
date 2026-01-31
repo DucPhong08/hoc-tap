@@ -15,27 +15,32 @@ import {
   ApiCreatedResponse,
   ApiBody,
 } from '@nestjs/swagger';
-import { BaseCrudService } from '../services/base-crud.service';
-import { PaginatedResponseDto } from '../dto/pagination.dto';
-import { BaseEntity } from '../entity/base.entity';
+import { PaginatedResponseDto } from '../../common/dto/pagination.dto';
+import { BaseEntity } from '../../common/entity/base.entity';
 import {
   HTTP_STATUS,
   HTTP_STATUS_MESSAGE,
-} from '../constants/http-status.constant';
-import { Authorize } from '../decorators/authorize.decorator';
-import { ReqUser } from '../decorators/request-user.decorator';
-import type { CurrentUserData } from '../decorators/request-user.decorator';
-import { RequestCondition, RequestQuery } from '../decorators/query.decorator';
-import type { ParsedQueryOptions } from '../pipes/request-query.pipe';
+} from '../../common/constants/http-status.constant';
+import { Authorize } from '../../common/decorators/authorize.decorator';
+import { ReqUser } from '../../common/decorators/request-user.decorator';
+import type { CurrentUserData } from '../../common/decorators/request-user.decorator';
+import {
+  RequestCondition,
+  RequestQuery,
+} from '../../common/decorators/query.decorator';
+import type { ParsedQueryOptions } from '../../common/pipes/request-query.pipe';
 import type {
   QueryCondition,
   UpdateData,
   GetOneQuery,
   GetManyQuery,
   GetPageQuery,
-} from '../interfaces/repository.interface';
-import { DeleteManyByIdsDto } from '../dto/delete-many-byIds.dto';
-import { ApiGet, ApiQueryOptions } from '../decorators/api-get.decorator';
+} from '../../common/interfaces/repository.interface';
+import { DeleteManyByIdsDto } from '../../common/dto/delete-many-byIds.dto';
+import {
+  ApiGet,
+  ApiQueryOptions,
+} from '../../common/decorators/api-get.decorator';
 import {
   type BaseRoute,
   type RouteConfig,
@@ -46,6 +51,7 @@ import {
   notFoundError,
   createDtos,
 } from './crud';
+import { BaseCrudService } from '../services/base-crud.service';
 
 export type { BaseRoute, RouteConfig, CrudOptions, ControllerFactoryOptions };
 

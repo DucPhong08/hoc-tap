@@ -1,6 +1,6 @@
 import { Controller, Get, Param } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
-import { BaseCrudControllerFactory } from '../../../common/controllers/base-crud.controller';
+import { BaseCrudControllerFactory } from '../../../infra/controllers/base-crud.controller';
 import { UserEntity } from '../entities/user.entity';
 import { UserService } from '../services/user.service';
 import { CreateUserDto } from '../dto/create-user.dto';

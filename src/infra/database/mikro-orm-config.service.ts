@@ -2,7 +2,7 @@ import { ConfigService } from '@nestjs/config';
 import { MikroOrmModuleOptions } from '@mikro-orm/nestjs';
 import { PostgreSqlDriver } from '@mikro-orm/postgresql';
 import { MongoDriver } from '@mikro-orm/mongodb';
-import { RootConfig } from '../config/root.config';
+import { RootConfig } from 'src/config/root.config';
 
 export class MikroOrmConfigService {
   constructor(private readonly configService: ConfigService<RootConfig>) {}

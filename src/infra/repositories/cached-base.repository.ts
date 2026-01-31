@@ -1,5 +1,5 @@
 import { EntityManager, EntityRepository } from '@mikro-orm/core';
-import { BaseEntity } from '../entity/base.entity';
+import { BaseEntity } from '../../common/entity/base.entity';
 import { MikroOrmBaseRepository } from './mikro-orm-base.repository';
 import { RedisCacheService } from '../cache/redis-cache.service';
 import {
@@ -18,7 +18,7 @@ import {
   UpdateData,
   BaseQueryOption,
   BaseCommandOption,
-} from '../interfaces/repository.interface';
+} from '../../common/interfaces/repository.interface';
 
 export abstract class CachedBaseRepository<
   E extends BaseEntity,

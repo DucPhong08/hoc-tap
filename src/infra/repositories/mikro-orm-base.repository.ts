@@ -1,5 +1,5 @@
 import { EntityManager, EntityRepository, FilterQuery } from '@mikro-orm/core';
-import { BaseEntity } from '../entity/base.entity';
+import { BaseEntity } from '../../common/entity/base.entity';
 import type {
   IBaseRepository,
   QueryCondition,
@@ -23,7 +23,7 @@ import type {
   UpdateData,
   BaseQueryOption,
   BaseCommandOption,
-} from '../interfaces/repository.interface';
+} from '../../common/interfaces/repository.interface';
 import { FilterBuilder, OptionsBuilder, UpdateHelper } from './mikro-orm';
 
 export abstract class MikroOrmBaseRepository<

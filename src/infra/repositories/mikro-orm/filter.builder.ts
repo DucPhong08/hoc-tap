@@ -1,5 +1,5 @@
 import { FilterQuery } from '@mikro-orm/core';
-import type { QueryCondition } from '../../interfaces/query';
+import type { QueryCondition } from '../../../common/interfaces/query';
 
 /**
  * Options for building filters
