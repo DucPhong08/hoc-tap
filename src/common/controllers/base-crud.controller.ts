@@ -66,6 +66,7 @@ export interface RouteConfig {
 }
 
 export interface CrudOptions {
+  defaultRoles?: string[];
   routes?: {
     [key in BaseRoute]?: boolean | RouteConfig;
   };
@@ -626,6 +627,13 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
   Object.keys(routeConfigs).forEach((route) => {
     applyAuthToRoute(route, routeConfigs[route as BaseRoute]);
   });
+
+  const defaultRoles = options?.defaultRoles || [];
+  if (defaultRoles.length > 0) {
+    Authorize(...defaultRoles)(BaseCrudControllerHost);
+  } else {
+    Authorize()(BaseCrudControllerHost);
+  }
 
   return BaseCrudControllerHost;
 }

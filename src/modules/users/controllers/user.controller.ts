@@ -11,6 +11,7 @@ const BaseController = BaseCrudControllerFactory(
   CreateUserDto,
   UpdateUserDto,
   {
+    defaultRoles: ['user', 'admin'],
     routes: {
       create: { roles: ['admin'] },
       getMany: true,
@@ -35,7 +36,7 @@ export class UserController extends BaseController {
   }
 
   @Get('email/:email')
-  @ApiOperation({ summary: 'Find user by email' })
+  @ApiOperation({ summary: 'Tìm người dùng theo email' })
   @ApiResponse({ status: 200, type: UserEntity })
   async findByEmail(@Param('email') email: string): Promise<UserEntity | null> {
     return this.userService.findByEmail(email);
