@@ -126,6 +126,29 @@ function loadEnvironment(env: Record<string, string | undefined>): RawConfig {
     }
   }
 
+  // Load cache config (without BE_ prefix)
+  if (env.CACHE_ENABLED !== undefined) {
+    const cache = ensureObject(result, 'cache');
+    cache.enabled = env.CACHE_ENABLED === 'true';
+    cache.ttl = parseInt(env.CACHE_TTL || '300', 10);
+    cache.prefix = env.CACHE_PREFIX || 'app';
+
+    const redis = ensureObject(cache, 'redis');
+    redis.host = env.REDIS_HOST || 'localhost';
+    redis.port = parseInt(env.REDIS_PORT || '6379', 10);
+    if (env.REDIS_PASSWORD) {
+      redis.password = env.REDIS_PASSWORD;
+    }
+    redis.db = parseInt(env.REDIS_DB || '0', 10);
+  }
+
+  // Load cluster config (without BE_ prefix)
+  if (env.CLUSTER_ENABLED !== undefined) {
+    const cluster = ensureObject(result, 'cluster');
+    cluster.enabled = env.CLUSTER_ENABLED === 'true';
+    cluster.workers = parseInt(env.CLUSTER_WORKERS || '0', 10);
+  }
+
   return result;
 }
 

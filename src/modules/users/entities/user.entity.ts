@@ -10,7 +10,7 @@ import {
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { BaseEntity } from '../../../common/entity/base.entity';
-import { AuthProvider } from '../../../auth/enums/auth-provider.enum';
+import { AuthProvider } from '../../auth/enums/auth-provider.enum';
 
 @Entity({ tableName: 'users' })
 export class UserEntity extends BaseEntity {

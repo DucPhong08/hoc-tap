@@ -2,7 +2,7 @@ import { Controller, Get, Param } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { BaseCrudControllerFactory } from '../../../common/controllers/base-crud.controller';
 import { UserEntity } from '../entities/user.entity';
-import { UserService } from '../domain/user.service';
+import { UserService } from '../services/user.service';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { UpdateUserDto } from '../dto/update-user.dto';
 import { Authorize } from '../../../common/decorators/authorize.decorator';

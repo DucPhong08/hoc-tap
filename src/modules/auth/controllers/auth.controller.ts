@@ -9,13 +9,13 @@ import {
   Req,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
-import { AuthService, LoginResponse } from './auth.service';
-import { RegisterDto } from './dto/register.dto';
-import { LoginDto } from './dto/login.dto';
-import { RefreshTokenDto } from './dto/refresh-token.dto';
-import { Public } from '../common/decorators/public.decorator';
-import { GoogleAuthGuard } from './guards/google-auth.guard';
-import { FacebookAuthGuard } from './guards/facebook-auth.guard';
+import { AuthService, LoginResponse } from '../services/auth.service';
+import { RegisterDto } from '../dto/register.dto';
+import { LoginDto } from '../dto/login.dto';
+import { RefreshTokenDto } from '../dto/refresh-token.dto';
+import { Public } from '../../../common/decorators/public.decorator';
+import { GoogleAuthGuard } from '../guards/google-auth.guard';
+import { FacebookAuthGuard } from '../guards/facebook-auth.guard';
 import type { Request } from 'express';
 
 @ApiTags('auth')

@@ -2,11 +2,11 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
-import { UserService } from '../modules/users/domain/user.service';
-import { AuthConfig } from '../config/root/auth.config';
-import { JwtPayload } from './strategies/jwt.strategy';
-import { OAuthProfile } from './interfaces/oauth-profile.interface';
-import { AuthProvider } from './enums/auth-provider.enum';
+import { UserService } from '../../users/services/user.service';
+import { AuthConfig } from '../../../config/root/auth.config';
+import { JwtPayload } from '../strategies/jwt.strategy';
+import { OAuthProfile } from '../interfaces/oauth-profile.interface';
+import { AuthProvider } from '../enums/auth-provider.enum';
 
 export interface LoginResponse {
   accessToken: string;

@@ -1,14 +1,9 @@
-import { registerAs } from '@nestjs/config';
+import { IsBoolean, IsNumber } from 'class-validator';
 
-export interface ClusterConfig {
-  enabled: boolean;
-  workers: number;
+export class ClusterConfig {
+  @IsBoolean()
+  enabled!: boolean;
+
+  @IsNumber()
+  workers!: number;
 }
-
-export default registerAs(
-  'cluster',
-  (): ClusterConfig => ({
-    enabled: process.env.CLUSTER_ENABLED === 'true',
-    workers: parseInt(process.env.CLUSTER_WORKERS || '0', 10),
-  }),
-);
