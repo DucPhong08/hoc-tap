@@ -11,6 +11,9 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { TransactionModule } from './common/transaction/transaction.module';
 import { OrmMikroModule } from './infra/orm-mikro.module';
+import { CacheModule } from './common/cache/cache.module';
+import { LoggingModule } from './common/logging/logging.module';
+import { MonitoringModule } from './common/monitoring/monitoring.module';
 
 @Module({
   imports: [
@@ -25,6 +28,9 @@ import { OrmMikroModule } from './infra/orm-mikro.module';
     }),
     OrmMikroModule,
     TransactionModule,
+    CacheModule,
+    LoggingModule,
+    MonitoringModule,
     AuthModule.forRoot(),
     UsersModule,
     ProductModule,

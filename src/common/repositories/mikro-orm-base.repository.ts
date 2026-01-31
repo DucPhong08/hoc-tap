@@ -7,8 +7,9 @@ import {
 import { BaseEntity } from '../entity/base.entity';
 import {
   BaseRepository,
-  FindOptions,
   QueryCondition,
+  QueryOptions,
+  PaginationResult,
   UpdateDocument,
 } from '../interfaces/base-repository.interface';
 
@@ -26,17 +27,27 @@ export abstract class MikroOrmBaseRepository<
     return entity;
   }
 
-  async getById(id: string): Promise<E | null> {
-    return this.repository.findOne({ _id: id } as FilterQuery<E>);
+  async getById(id: string, options?: QueryOptions<E>): Promise<E | null> {
+    return this.repository.findOne({ _id: id } as FilterQuery<E>, {
+      fields: options?.select as any,
+      populate: this.buildPopulate(options?.populate),
+    });
   }
 
-  async getOne(conditions: QueryCondition<E>): Promise<E | null> {
-    return this.repository.findOne(this.buildFilter(conditions));
+  async getOne(
+    conditions: QueryCondition<E>,
+    options?: QueryOptions<E>,
+  ): Promise<E | null> {
+    return this.repository.findOne(this.buildFilter(conditions), {
+      fields: options?.select as any,
+      populate: this.buildPopulate(options?.populate),
+      orderBy: options?.sort as any,
+    });
   }
 
   async getMany(
     conditions?: QueryCondition<E>,
-    options?: FindOptions,
+    options?: QueryOptions<E>,
   ): Promise<E[]> {
     const filter = conditions ? this.buildFilter(conditions) : {};
     return this.repository.findAll({
@@ -44,7 +55,8 @@ export abstract class MikroOrmBaseRepository<
       limit: options?.limit,
       offset: options?.offset,
       orderBy: options?.sort as any,
-      populate: options?.populate as any,
+      populate: this.buildPopulate(options?.populate),
+      fields: options?.select as any,
     });
   }
 
@@ -52,16 +64,30 @@ export abstract class MikroOrmBaseRepository<
     conditions: QueryCondition<E>,
     page: number,
     limit: number,
-  ): Promise<{ data: E[]; total: number; page: number; limit: number }> {
+    options?: QueryOptions<E>,
+  ): Promise<PaginationResult<E>> {
     const offset = (page - 1) * limit;
     const filter = this.buildFilter(conditions);
 
     const [data, total] = await this.repository.findAndCount(filter, {
       limit,
       offset,
+      orderBy: options?.sort as any,
+      populate: this.buildPopulate(options?.populate),
+      fields: options?.select as any,
     });
 
-    return { data, total, page, limit };
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      data,
+      total,
+      page,
+      limit,
+      totalPages,
+      hasNext: page < totalPages,
+      hasPrev: page > 1,
+    };
   }
 
   async updateById(id: string, update: UpdateDocument<E>): Promise<E | null> {
@@ -153,13 +179,29 @@ export abstract class MikroOrmBaseRepository<
     return filter as FilterQuery<E>;
   }
 
+  protected buildPopulate(
+    populate?: string[] | Record<string, boolean | QueryOptions>,
+  ): any {
+    if (!populate) return undefined;
+    if (Array.isArray(populate)) return populate;
+    // For complex populate, return as is
+    return populate;
+  }
+
   protected applyUpdate(entity: E, update: UpdateDocument<E>): void {
-    if ('$inc' in update && update.$inc) {
+    if ('$set' in update && update.$set) {
+      wrap(entity).assign(update.$set as any);
+    } else if ('$inc' in update && update.$inc) {
       // Handle $inc operator
       for (const [key, value] of Object.entries(update.$inc)) {
         if (typeof entity[key] === 'number' && typeof value === 'number') {
           (entity as any)[key] += value;
         }
+      }
+    } else if ('$unset' in update && update.$unset) {
+      // Handle $unset operator
+      for (const key of Object.keys(update.$unset)) {
+        (entity as any)[key] = undefined;
       }
     } else {
       // Regular update

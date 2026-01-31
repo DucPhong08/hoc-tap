@@ -10,7 +10,7 @@ import { SwaggerConfig } from './config/root/swagger.config';
 import { ValidationConfig } from './config/root/validation.config';
 import { CorsConfig } from './config/root/cors.config';
 
-async function bootstrap() {
+export async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     bufferLogs: true,
     logger: ['error', 'warn'],
@@ -75,4 +75,6 @@ async function bootstrap() {
   console.log(`Swagger documentation: http://localhost:${port}/api`);
 }
 
-void bootstrap();
+if (require.main === module) {
+  void bootstrap();
+}
