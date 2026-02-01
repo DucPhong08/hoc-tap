@@ -1,10 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { AuditLogRepository } from '../repositories/audit-log.repository';
 import { AuditLogEntity } from '../entities/audit-log.entity';
-import { AuditAction } from '../enums/audit-action.enum';
 
 export interface LogActionData {
-  action: AuditAction;
+  action: string;
   entityType: string;
   entityId: string;
   userId: string;
@@ -13,8 +12,6 @@ export interface LogActionData {
   userAgent?: string;
   endpoint?: string;
   method?: string;
-  oldData?: Record<string, any>;
-  newData?: Record<string, any>;
   description?: string;
 }
 
@@ -23,30 +20,59 @@ export class AuditLogService {
   constructor(private readonly repository: AuditLogRepository) {}
 
   async log(data: LogActionData): Promise<AuditLogEntity> {
-    const changes =
-      data.oldData && data.newData
-        ? this.calculateChanges(data.oldData, data.newData)
-        : undefined;
-
     return this.repository.create({
-      ...data,
-      changes,
+      action: data.action,
+      entityType: data.entityType,
+      entityId: data.entityId,
+      userId: data.userId,
+      userEmail: data.userEmail,
+      ipAddress: data.ipAddress,
+      userAgent: data.userAgent,
+      endpoint: data.endpoint,
+      method: data.method,
+      description: data.description,
     });
   }
 
-  private calculateChanges(
-    oldData: Record<string, any>,
-    newData: Record<string, any>,
-  ): Record<string, { old: any; new: any }> {
-    const changes: Record<string, { old: any; new: any }> = {};
-    const allKeys = new Set([...Object.keys(oldData), ...Object.keys(newData)]);
+  async logMany(dataArray: LogActionData[]): Promise<AuditLogEntity[]> {
+    const entities = dataArray.map((data) => ({
+      action: data.action,
+      entityType: data.entityType,
+      entityId: data.entityId,
+      userId: data.userId,
+      userEmail: data.userEmail,
+      ipAddress: data.ipAddress,
+      userAgent: data.userAgent,
+      endpoint: data.endpoint,
+      method: data.method,
+      description: data.description,
+    }));
 
-    for (const key of allKeys) {
-      if (JSON.stringify(oldData[key]) !== JSON.stringify(newData[key])) {
-        changes[key] = { old: oldData[key], new: newData[key] };
-      }
+    const result: AuditLogEntity[] = [];
+    for (const entity of entities) {
+      result.push(await this.repository.create(entity));
     }
+    return result;
+  }
 
-    return changes;
+  async getUserActions(userId: string, limit = 100): Promise<AuditLogEntity[]> {
+    return this.repository.getUserActions(userId, limit);
+  }
+
+  async getEntityHistory(
+    entityType: string,
+    entityId: string,
+  ): Promise<AuditLogEntity[]> {
+    return this.repository.getEntityHistory(entityType, entityId);
+  }
+
+  async getRecentActions(limit = 50): Promise<AuditLogEntity[]> {
+    return this.repository.getRecentActions(limit);
+  }
+
+  async cleanupOldLogs(olderThanDays: number): Promise<number> {
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - olderThanDays);
+    return this.repository.deleteOlderThan(cutoffDate);
   }
 }
