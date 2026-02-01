@@ -1,10 +1,20 @@
 import { Injectable } from '@nestjs/common';
+import { InjectRepository, InjectEntityManager } from '@mikro-orm/nestjs';
+import { EntityManager, EntityRepository } from '@mikro-orm/core';
 import { MikroOrmBaseRepository } from '../../../infra/repositories/mikro-orm-base.repository';
 import { AuditLogEntity } from '../entities/audit-log.entity';
+import { DB_CONTEXTS } from 'src/modules/database/constants';
 
 @Injectable()
 export class AuditLogRepository extends MikroOrmBaseRepository<AuditLogEntity> {
-  protected entityClass = AuditLogEntity;
+  constructor(
+    @InjectEntityManager(DB_CONTEXTS.MAIN)
+    em: EntityManager,
+    @InjectRepository(AuditLogEntity, DB_CONTEXTS.MAIN)
+    repository: EntityRepository<AuditLogEntity>,
+  ) {
+    super(em, repository);
+  }
 
   async getUserActions(userId: string, limit = 100): Promise<AuditLogEntity[]> {
     return this.getMany({ userId }, { limit, sort: { createdAt: -1 } });
@@ -22,7 +32,7 @@ export class AuditLogRepository extends MikroOrmBaseRepository<AuditLogEntity> {
   }
 
   async deleteOlderThan(date: Date): Promise<number> {
-    const result = await this.em.nativeDelete(this.entityClass, {
+    const result = await this.em.nativeDelete(AuditLogEntity, {
       createdAt: { $lt: date },
     });
     return result;

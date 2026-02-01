@@ -1,11 +1,11 @@
 import { Entity, PrimaryKey, Property } from '@mikro-orm/core';
 import { ObjectId } from '@mikro-orm/mongodb';
-import { v4 } from 'uuid';
+import { v4 as uuidv4 } from 'uuid';
 
 @Entity({ abstract: true })
 export abstract class BaseEntity {
   @PrimaryKey({ type: 'uuid' })
-  _id: string | ObjectId = v4();
+  _id: string | ObjectId = uuidv4();
 
   get id(): string {
     return this._id instanceof ObjectId ? this._id.toHexString() : this._id;
