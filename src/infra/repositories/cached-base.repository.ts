@@ -119,6 +119,24 @@ export abstract class CachedBaseRepository<
     return result;
   }
 
+  async create(
+    data: Partial<E>,
+    query?: BaseCommandOption<unknown>,
+  ): Promise<E> {
+    const entity = await super.create(data, query);
+    await this.invalidateCache([this.entityName]);
+    return entity;
+  }
+
+  async insertMany(
+    list: Partial<E>[],
+    query?: BaseCommandOption<unknown>,
+  ): Promise<{ n: number }> {
+    const result = await super.insertMany(list, query);
+    await this.invalidateCache([this.entityName]);
+    return result;
+  }
+
   async updateById(
     id: string,
     data: UpdateData<E>,
