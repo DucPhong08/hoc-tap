@@ -15,6 +15,8 @@ import { OrmMikroModule } from './infra/database/orm-mikro.module';
 import { CacheModule } from './infra/cache/cache.module';
 import { LoggingModule } from './common/logging/logging.module';
 import { MonitoringModule } from './infra/monitoring/monitoring.module';
+import { WebsocketModule } from './infra/websocket/websocket.module';
+import { CronModule } from './infra/cron/cron.module';
 
 @Module({
   imports: [
@@ -32,6 +34,8 @@ import { MonitoringModule } from './infra/monitoring/monitoring.module';
     CacheModule,
     LoggingModule,
     MonitoringModule,
+    WebsocketModule,
+    CronModule,
     AuthModule.forRoot(),
     UsersModule,
     SettingsModule,
