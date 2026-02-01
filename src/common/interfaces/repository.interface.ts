@@ -121,5 +121,11 @@ export interface IBaseRepository<E extends BaseEntity, TContext = unknown> {
     query?: ExistsQuery & BaseQueryOption<TContext>,
   ): Promise<boolean>;
 
+  distinct<K extends keyof E>(
+    field: K,
+    condition?: QueryCondition<E>,
+    query?: BaseQueryOption<TContext>,
+  ): Promise<E[K][]>;
+
   restore(id: string, query?: BaseCommandOption<TContext>): Promise<E | null>;
 }

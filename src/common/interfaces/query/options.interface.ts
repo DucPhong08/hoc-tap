@@ -18,6 +18,7 @@ export type PopulateInput = PopulateField[] | PopulateOptions[];
  */
 export interface BaseQueryOption<T = unknown> {
   transaction?: T;
+  withDeleted?: boolean; // Include soft-deleted records
 }
 
 /**

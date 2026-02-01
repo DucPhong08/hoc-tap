@@ -262,8 +262,68 @@ export abstract class MikroOrmBaseRepository<
     condition: QueryCondition<E>,
     query?: ExistsQuery & BaseQueryOption<T>,
   ): Promise<boolean> {
-    const count = await this.count(condition, query);
-    return count > 0;
+    void query; // Mark as intentionally unused for now
+
+    const tableName = this.repository.getEntityName();
+
+    const conditions: string[] = [];
+    const params: any[] = [];
+    let paramIndex = 1;
+
+    for (const [key, value] of Object.entries(condition)) {
+      if (value !== undefined && value !== null) {
+        conditions.push(`"${key}" = $${paramIndex}`);
+        params.push(value);
+        paramIndex++;
+      }
+    }
+
+    const whereClause =
+      conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+    const sql = `SELECT EXISTS(SELECT 1 FROM "${tableName}" ${whereClause} LIMIT 1) as exists`;
+    const results = await this.em
+      .getConnection()
+      .execute<{ exists: boolean }[]>(sql, params);
+
+    return results[0]?.exists || false;
+  }
+
+  async distinct<K extends keyof E>(
+    field: K,
+    condition?: QueryCondition<E>,
+    query?: BaseQueryOption<T>,
+  ): Promise<E[K][]> {
+    void query;
+
+    const tableName = this.repository.getEntityName();
+
+    let whereClause = '';
+    const params: any[] = [];
+
+    if (condition && Object.keys(condition).length > 0) {
+      const conditions: string[] = [];
+      let paramIndex = 1;
+
+      for (const [key, value] of Object.entries(condition)) {
+        if (value !== undefined && value !== null) {
+          conditions.push(`"${key}" = $${paramIndex}`);
+          params.push(value);
+          paramIndex++;
+        }
+      }
+
+      if (conditions.length > 0) {
+        whereClause = `WHERE ${conditions.join(' AND ')}`;
+      }
+    }
+
+    const sql = `SELECT DISTINCT "${String(field)}" as value FROM "${tableName}" ${whereClause}`;
+    const results = await this.em
+      .getConnection()
+      .execute<{ value: E[K] }[]>(sql, params);
+
+    return results.map((r) => r.value);
   }
 
   async restore(id: string, _query?: BaseCommandOption<T>): Promise<E | null> {

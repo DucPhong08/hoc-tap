@@ -137,6 +137,26 @@ export abstract class CachedBaseRepository<
     return result;
   }
 
+  async distinct<K extends keyof E>(
+    field: K,
+    condition?: QueryCondition<E>,
+    query?: BaseQueryOption<unknown>,
+  ): Promise<E[K][]> {
+    const cacheKey = this.getCacheKey('distinct', field, condition, query);
+
+    const cached = await this.cacheService.get<E[K][]>(cacheKey);
+    if (cached) return cached;
+
+    const values = await super.distinct(field, condition, query);
+    await this.cacheService.setWithTags(
+      cacheKey,
+      values,
+      [this.entityName],
+      this.defaultCacheTtl,
+    );
+    return values;
+  }
+
   async updateById(
     id: string,
     data: UpdateData<E>,
