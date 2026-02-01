@@ -6,6 +6,8 @@ import { AppService } from './app.service';
 import loader from './config/loader';
 import { UsersModule } from './modules/users/users.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { AuditLogsModule } from './modules/audit-logs/audit-logs.module';
+import { SettingsModule } from './infra/settings/settings.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { TransactionModule } from './infra/transaction/transaction.module';
@@ -32,6 +34,8 @@ import { MonitoringModule } from './infra/monitoring/monitoring.module';
     MonitoringModule,
     AuthModule.forRoot(),
     UsersModule,
+    SettingsModule,
+    AuditLogsModule,
   ],
   controllers: [AppController],
   providers: [
