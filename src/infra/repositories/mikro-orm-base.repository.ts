@@ -8,7 +8,6 @@ import type {
   GetManyQuery,
   GetPageQuery,
   CountQuery,
-  ExistsQuery,
   CreateQuery,
   InsertManyQuery,
   UpdateByIdQuery,
@@ -34,6 +33,25 @@ export abstract class MikroOrmBaseRepository<
     protected readonly em: EntityManager,
     protected readonly repository: EntityRepository<E>,
   ) {}
+
+  /** Lấy tên entity từ repository (public method của MikroORM) */
+  protected get entityName(): string {
+    return this.repository.getEntityName();
+  }
+
+  private get dbType(): 'sql' | 'mongo' {
+    const driverName = this.em.getDriver().constructor.name;
+    return driverName.includes('Mongo') ? 'mongo' : 'sql';
+  }
+
+  private createSqlQueryBuilder(entityName: string) {
+    if (this.dbType === 'mongo') {
+      throw new Error('createQueryBuilder is not supported for MongoDB driver');
+    }
+    return (
+      this.em as unknown as { createQueryBuilder(name: string): any }
+    ).createQueryBuilder(entityName);
+  }
 
   async create(
     document: Partial<E>,
@@ -259,71 +277,59 @@ export abstract class MikroOrmBaseRepository<
   }
 
   async exists(
-    condition: QueryCondition<E>,
-    query?: ExistsQuery & BaseQueryOption<T>,
+    condition: Partial<E>,
+    options?: { withDeleted?: boolean },
   ): Promise<boolean> {
-    void query; // Mark as intentionally unused for now
+    const driver = this.em.getDriver().constructor.name;
 
-    const tableName = this.repository.getEntityName();
+    // ===== MongoDB =====
+    if (driver.includes('Mongo')) {
+      const entity = await this.repository.findOne(condition as any, {
+        fields: ['_id'] as any,
+        filters: options?.withDeleted ? false : undefined,
+      });
 
-    const conditions: string[] = [];
-    const params: any[] = [];
-    let paramIndex = 1;
-
-    for (const [key, value] of Object.entries(condition)) {
-      if (value !== undefined && value !== null) {
-        conditions.push(`"${key}" = $${paramIndex}`);
-        params.push(value);
-        paramIndex++;
-      }
+      return !!entity;
     }
 
-    const whereClause =
-      conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    // ===== SQL =====
+    const qb = this.createSqlQueryBuilder(this.entityName)
+      .select('1')
+      .where(condition as any)
+      .limit(1);
 
-    const sql = `SELECT EXISTS(SELECT 1 FROM "${tableName}" ${whereClause} LIMIT 1) as exists`;
-    const results = await this.em
-      .getConnection()
-      .execute<{ exists: boolean }[]>(sql, params);
+    if (options?.withDeleted) {
+      qb.disableIdentityMap().withDeleted?.();
+    }
 
-    return results[0]?.exists || false;
+    const result = await qb.execute();
+    return result.length > 0;
   }
 
   async distinct<K extends keyof E>(
     field: K,
     condition?: QueryCondition<E>,
-    query?: BaseQueryOption<T>,
+    _query?: BaseQueryOption<T>,
   ): Promise<E[K][]> {
-    void query;
+    void _query;
+    const driver = this.em.getDriver().constructor.name;
 
-    const tableName = this.repository.getEntityName();
+    // ===== SQL =====
+    if (!driver.includes('Mongo')) {
+      const qb = this.createSqlQueryBuilder(this.entityName)
+        .select(field as string, true) // DISTINCT
+        .where(condition ?? {});
 
-    let whereClause = '';
-    const params: any[] = [];
-
-    if (condition && Object.keys(condition).length > 0) {
-      const conditions: string[] = [];
-      let paramIndex = 1;
-
-      for (const [key, value] of Object.entries(condition)) {
-        if (value !== undefined && value !== null) {
-          conditions.push(`"${key}" = $${paramIndex}`);
-          params.push(value);
-          paramIndex++;
-        }
-      }
-
-      if (conditions.length > 0) {
-        whereClause = `WHERE ${conditions.join(' AND ')}`;
-      }
+      const rows = await qb.execute();
+      return rows.map((r: any) => r[field as string]);
     }
 
-    const sql = `SELECT DISTINCT "${String(field)}" as value FROM "${tableName}" ${whereClause}`;
-    const results = await this.em
-      .getConnection()
-      .execute<{ value: E[K] }[]>(sql, params);
+    // ===== Mongo =====
+    const collection = (this.em.getDriver() as any).getCollection(
+      this.entityName,
+    );
 
-    return results.map((r) => r.value);
+    return collection.distinct(field as string, condition ?? {});
   }
 
   async restore(id: string, _query?: BaseCommandOption<T>): Promise<E | null> {

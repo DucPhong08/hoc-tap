@@ -23,7 +23,6 @@ import {
 export abstract class CachedBaseRepository<
   E extends BaseEntity,
 > extends MikroOrmBaseRepository<E> {
-  protected abstract entityName: string;
   protected defaultCacheTtl = 300; // 5 minutes
 
   constructor(
