@@ -8,10 +8,7 @@ import type { UserContext } from '../../../common/types/user.type';
 @Injectable()
 export class UserService extends BaseCrudService<UserEntity> {
   constructor(private readonly userRepository: UserRepository) {
-    super(userRepository, {
-      entityName: 'Người dùng',
-      notFoundMessage: 'Không tìm thấy người dùng',
-    });
+    super(userRepository, {});
   }
 
   async create(

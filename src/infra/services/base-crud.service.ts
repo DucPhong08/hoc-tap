@@ -1,5 +1,4 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { EntityManager } from '@mikro-orm/core';
 import type {
   QueryCondition,
   PaginationResult,
@@ -23,32 +22,31 @@ import { BaseEntity } from '../../common/entity/base.entity';
 import type { BaseTransaction } from '../transaction/base-transaction.interface';
 import type { UserContext } from '../../common/types/user.type';
 
-export interface BaseCrudServiceConfig {
-  entityName: string;
+export interface BaseCrudServiceConfig<TContext = unknown> {
   notFoundMessage?: string;
-  transaction?: BaseTransaction<EntityManager>;
+  transaction?: BaseTransaction<TContext>;
 }
 
 @Injectable()
-export abstract class BaseCrudService<E extends BaseEntity> {
-  protected readonly entityName: string;
+export abstract class BaseCrudService<
+  E extends BaseEntity,
+  TContext = unknown,
+> {
   protected readonly notFoundMessage: string;
-  protected readonly transaction?: BaseTransaction<EntityManager>;
+  protected readonly transaction?: BaseTransaction<TContext>;
 
   constructor(
-    protected readonly repository: IBaseRepository<E, EntityManager>,
-    config: BaseCrudServiceConfig,
+    protected readonly repository: IBaseRepository<E, TContext>,
+    config?: BaseCrudServiceConfig<TContext>,
   ) {
-    this.entityName = config.entityName;
-    this.notFoundMessage =
-      config.notFoundMessage || `Không tìm thấy ${config.entityName}`;
-    this.transaction = config.transaction;
+    this.notFoundMessage = config?.notFoundMessage ?? 'Không tìm thấy bản ghi';
+    this.transaction = config?.transaction;
   }
 
   async create(
     user: UserContext,
     dto: Partial<E>,
-    query?: CreateQuery & BaseCommandOption<EntityManager>,
+    query?: CreateQuery & BaseCommandOption<TContext>,
   ): Promise<E> {
     return this.executeWithTransaction(query, async (txQuery) => {
       return this.repository.create(dto, txQuery);
@@ -58,7 +56,7 @@ export abstract class BaseCrudService<E extends BaseEntity> {
   async insertMany(
     user: UserContext,
     list: Partial<E>[],
-    query?: BaseCommandOption<EntityManager>,
+    query?: BaseCommandOption<TContext>,
   ): Promise<{ n: number }> {
     return this.executeWithTransaction(query, async (txQuery) => {
       return this.repository.insertMany(list, txQuery);
@@ -68,7 +66,7 @@ export abstract class BaseCrudService<E extends BaseEntity> {
   async getById(
     user: UserContext,
     id: string,
-    query?: GetByIdQuery<E> & BaseQueryOption<EntityManager>,
+    query?: GetByIdQuery<E> & BaseQueryOption<TContext>,
   ): Promise<E> {
     const entity = await this.repository.getById(id, query);
 
@@ -82,7 +80,7 @@ export abstract class BaseCrudService<E extends BaseEntity> {
   async getByIdOrNull(
     user: UserContext,
     id: string,
-    query?: GetByIdQuery<E> & BaseQueryOption<EntityManager>,
+    query?: GetByIdQuery<E> & BaseQueryOption<TContext>,
   ): Promise<E | null> {
     return this.repository.getById(id, query);
   }
@@ -90,7 +88,7 @@ export abstract class BaseCrudService<E extends BaseEntity> {
   async getOne(
     user: UserContext,
     condition: QueryCondition<E>,
-    query?: GetOneQuery<E> & BaseQueryOption<EntityManager>,
+    query?: GetOneQuery<E> & BaseQueryOption<TContext>,
   ): Promise<E> {
     const entity = await this.repository.getOne(condition, query);
 
@@ -104,7 +102,7 @@ export abstract class BaseCrudService<E extends BaseEntity> {
   async getOneOrNull(
     user: UserContext,
     condition: QueryCondition<E>,
-    query?: GetOneQuery<E> & BaseQueryOption<EntityManager>,
+    query?: GetOneQuery<E> & BaseQueryOption<TContext>,
   ): Promise<E | null> {
     return this.repository.getOne(condition, query);
   }
@@ -112,7 +110,7 @@ export abstract class BaseCrudService<E extends BaseEntity> {
   async getMany(
     user: UserContext,
     condition: QueryCondition<E>,
-    query?: GetManyQuery<E> & BaseQueryOption<EntityManager>,
+    query?: GetManyQuery<E> & BaseQueryOption<TContext>,
   ): Promise<E[]> {
     return this.repository.getMany(condition, query);
   }
@@ -120,7 +118,7 @@ export abstract class BaseCrudService<E extends BaseEntity> {
   async getPage(
     user: UserContext,
     condition: QueryCondition<E>,
-    query: GetPageQuery<E> & BaseQueryOption<EntityManager>,
+    query: GetPageQuery<E> & BaseQueryOption<TContext>,
   ): Promise<PaginationResult<E>> {
     return this.repository.getPage(condition, query);
   }
@@ -129,7 +127,7 @@ export abstract class BaseCrudService<E extends BaseEntity> {
     user: UserContext,
     id: string,
     update: UpdateData<E>,
-    query?: UpdateByIdQuery & BaseCommandOption<EntityManager>,
+    query?: UpdateByIdQuery & BaseCommandOption<TContext>,
   ): Promise<E> {
     return this.executeWithTransaction(query, async (txQuery) => {
       const entity = await this.repository.updateById(id, update, txQuery);
@@ -146,7 +144,7 @@ export abstract class BaseCrudService<E extends BaseEntity> {
     user: UserContext,
     condition: QueryCondition<E>,
     update: UpdateData<E>,
-    query?: UpdateOneQuery & BaseCommandOption<EntityManager>,
+    query?: UpdateOneQuery & BaseCommandOption<TContext>,
   ): Promise<E> {
     return this.executeWithTransaction(query, async (txQuery) => {
       const entity = await this.repository.updateOne(
@@ -167,7 +165,7 @@ export abstract class BaseCrudService<E extends BaseEntity> {
     user: UserContext,
     condition: QueryCondition<E>,
     update: UpdateData<E>,
-    query?: UpdateManyQuery & BaseCommandOption<EntityManager>,
+    query?: UpdateManyQuery & BaseCommandOption<TContext>,
   ): Promise<{ affected: number }> {
     return this.executeWithTransaction(query, async (txQuery) => {
       return this.repository.updateMany(condition, update, txQuery);
@@ -178,7 +176,7 @@ export abstract class BaseCrudService<E extends BaseEntity> {
     user: UserContext,
     ids: string[],
     update: UpdateData<E>,
-    query?: UpdateManyQuery & BaseCommandOption<EntityManager>,
+    query?: UpdateManyQuery & BaseCommandOption<TContext>,
   ): Promise<{ affected: number }> {
     return this.updateMany(
       user,
@@ -191,7 +189,7 @@ export abstract class BaseCrudService<E extends BaseEntity> {
   async deleteById(
     user: UserContext,
     id: string,
-    query?: DeleteByIdQuery & BaseCommandOption<EntityManager>,
+    query?: DeleteByIdQuery & BaseCommandOption<TContext>,
   ): Promise<E> {
     return this.executeWithTransaction(query, async (txQuery) => {
       const entity = await this.repository.deleteById(id, txQuery);
@@ -207,7 +205,7 @@ export abstract class BaseCrudService<E extends BaseEntity> {
   async deleteOne(
     user: UserContext,
     condition: QueryCondition<E>,
-    query?: DeleteOneQuery & BaseCommandOption<EntityManager>,
+    query?: DeleteOneQuery & BaseCommandOption<TContext>,
   ): Promise<E> {
     return this.executeWithTransaction(query, async (txQuery) => {
       const entity = await this.repository.deleteOne(condition, txQuery);
@@ -223,7 +221,7 @@ export abstract class BaseCrudService<E extends BaseEntity> {
   async deleteMany(
     user: UserContext,
     condition: QueryCondition<E>,
-    query?: DeleteManyQuery & BaseCommandOption<EntityManager>,
+    query?: DeleteManyQuery & BaseCommandOption<TContext>,
   ): Promise<{ deleted: number }> {
     return this.executeWithTransaction(query, async (txQuery) => {
       return this.repository.deleteMany(condition, txQuery);
@@ -233,7 +231,7 @@ export abstract class BaseCrudService<E extends BaseEntity> {
   async deleteManyByIds(
     user: UserContext,
     ids: string[],
-    query?: DeleteManyQuery & BaseCommandOption<EntityManager>,
+    query?: DeleteManyQuery & BaseCommandOption<TContext>,
   ): Promise<{ deleted: number }> {
     return this.deleteMany(
       user,
@@ -245,7 +243,7 @@ export abstract class BaseCrudService<E extends BaseEntity> {
   async count(
     user: UserContext,
     condition?: QueryCondition<E>,
-    query?: BaseQueryOption<EntityManager>,
+    query?: BaseQueryOption<TContext>,
   ): Promise<number> {
     return this.repository.count(condition, query);
   }
@@ -253,14 +251,14 @@ export abstract class BaseCrudService<E extends BaseEntity> {
   async exists(
     user: UserContext,
     condition: QueryCondition<E>,
-    query?: BaseQueryOption<EntityManager>,
+    query?: BaseQueryOption<TContext>,
   ): Promise<boolean> {
     return this.repository.exists(condition, query);
   }
 
   protected async executeWithTransaction<T>(
-    query: BaseCommandOption<EntityManager> | undefined,
-    callback: (txQuery: BaseCommandOption<EntityManager>) => Promise<T>,
+    query: BaseCommandOption<TContext> | undefined,
+    callback: (txQuery: BaseCommandOption<TContext>) => Promise<T>,
   ): Promise<T> {
     const hasExternalTransaction = Boolean(query?.transaction);
     const txQuery = query || {};

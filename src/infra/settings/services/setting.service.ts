@@ -14,14 +14,10 @@ import { SettingKey } from '../enums/setting-key.enum';
 export class SettingService extends BaseCrudService<SettingEntity> {
   constructor(private readonly settingRepository: SettingRepository) {
     super(settingRepository, {
-      entityName: 'Setting',
-      notFoundMessage: 'Setting not found',
+      // notFoundMessage: 'Setting not found',
     });
   }
 
-  /**
-   * Lấy giá trị setting theo key với type-safe
-   */
   async getSettingValue<T extends SettingKey>(
     key: T,
   ): Promise<SettingValue<T> | null> {

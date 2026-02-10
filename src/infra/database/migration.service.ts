@@ -20,26 +20,46 @@ export class MigrationService implements OnModuleInit {
     });
     const autoMigrate = devConfig?.autoMigrate === true;
 
-    if (mode !== 'production' && autoMigrate) {
-      const migrator = this.orm.migrator;
-      const pending = await migrator.getPendingMigrations();
+    if (mode === 'production' || !autoMigrate) return;
 
-      if (pending.length > 0) {
-        console.log(
-          `\n🔄 Auto-migration: Found ${pending.length} pending migration(s)`,
-        );
-        pending.forEach((migration) => {
-          console.log(`   - ${migration.name}`);
-        });
-
-        const executed = await migrator.up();
-
-        if (executed.length > 0) {
-          console.log(
-            `✅ Auto-migration: Executed ${executed.length} migration(s) successfully\n`,
-          );
-        }
-      }
+    // 1. Chạy pending migrations (nếu có)
+    try {
+      await this.runPendingMigrations();
+    } catch (error) {
+      console.warn(`⚠️ Migration warning: ${(error as Error).message}`);
     }
+
+    // 2. Auto sync schema từ entity → DB (luôn chạy)
+    await this.syncSchema();
+  }
+
+  private async runPendingMigrations() {
+    const migrator = this.orm.migrator;
+    const pending = await migrator.getPendingMigrations();
+
+    if (pending.length === 0) return;
+
+    console.log(
+      `\n🔄 Auto-migration: Found ${pending.length} pending migration(s)`,
+    );
+    pending.forEach((m) => console.log(`   - ${m.name}`));
+
+    const executed = await migrator.up();
+    if (executed.length > 0) {
+      console.log(
+        `✅ Auto-migration: Executed ${executed.length} migration(s) successfully`,
+      );
+    }
+  }
+
+  private async syncSchema() {
+    const generator = this.orm.getSchemaGenerator();
+    const updateDiff = await generator.getUpdateSchemaSQL();
+
+    if (!updateDiff.trim()) return;
+
+    console.log(`\n🔄 Auto-sync: Detected schema changes`);
+    await generator.updateSchema();
+    console.log(`✅ Auto-sync: Schema updated successfully\n`);
   }
 }

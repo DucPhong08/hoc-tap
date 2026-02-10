@@ -3,6 +3,7 @@ import { MikroOrmModuleOptions } from '@mikro-orm/nestjs';
 import { PostgreSqlDriver } from '@mikro-orm/postgresql';
 import { MongoDriver } from '@mikro-orm/mongodb';
 import { RootConfig } from 'src/config/root.config';
+import { MainMigrations } from 'src/modules/database/migrations/main.migrations';
 
 export class MikroOrmConfigService {
   constructor(private readonly configService: ConfigService<RootConfig>) {}
@@ -43,7 +44,10 @@ export class MikroOrmConfigService {
       allowGlobalContext: true,
       dbName: database,
       debug: !isProduction && (dev?.debug || false),
-      migrations,
+      migrations: {
+        ...migrations,
+        migrationsList: MainMigrations,
+      },
       discovery: {
         disableDynamicFileAccess: true,
       },
