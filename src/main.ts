@@ -60,7 +60,6 @@ export async function bootstrap() {
       .addBearerAuth()
       .addTag('auth')
       .addTag('users')
-      .addTag('products')
       .build();
     const document = SwaggerModule.createDocument(app, config);
     SwaggerModule.setup(swaggerConfig.path, app, document, {
