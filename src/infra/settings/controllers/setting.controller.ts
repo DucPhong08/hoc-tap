@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Patch, Body } from '@nestjs/common';
+import { Controller, Get, Param, Body, Put } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { SettingEntity } from '../entities/setting.entity';
 import { SettingService } from '../services/setting.service';
@@ -19,7 +19,7 @@ export class SettingController {
     return { key, value: setting } as any;
   }
 
-  @Patch('key/:key/value')
+  @Put('key/:key/value')
   @ApiOperation({ summary: 'Update setting value by key' })
   @ApiResponse({ status: 200, type: SettingEntity })
   async updateValueByKey(
