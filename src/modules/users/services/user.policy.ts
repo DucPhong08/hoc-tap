@@ -1,14 +1,14 @@
-import { UserEntity } from '../entities/user.entity';
+import { UserModel } from '../../database/models/user.model';
 
 export class UserPolicy {
-  static canUpdateEmail(user: UserEntity): boolean {
+  static canUpdateEmail(user: UserModel): boolean {
     if (!user.updatedAt) return true;
     const oneWeekAgo = new Date();
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
     return user.updatedAt < oneWeekAgo;
   }
 
-  static canDelete(user: UserEntity): boolean {
+  static canDelete(user: UserModel): boolean {
     if (!user.createdAt) return false;
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);

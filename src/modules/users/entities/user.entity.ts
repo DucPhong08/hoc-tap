@@ -1,4 +1,4 @@
-import { Entity, Property } from '@mikro-orm/core';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsEmail,
   IsString,
@@ -8,62 +8,62 @@ import {
   IsArray,
   IsEnum,
 } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { BaseEntity } from '../../../common/entity/base.entity';
 import { AuthProvider } from '../../auth/enums/auth-provider.enum';
 
-@Entity({ tableName: 'users' })
-export class UserEntity extends BaseEntity {
-  @ApiProperty()
+export class UserEntity {
+  @ApiProperty({
+    description: 'User email address',
+    example: 'user@example.com',
+  })
   @IsEmail()
   @MaxLength(150)
-  @Property({ type: 'varchar', length: 150, unique: true })
   email!: string;
 
-  @ApiProperty()
+  @ApiProperty({ description: 'User first name', example: 'John' })
   @IsString()
   @MaxLength(150)
-  @Property({ type: 'varchar', length: 150 })
   firstName!: string;
 
-  @ApiProperty()
+  @ApiProperty({ description: 'User last name', example: 'Doe' })
   @IsString()
   @MaxLength(150)
-  @Property({ type: 'varchar', length: 150 })
   lastName!: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ description: 'User password (hashed)' })
   @IsOptional()
   @IsString()
-  @Property({ type: 'text', nullable: true })
   password?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ description: 'User active status', default: true })
   @IsOptional()
   @IsBoolean()
-  @Property({ type: 'boolean', default: true })
-  isActive: boolean = true;
+  isActive?: boolean;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({
+    description: 'User roles',
+    default: ['user'],
+    type: [String],
+  })
   @IsOptional()
   @IsArray()
-  @Property({ type: 'json', default: ['user'] })
-  roles: string[] = ['user'];
+  roles?: string[];
 
-  @ApiProperty()
+  @ApiProperty({
+    description: 'Authentication provider',
+    enum: AuthProvider,
+    default: AuthProvider.LOCAL,
+    enumName: 'AuthProvider',
+  })
   @IsEnum(AuthProvider)
-  @Property({ type: 'varchar', default: AuthProvider.LOCAL })
-  provider: AuthProvider = AuthProvider.LOCAL;
+  provider?: AuthProvider;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ description: 'Provider user ID (for OAuth)' })
   @IsOptional()
   @IsString()
-  @Property({ type: 'varchar', nullable: true })
   providerId?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ description: 'User avatar URL' })
   @IsOptional()
   @IsString()
-  @Property({ type: 'varchar', nullable: true })
   avatar?: string;
 }

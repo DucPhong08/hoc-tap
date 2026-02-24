@@ -1,6 +1,10 @@
 import { Type } from '@nestjs/common';
-import { UserEntity } from '../../users/entities/user.entity';
 import { SettingEntity } from '../../../infra/settings/entities/setting.entity';
 import { AuditLogEntity } from 'src/modules/audit-logs/entities/audit-log.entity';
+import { UserModel } from '../models/user.model';
 
-export const MainEntities: Type[] = [UserEntity, SettingEntity, AuditLogEntity];
+const EntityBatBien: Type[] = [SettingEntity, AuditLogEntity];
+
+const Model: Type[] = [UserModel];
+
+export const MainEntities: Type[] = [...EntityBatBien, ...Model];
