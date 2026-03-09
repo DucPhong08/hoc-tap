@@ -380,22 +380,34 @@ function validateDatabaseConfigs(databases?: Record<string, DatabaseConfig>) {
   });
 }
 
-function validateMainDatabaseConfig(
+function getEnvHintByProfile(profile: DbConnectionProfile): string {
+  return profile === DB_CONNECTION_PROFILES.SQL
+    ? 'set SQL_TYPE and SQL_* variables'
+    : 'set DB_URI';
+}
+
+function validateRequiredDatabaseContexts(
   databases?: Record<string, DatabaseConfig>,
 ): void {
-  if (databases?.[DB_CONTEXTS.MAIN]) {
-    return;
-  }
-
   const mainProfile = DB_CONTEXT_CONNECTION_PROFILES[DB_CONTEXTS.MAIN];
-  const envHint =
-    mainProfile === DB_CONNECTION_PROFILES.SQL
-      ? 'set SQL_TYPE and SQL_* variables'
-      : 'set DB_URI';
+  const profileEntries = Object.entries(
+    DB_CONTEXT_CONNECTION_PROFILES,
+  ) as Array<[DbContext, DbConnectionProfile]>;
 
-  throw new Error(
-    `Missing database config for context "${DB_CONTEXTS.MAIN}" (${envHint})`,
-  );
+  for (const [contextName, profile] of profileEntries) {
+    if (databases?.[contextName]) {
+      continue;
+    }
+
+    if (contextName !== DB_CONTEXTS.MAIN && profile === mainProfile) {
+      // Same profile as MAIN can reuse MAIN config via fallback.
+      continue;
+    }
+
+    throw new Error(
+      `Missing database config for context "${contextName}" (${getEnvHintByProfile(profile)})`,
+    );
+  }
 }
 
 export default (): RootConfig => {
@@ -422,7 +434,7 @@ export default (): RootConfig => {
   validatedConfig.databases = databaseConfigs;
 
   validateDatabaseConfigs(databaseConfigs);
-  validateMainDatabaseConfig(databaseConfigs);
+  validateRequiredDatabaseContexts(databaseConfigs);
 
   return validatedConfig;
 };

@@ -37,10 +37,20 @@ export abstract class CachedBaseRepository<
     return `${this.entityName}:${prefix}:${parts.map((p) => JSON.stringify(p)).join(':')}`;
   }
 
+  private hasTransaction(
+    query?: BaseQueryOption<unknown> | BaseCommandOption<unknown>,
+  ): boolean {
+    return Boolean(query?.transaction);
+  }
+
   async getById(
     id: string,
     query?: GetByIdQuery<E> & BaseQueryOption<unknown>,
   ): Promise<E | null> {
+    if (this.hasTransaction(query)) {
+      return super.getById(id, query);
+    }
+
     const cacheKey = this.getCacheKey('id', id, query);
 
     const cached = await this.cacheService.get<E>(cacheKey);
@@ -62,6 +72,10 @@ export abstract class CachedBaseRepository<
     condition: QueryCondition<E>,
     query?: GetOneQuery<E> & BaseQueryOption<unknown>,
   ): Promise<E | null> {
+    if (this.hasTransaction(query)) {
+      return super.getOne(condition, query);
+    }
+
     const cacheKey = this.getCacheKey('one', condition, query);
 
     const cached = await this.cacheService.get<E>(cacheKey);
@@ -83,6 +97,10 @@ export abstract class CachedBaseRepository<
     condition: QueryCondition<E>,
     query?: GetManyQuery<E> & BaseQueryOption<unknown>,
   ): Promise<E[]> {
+    if (this.hasTransaction(query)) {
+      return super.getMany(condition, query);
+    }
+
     const cacheKey = this.getCacheKey('many', condition, query);
 
     const cached = await this.cacheService.get<E[]>(cacheKey);
@@ -102,6 +120,10 @@ export abstract class CachedBaseRepository<
     condition: QueryCondition<E>,
     query: GetPageQuery<E> & BaseQueryOption<unknown>,
   ): Promise<PaginationResult<E>> {
+    if (this.hasTransaction(query)) {
+      return super.getPage(condition, query);
+    }
+
     const { page, limit } = query;
     const cacheKey = this.getCacheKey('page', condition, page, limit, query);
 
@@ -141,6 +163,10 @@ export abstract class CachedBaseRepository<
     condition?: QueryCondition<E>,
     query?: BaseQueryOption<unknown>,
   ): Promise<E[K][]> {
+    if (this.hasTransaction(query)) {
+      return super.distinct(field, condition, query);
+    }
+
     const cacheKey = this.getCacheKey('distinct', field, condition, query);
 
     const cached = await this.cacheService.get<E[K][]>(cacheKey);

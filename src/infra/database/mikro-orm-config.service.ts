@@ -19,6 +19,11 @@ export class MikroOrmConfigService {
   ): MikroOrmModuleOptions {
     const dbConfig = this.getDatabaseConfig(contextName, fallbackContextName);
     const { connection, driverOptions, dev } = dbConfig;
+    if (!connection) {
+      throw new Error(
+        `Database config for context "${contextName}" is missing connection`,
+      );
+    }
     const {
       uri,
       database,
