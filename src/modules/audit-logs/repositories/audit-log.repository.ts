@@ -3,14 +3,14 @@ import { InjectRepository, InjectEntityManager } from '@mikro-orm/nestjs';
 import { EntityManager, EntityRepository } from '@mikro-orm/core';
 import { MikroOrmBaseRepository } from '../../../infra/repositories/mikro-orm-base.repository';
 import { AuditLogEntity } from '../entities/audit-log.entity';
-import { DB_CONTEXTS } from 'src/modules/database/constants';
+import { DB_CONTEXTS } from '../../database/constants';
 
 @Injectable()
 export class AuditLogRepository extends MikroOrmBaseRepository<AuditLogEntity> {
   constructor(
-    @InjectEntityManager(DB_CONTEXTS.MAIN)
+    @InjectEntityManager(DB_CONTEXTS.LOGS)
     em: EntityManager,
-    @InjectRepository(AuditLogEntity, DB_CONTEXTS.MAIN)
+    @InjectRepository(AuditLogEntity, DB_CONTEXTS.LOGS)
     repository: EntityRepository<AuditLogEntity>,
   ) {
     super(em, repository);

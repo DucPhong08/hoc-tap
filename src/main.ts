@@ -7,9 +7,20 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import { AppConfig } from './config/root/app.config';
-import { SwaggerConfig } from './config/root/swagger.config';
-import { ValidationConfig } from './config/root/validation.config';
-import { CorsConfig } from './config/root/cors.config';
+
+const SWAGGER_OPTIONS = {
+  enabled: true,
+  path: 'api',
+  title: 'Hoc Tap API',
+  description: 'NestJS Clean Architecture Boilerplate with MikroORM',
+  version: '1.0',
+};
+
+const VALIDATION_OPTIONS = {
+  whitelist: true,
+  forbidNonWhitelisted: true,
+  transform: true,
+};
 
 export async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
@@ -26,19 +37,14 @@ export async function bootstrap() {
   }
 
   // CORS
-  const corsConfig = configService.get<CorsConfig>('cors');
-  app.enableCors({
-    origin: corsConfig?.origins || ['http://localhost:3000'],
-    credentials: true,
-  });
+  app.enableCors();
 
   // Validation
-  const validationConfig = configService.get<ValidationConfig>('validation');
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: validationConfig?.whitelist ?? true,
-      forbidNonWhitelisted: validationConfig?.forbidNonWhitelisted ?? true,
-      transform: validationConfig?.transform ?? true,
+      whitelist: VALIDATION_OPTIONS.whitelist,
+      forbidNonWhitelisted: VALIDATION_OPTIONS.forbidNonWhitelisted,
+      transform: VALIDATION_OPTIONS.transform,
     }),
   );
 
@@ -51,18 +57,17 @@ export async function bootstrap() {
   );
 
   // Swagger
-  const swaggerConfig = configService.get<SwaggerConfig>('swagger');
-  if (swaggerConfig?.enabled) {
+  if (SWAGGER_OPTIONS.enabled) {
     const config = new DocumentBuilder()
-      .setTitle(swaggerConfig.title)
-      .setDescription(swaggerConfig.description)
-      .setVersion(swaggerConfig.version)
+      .setTitle(SWAGGER_OPTIONS.title)
+      .setDescription(SWAGGER_OPTIONS.description)
+      .setVersion(SWAGGER_OPTIONS.version)
       .addBearerAuth()
       .addTag('auth')
       .addTag('users')
       .build();
     const document = SwaggerModule.createDocument(app, config);
-    SwaggerModule.setup(swaggerConfig.path, app, document, {
+    SwaggerModule.setup(SWAGGER_OPTIONS.path, app, document, {
       swaggerOptions: {
         defaultModelsExpandDepth: -1,
       },

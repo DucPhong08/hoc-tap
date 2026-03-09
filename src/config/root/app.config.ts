@@ -2,15 +2,15 @@ import { IsString, IsOptional } from 'class-validator';
 
 export class AppConfig {
   @IsString()
-  apiPrefix!: string;
+  apiPrefix: string = 'api';
 
   @IsString()
-  appName!: string;
+  appName: string = 'Hoc Tap API';
 
   @IsString()
-  appVersion!: string;
+  appVersion: string = '1.0.0';
 
   @IsString()
   @IsOptional()
-  timezone?: string;
+  timezone?: string = 'Asia/Ho_Chi_Minh';
 }

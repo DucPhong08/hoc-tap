@@ -5,6 +5,7 @@ import {
   IsString,
   Max,
   Min,
+  ValidateIf,
 } from 'class-validator';
 
 export class ConnectionConfig {
@@ -12,13 +13,19 @@ export class ConnectionConfig {
   @IsIn(['postgresql', 'mongodb'])
   connection!: 'postgresql' | 'mongodb';
 
+  @IsOptional()
   @IsString()
-  host!: string;
+  uri?: string;
 
+  @ValidateIf((o: ConnectionConfig) => o.connection !== 'mongodb' || !o.uri)
+  @IsString()
+  host?: string;
+
+  @ValidateIf((o: ConnectionConfig) => o.connection !== 'mongodb' || !o.uri)
   @IsNumber()
   @Min(0)
   @Max(65535)
-  port!: number;
+  port?: number;
 
   @IsString()
   @IsOptional()
@@ -29,5 +36,10 @@ export class ConnectionConfig {
   password?: string;
 
   @IsString()
-  database!: string;
+  @ValidateIf((o: ConnectionConfig) => o.connection !== 'mongodb' || !o.uri)
+  database?: string;
+
+  @IsString()
+  @IsOptional()
+  schema?: string;
 }

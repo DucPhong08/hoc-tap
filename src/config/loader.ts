@@ -4,6 +4,13 @@ import { plainToInstance } from 'class-transformer';
 import { validateSync } from 'class-validator';
 import { RootConfig } from './root.config';
 import { DatabaseConfig } from './root/database.config';
+import {
+  DB_CONNECTION_PROFILES,
+  DB_CONTEXT_CONNECTION_PROFILES,
+  DB_CONTEXTS,
+  type DbConnectionProfile,
+  type DbContext,
+} from '../modules/database/constants';
 
 type ConfigValue =
   | string
@@ -20,9 +27,42 @@ const ENV_PREFIX = `${APP_PREFIX}_` as const;
 const DATABASE_SEGMENT_ALIASES: Record<string, string> = {
   automigrate: 'autoMigrate',
   autosyncschema: 'autoSyncSchema',
-  pathts: 'pathTs',
   driveroptions: 'driverOptions',
 };
+const DEFAULT_SQL_PORT = 5432;
+type SqlConnectionInput = {
+  connection: 'postgresql' | 'mongodb';
+  host: string;
+  port: number;
+  user: string | null;
+  password: string | null;
+  database: string;
+  schema?: string;
+};
+
+function toTrimmed(value: string | undefined): string | undefined {
+  const normalized = value?.trim();
+  return normalized && normalized.length > 0 ? normalized : undefined;
+}
+
+function toInt(value: string | undefined, defaultValue: number): number {
+  const parsed = Number.parseInt(String(value), 10);
+  return Number.isFinite(parsed) ? parsed : defaultValue;
+}
+
+function normalizeSqlType(
+  value: string | undefined,
+): 'postgresql' | 'mongodb' | undefined {
+  const normalized = toTrimmed(value)?.toLowerCase();
+  if (!normalized) return undefined;
+  if (normalized === 'postgres' || normalized === 'postgresql') {
+    return 'postgresql';
+  }
+  if (normalized === 'mongo' || normalized === 'mongodb') {
+    return 'mongodb';
+  }
+  return undefined;
+}
 
 function toCamelCase(str: string): string {
   return str
@@ -109,12 +149,6 @@ function normalizeDatabasePath(path: string): string {
       continue;
     }
 
-    if (segment === 'path' && segments[i + 1] === 'ts') {
-      normalized.push('pathTs');
-      i += 1;
-      continue;
-    }
-
     if (segment === 'driver' && segments[i + 1] === 'options') {
       normalized.push('driverOptions');
       i += 1;
@@ -125,6 +159,98 @@ function normalizeDatabasePath(path: string): string {
   }
 
   return [context, ...normalized].join('.');
+}
+
+function applySimpleDatabaseEnvironment(
+  result: RawConfig,
+  env: Record<string, string | undefined>,
+): void {
+  const databases = ensureObject(result, 'databases');
+  const sqlConnection = buildSqlConnectionInput(env);
+  const mongoUri = toTrimmed(env.DB_URI);
+
+  const profileEntries = Object.entries(
+    DB_CONTEXT_CONNECTION_PROFILES,
+  ) as Array<[DbContext, DbConnectionProfile]>;
+
+  for (const [contextName, profile] of profileEntries) {
+    if (profile === DB_CONNECTION_PROFILES.SQL) {
+      if (sqlConnection) {
+        setSqlConnection(databases, contextName, sqlConnection);
+      }
+      continue;
+    }
+
+    if (mongoUri) {
+      setMongoConnectionUri(databases, contextName, mongoUri);
+    }
+  }
+}
+
+function buildSqlConnectionInput(
+  env: Record<string, string | undefined>,
+): SqlConnectionInput | undefined {
+  const sqlType = normalizeSqlType(env.SQL_TYPE);
+  if (!sqlType) {
+    return undefined;
+  }
+
+  const connection: SqlConnectionInput = {
+    connection: sqlType,
+    host: toTrimmed(env.SQL_HOST) || 'localhost',
+    port: toInt(env.SQL_PORT, DEFAULT_SQL_PORT),
+    user: toTrimmed(env.SQL_USER) ?? null,
+    password: toTrimmed(env.SQL_PASSWORD) ?? null,
+    database: toTrimmed(env.SQL_DB) || 'core',
+  };
+
+  const schema = toTrimmed(env.SQL_SCHEMA);
+  if (schema) {
+    connection.schema = schema;
+  }
+
+  return connection;
+}
+
+function setSqlConnection(
+  databases: ConfigObject,
+  contextName: DbContext,
+  sqlConnection: SqlConnectionInput,
+): void {
+  const context = ensureObject(databases, contextName);
+  const connection = ensureObject(context, 'connection');
+
+  connection.connection = sqlConnection.connection;
+  connection.host = sqlConnection.host;
+  connection.port = sqlConnection.port;
+  connection.user = sqlConnection.user;
+  connection.password = sqlConnection.password;
+  connection.database = sqlConnection.database;
+  if (sqlConnection.schema) {
+    connection.schema = sqlConnection.schema;
+  } else {
+    delete connection.schema;
+  }
+
+  delete connection.uri;
+}
+
+function setMongoConnectionUri(
+  databases: ConfigObject,
+  contextName: DbContext,
+  uri: string,
+): void {
+  const context = ensureObject(databases, contextName);
+  const connection = ensureObject(context, 'connection');
+
+  connection.connection = 'mongodb';
+  connection.uri = uri;
+  delete connection.host;
+  delete connection.port;
+  delete connection.user;
+  delete connection.password;
+  delete connection.database;
+  delete connection.schema;
 }
 
 function loadEnvironment(env: Record<string, string | undefined>): RawConfig {
@@ -214,7 +340,26 @@ function loadEnvironment(env: Record<string, string | undefined>): RawConfig {
     cluster.workers = parseInt(env.CLUSTER_WORKERS || '0', 10);
   }
 
+  applySimpleDatabaseEnvironment(result, env);
+
   return result;
+}
+
+function instantiateDatabaseConfigs(
+  databases?: Record<string, unknown>,
+): Record<string, DatabaseConfig> {
+  if (!databases || typeof databases !== 'object' || Array.isArray(databases)) {
+    return {};
+  }
+
+  const entries = Object.entries(databases).map(([contextName, rawConfig]) => [
+    contextName,
+    plainToInstance(DatabaseConfig, rawConfig, {
+      enableImplicitConversion: true,
+    }),
+  ]);
+
+  return Object.fromEntries(entries) as Record<string, DatabaseConfig>;
 }
 
 function validateDatabaseConfigs(databases?: Record<string, DatabaseConfig>) {
@@ -235,6 +380,24 @@ function validateDatabaseConfigs(databases?: Record<string, DatabaseConfig>) {
   });
 }
 
+function validateMainDatabaseConfig(
+  databases?: Record<string, DatabaseConfig>,
+): void {
+  if (databases?.[DB_CONTEXTS.MAIN]) {
+    return;
+  }
+
+  const mainProfile = DB_CONTEXT_CONNECTION_PROFILES[DB_CONTEXTS.MAIN];
+  const envHint =
+    mainProfile === DB_CONNECTION_PROFILES.SQL
+      ? 'set SQL_TYPE and SQL_* variables'
+      : 'set DB_URI';
+
+  throw new Error(
+    `Missing database config for context "${DB_CONTEXTS.MAIN}" (${envHint})`,
+  );
+}
+
 export default (): RootConfig => {
   dotenv.config();
 
@@ -253,7 +416,13 @@ export default (): RootConfig => {
     throw new Error(errors.toString());
   }
 
-  validateDatabaseConfigs(validatedConfig.databases);
+  const databaseConfigs = instantiateDatabaseConfigs(
+    validatedConfig.databases as Record<string, unknown>,
+  );
+  validatedConfig.databases = databaseConfigs;
+
+  validateDatabaseConfigs(databaseConfigs);
+  validateMainDatabaseConfig(databaseConfigs);
 
   return validatedConfig;
 };

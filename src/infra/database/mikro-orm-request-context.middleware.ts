@@ -8,10 +8,15 @@ import { DB_CONTEXTS } from '../../modules/database/constants';
 export class MikroOrmRequestContextMiddleware implements NestMiddleware {
   constructor(
     @InjectEntityManager(DB_CONTEXTS.MAIN)
-    private readonly entityManager: EntityManager,
+    private readonly mainEntityManager: EntityManager,
+    @InjectEntityManager(DB_CONTEXTS.LOGS)
+    private readonly logsEntityManager: EntityManager,
   ) {}
 
   use(_req: Request, _res: Response, next: () => void): void {
-    RequestContext.create(this.entityManager, next);
+    RequestContext.create(
+      [this.mainEntityManager, this.logsEntityManager],
+      next,
+    );
   }
 }

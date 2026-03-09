@@ -27,12 +27,18 @@ export class MigrationService implements OnModuleInit {
       this.configService.get<RootConfig['mode']>('mode') || 'development';
     const databases =
       this.configService.get<RootConfig['databases']>('databases');
-    const devConfig = databases?.[DB_CONTEXTS.MAIN]?.dev || defaultDevConfig;
+    const mainDatabaseConfig = databases?.[DB_CONTEXTS.MAIN];
+    const devConfig = mainDatabaseConfig?.dev || defaultDevConfig;
+    const mainConnectionType = mainDatabaseConfig?.connection.connection;
 
     const autoMigrate = devConfig.autoMigrate === true;
     const autoSyncSchema = devConfig.autoSyncSchema === true;
 
     if (mode === 'production') {
+      return;
+    }
+
+    if (mainConnectionType !== 'postgresql') {
       return;
     }
 

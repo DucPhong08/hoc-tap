@@ -2,18 +2,18 @@ import { IsString, IsNumber, Min } from 'class-validator';
 
 export class AuthConfig {
   @IsString()
-  jwtSecret!: string;
+  jwtSecret: string = 'change-me-in-production';
 
   @IsString()
-  jwtExpiresIn!: string;
+  jwtExpiresIn: string = '1d';
 
   @IsString()
-  jwtRefreshSecret!: string;
+  jwtRefreshSecret: string = 'change-me-refresh-in-production';
 
   @IsString()
-  jwtRefreshExpiresIn!: string;
+  jwtRefreshExpiresIn: string = '7d';
 
   @IsNumber()
   @Min(10)
-  bcryptRounds!: number;
+  bcryptRounds: number = 10;
 }

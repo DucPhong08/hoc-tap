@@ -7,14 +7,14 @@ import { AuditLogService } from './services/audit-log.service';
 import { AuditCleanupService } from './services/audit-cleanup.service';
 import { AuditLogController } from './controllers/audit-log.controller';
 import { AuditInterceptor } from './interceptors/audit.interceptor';
-import { DB_CONTEXTS } from 'src/modules/database/constants';
+import { DB_CONTEXTS } from '../database/constants';
 
 @Global()
 @Module({
   imports: [
     MikroOrmModule.forFeature({
       entities: [AuditLogEntity],
-      contextName: DB_CONTEXTS.MAIN,
+      contextName: DB_CONTEXTS.LOGS,
     }),
     ScheduleModule.forRoot(),
   ],
