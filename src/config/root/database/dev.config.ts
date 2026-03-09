@@ -2,8 +2,11 @@ import { IsBoolean } from 'class-validator';
 
 export class DevConfig {
   @IsBoolean()
-  autoMigrate!: boolean;
+  autoMigrate: boolean = false;
 
   @IsBoolean()
-  debug!: boolean;
+  autoSyncSchema: boolean = false;
+
+  @IsBoolean()
+  debug: boolean = false;
 }

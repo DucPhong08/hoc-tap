@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { Strategy, Profile } from 'passport-facebook';
 import { ConfigService } from '@nestjs/config';
@@ -12,32 +12,46 @@ export class FacebookStrategy extends PassportStrategy(Strategy, 'facebook') {
     private authService: AuthService,
   ) {
     super({
-      clientID: configService.get<string>('FACEBOOK_APP_ID') || '',
-      clientSecret: configService.get<string>('FACEBOOK_APP_SECRET') || '',
-      callbackURL: configService.get<string>('FACEBOOK_CALLBACK_URL') || '',
+      clientID: configService.get<string>('oauth.facebook.appId') || '',
+      clientSecret: configService.get<string>('oauth.facebook.appSecret') || '',
+      callbackURL:
+        configService.get<string>('oauth.facebook.callbackUrl') || '',
       scope: ['email'],
       profileFields: ['emails', 'name', 'photos'],
     });
   }
 
   async validate(
-    accessToken: string,
-    refreshToken: string,
+    _accessToken: string,
+    _refreshToken: string,
     profile: Profile,
-    done: (err: any, user: any, info?: any) => void,
-  ): Promise<any> {
+    done: (error: Error | null, user?: unknown) => void,
+  ): Promise<void> {
     const { id, emails, name, photos } = profile;
+    const email = emails?.[0]?.value;
+
+    if (!email) {
+      done(
+        new UnauthorizedException('Tài khoản Facebook không cung cấp email'),
+        undefined,
+      );
+      return;
+    }
 
     const oauthProfile = {
       provider: AuthProvider.FACEBOOK,
       providerId: id,
-      email: emails?.[0]?.value || '',
+      email,
       firstName: name?.givenName || '',
       lastName: name?.familyName || '',
       avatar: photos?.[0]?.value,
     };
 
-    const user = await this.authService.validateOAuthUser(oauthProfile);
-    done(null, user);
+    try {
+      const user = await this.authService.validateOAuthUser(oauthProfile);
+      done(null, user);
+    } catch (error) {
+      done(error as Error, undefined);
+    }
   }
 }

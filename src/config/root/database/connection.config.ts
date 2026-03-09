@@ -9,8 +9,8 @@ import {
 
 export class ConnectionConfig {
   @IsString()
-  @IsIn(['postgresql', 'mongodb', 'mysql'])
-  connection!: 'postgresql' | 'mongodb' | 'mysql';
+  @IsIn(['postgresql', 'mongodb'])
+  connection!: 'postgresql' | 'mongodb';
 
   @IsString()
   host!: string;

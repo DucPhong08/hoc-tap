@@ -11,58 +11,47 @@ import {
 import { AuthProvider } from '../../auth/enums/auth-provider.enum';
 
 export class UserEntity {
-  @ApiProperty({
-    description: 'User email address',
-    example: 'user@example.com',
-  })
+  @ApiProperty({ example: 'user@example.com' })
   @IsEmail()
   @MaxLength(150)
   email!: string;
 
-  @ApiProperty({ description: 'User first name', example: 'John' })
+  @ApiProperty({ example: 'John' })
   @IsString()
   @MaxLength(150)
   firstName!: string;
 
-  @ApiProperty({ description: 'User last name', example: 'Doe' })
+  @ApiProperty({ example: 'Doe' })
   @IsString()
   @MaxLength(150)
   lastName!: string;
 
-  @ApiPropertyOptional({ description: 'User password (hashed)' })
+  @ApiPropertyOptional()
   @IsOptional()
   @IsString()
   password?: string;
 
-  @ApiPropertyOptional({ description: 'User active status', default: true })
+  @ApiPropertyOptional({ example: true })
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
 
-  @ApiPropertyOptional({
-    description: 'User roles',
-    default: ['user'],
-    type: [String],
-  })
+  @ApiPropertyOptional({ type: [String], example: ['user'] })
   @IsOptional()
   @IsArray()
   roles?: string[];
 
-  @ApiProperty({
-    description: 'Authentication provider',
-    enum: AuthProvider,
-    default: AuthProvider.LOCAL,
-    enumName: 'AuthProvider',
-  })
+  @ApiPropertyOptional({ enum: AuthProvider, example: AuthProvider.LOCAL })
+  @IsOptional()
   @IsEnum(AuthProvider)
   provider?: AuthProvider;
 
-  @ApiPropertyOptional({ description: 'Provider user ID (for OAuth)' })
+  @ApiPropertyOptional()
   @IsOptional()
   @IsString()
   providerId?: string;
 
-  @ApiPropertyOptional({ description: 'User avatar URL' })
+  @ApiPropertyOptional()
   @IsOptional()
   @IsString()
   avatar?: string;

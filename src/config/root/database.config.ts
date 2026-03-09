@@ -1,4 +1,4 @@
-import { ValidateNested } from 'class-validator';
+import { IsObject, IsOptional, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 import { DevConfig } from './database/dev.config';
 import { ConnectionConfig } from './database/connection.config';
@@ -17,5 +17,7 @@ export class DatabaseConfig {
   @Type(() => OrmConfig)
   orm!: OrmConfig;
 
-  driverOptions?: any;
+  @IsOptional()
+  @IsObject()
+  driverOptions?: Record<string, unknown>;
 }

@@ -1,7 +1,8 @@
-import { Module, DynamicModule } from '@nestjs/common';
+import { Module, DynamicModule, type Provider } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import type { StringValue } from 'ms';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { GoogleStrategy } from './strategies/google.strategy';
 import { FacebookStrategy } from './strategies/facebook.strategy';
@@ -13,7 +14,7 @@ import { AuthController } from './controllers/auth.controller';
 @Module({})
 export class AuthModule {
   static forRoot(): DynamicModule {
-    const providers: any[] = [AuthService, JwtStrategy];
+    const providers: Provider[] = [AuthService, JwtStrategy];
 
     return {
       module: AuthModule,
@@ -28,7 +29,7 @@ export class AuthModule {
             return {
               secret: authConfig?.jwtSecret || 'default-secret',
               signOptions: {
-                expiresIn: (authConfig?.jwtExpiresIn || '1h') as any,
+                expiresIn: (authConfig?.jwtExpiresIn || '1h') as StringValue,
               },
             };
           },
@@ -40,7 +41,7 @@ export class AuthModule {
         {
           provide: 'GOOGLE_STRATEGY',
           useFactory: (config: ConfigService, authService: AuthService) => {
-            const clientId = config.get<string>('GOOGLE_CLIENT_ID');
+            const clientId = config.get<string>('oauth.google.clientId');
             if (clientId) {
               return new GoogleStrategy(config, authService);
             }
@@ -51,7 +52,7 @@ export class AuthModule {
         {
           provide: 'FACEBOOK_STRATEGY',
           useFactory: (config: ConfigService, authService: AuthService) => {
-            const appId = config.get<string>('FACEBOOK_APP_ID');
+            const appId = config.get<string>('oauth.facebook.appId');
             if (appId) {
               return new FacebookStrategy(config, authService);
             }

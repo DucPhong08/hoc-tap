@@ -3,6 +3,7 @@ import * as dotenv from 'dotenv';
 import { plainToInstance } from 'class-transformer';
 import { validateSync } from 'class-validator';
 import { RootConfig } from './root.config';
+import { DatabaseConfig } from './root/database.config';
 
 type ConfigValue =
   | string
@@ -16,6 +17,12 @@ type RawConfig = ConfigObject;
 
 const APP_PREFIX = 'BE' as const;
 const ENV_PREFIX = `${APP_PREFIX}_` as const;
+const DATABASE_SEGMENT_ALIASES: Record<string, string> = {
+  automigrate: 'autoMigrate',
+  autosyncschema: 'autoSyncSchema',
+  pathts: 'pathTs',
+  driveroptions: 'driverOptions',
+};
 
 function toCamelCase(str: string): string {
   return str
@@ -70,6 +77,56 @@ function setArrayValue(
   }
 }
 
+function normalizeDatabasePath(path: string): string {
+  const rawParts = path
+    .split('_')
+    .map((part) => part.toLowerCase())
+    .filter(Boolean);
+
+  if (rawParts.length === 0) {
+    return path.toLowerCase();
+  }
+
+  const [context, ...segments] = rawParts;
+  const normalized: string[] = [];
+
+  for (let i = 0; i < segments.length; i++) {
+    const segment = segments[i];
+
+    if (segment === 'auto' && segments[i + 1] === 'migrate') {
+      normalized.push('autoMigrate');
+      i += 1;
+      continue;
+    }
+
+    if (
+      segment === 'auto' &&
+      segments[i + 1] === 'sync' &&
+      segments[i + 2] === 'schema'
+    ) {
+      normalized.push('autoSyncSchema');
+      i += 2;
+      continue;
+    }
+
+    if (segment === 'path' && segments[i + 1] === 'ts') {
+      normalized.push('pathTs');
+      i += 1;
+      continue;
+    }
+
+    if (segment === 'driver' && segments[i + 1] === 'options') {
+      normalized.push('driverOptions');
+      i += 1;
+      continue;
+    }
+
+    normalized.push(DATABASE_SEGMENT_ALIASES[segment] || segment);
+  }
+
+  return [context, ...normalized].join('.');
+}
+
 function loadEnvironment(env: Record<string, string | undefined>): RawConfig {
   const result: RawConfig = {};
 
@@ -97,8 +154,8 @@ function loadEnvironment(env: Record<string, string | undefined>): RawConfig {
       const topLevelObj = ensureObject(result, topLevel);
 
       if (topLevel === 'databases') {
-        const parts = arrayPath.split('_').map((part) => part.toLowerCase());
-        const path = parts.join('.');
+        const path = normalizeDatabasePath(arrayPath);
+        const parts = path.split('.');
         const existing = getNestedValue(topLevelObj, path);
 
         if (!existing || !Array.isArray(existing)) {
@@ -115,11 +172,19 @@ function loadEnvironment(env: Record<string, string | undefined>): RawConfig {
       const topLevelObj = ensureObject(result, topLevel);
 
       if (topLevel === 'databases') {
-        const path = rest
-          .split('_')
-          .map((part) => part.toLowerCase())
-          .join('.');
+        const path = normalizeDatabasePath(rest);
         set(topLevelObj, path, value);
+      } else if (topLevel === 'oauth') {
+        const [provider, ...rawFieldParts] = rest
+          .split('_')
+          .map((part) => part.toLowerCase());
+
+        if (provider && rawFieldParts.length > 0) {
+          const providerConfig = ensureObject(topLevelObj, provider);
+          providerConfig[toCamelCase(rawFieldParts.join('_'))] = value ?? null;
+        } else {
+          topLevelObj[toCamelCase(rest)] = value ?? null;
+        }
       } else {
         topLevelObj[toCamelCase(rest)] = value ?? null;
       }
@@ -152,6 +217,24 @@ function loadEnvironment(env: Record<string, string | undefined>): RawConfig {
   return result;
 }
 
+function validateDatabaseConfigs(databases?: Record<string, DatabaseConfig>) {
+  if (!databases || Object.keys(databases).length === 0) {
+    throw new Error('At least one database context must be configured');
+  }
+
+  Object.entries(databases).forEach(([contextName, databaseConfig]) => {
+    const errors = validateSync(databaseConfig, {
+      skipMissingProperties: false,
+    });
+
+    if (errors.length > 0) {
+      throw new Error(
+        `Invalid database config for "${contextName}": ${errors.toString()}`,
+      );
+    }
+  });
+}
+
 export default (): RootConfig => {
   dotenv.config();
 
@@ -169,6 +252,8 @@ export default (): RootConfig => {
   if (errors.length > 0) {
     throw new Error(errors.toString());
   }
+
+  validateDatabaseConfigs(validatedConfig.databases);
 
   return validatedConfig;
 };

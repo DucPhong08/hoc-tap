@@ -1,31 +1,42 @@
-export interface OAuthConfig {
-  google: {
-    clientId: string;
-    clientSecret: string;
-    callbackUrl: string;
-  };
-  facebook: {
-    appId: string;
-    appSecret: string;
-    callbackUrl: string;
-  };
+import { Type } from 'class-transformer';
+import { IsOptional, IsString, ValidateNested } from 'class-validator';
+
+export class GoogleOAuthConfig {
+  @IsOptional()
+  @IsString()
+  clientId?: string;
+
+  @IsOptional()
+  @IsString()
+  clientSecret?: string;
+
+  @IsOptional()
+  @IsString()
+  callbackUrl?: string;
 }
 
-export default (): { oauth: OAuthConfig } => ({
-  oauth: {
-    google: {
-      clientId: process.env.GOOGLE_CLIENT_ID || '',
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
-      callbackUrl:
-        process.env.GOOGLE_CALLBACK_URL ||
-        'http://localhost:3000/auth/google/callback',
-    },
-    facebook: {
-      appId: process.env.FACEBOOK_APP_ID || '',
-      appSecret: process.env.FACEBOOK_APP_SECRET || '',
-      callbackUrl:
-        process.env.FACEBOOK_CALLBACK_URL ||
-        'http://localhost:3000/auth/facebook/callback',
-    },
-  },
-});
+export class FacebookOAuthConfig {
+  @IsOptional()
+  @IsString()
+  appId?: string;
+
+  @IsOptional()
+  @IsString()
+  appSecret?: string;
+
+  @IsOptional()
+  @IsString()
+  callbackUrl?: string;
+}
+
+export class OAuthConfig {
+  @ValidateNested()
+  @Type(() => GoogleOAuthConfig)
+  @IsOptional()
+  google?: GoogleOAuthConfig;
+
+  @ValidateNested()
+  @Type(() => FacebookOAuthConfig)
+  @IsOptional()
+  facebook?: FacebookOAuthConfig;
+}

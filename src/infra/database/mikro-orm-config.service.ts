@@ -1,21 +1,19 @@
 import { ConfigService } from '@nestjs/config';
-import { MikroOrmModuleOptions } from '@mikro-orm/nestjs';
+import type { MikroOrmModuleOptions } from '@mikro-orm/nestjs';
 import { PostgreSqlDriver } from '@mikro-orm/postgresql';
 import { MongoDriver } from '@mikro-orm/mongodb';
-import { RootConfig } from 'src/config/root.config';
-// import { MainMigrations } from 'src/modules/database/migrations/main.migrations';
+import type { RootConfig } from '../../config/root.config';
+import type { DatabaseConfig } from '../../config/root/database.config';
+import type { MigrationOrmConfig } from '../../config/root/database/orm/migration.config';
+import { DB_CONTEXTS, type DbContext } from '../../modules/database/constants';
 
 export class MikroOrmConfigService {
   constructor(private readonly configService: ConfigService<RootConfig>) {}
 
-  createMikroOrmOptions(contextName: string = 'main'): MikroOrmModuleOptions {
-    const databases = this.configService.get('databases', { infer: true });
-    if (!databases) throw new Error('Database config not found');
-
-    const dbConfig = databases[contextName];
-    if (!dbConfig)
-      throw new Error(`Database config for context ${contextName} not found`);
-
+  createMikroOrmOptions(
+    contextName: DbContext = DB_CONTEXTS.MAIN,
+  ): MikroOrmModuleOptions {
+    const dbConfig = this.getDatabaseConfig(contextName);
     const { orm, connection, driverOptions, dev } = dbConfig;
     const {
       database,
@@ -26,28 +24,19 @@ export class MikroOrmConfigService {
       password,
     } = connection;
 
-    // Lấy config chung
-    const mode = this.configService.get('mode', { infer: true });
-    const timezone = this.configService.get('app.timezone', { infer: true });
+    const mode =
+      this.configService.get<RootConfig['mode']>('mode') || 'development';
+    const appConfig = this.configService.get<RootConfig['app']>('app');
+    const timezone = appConfig?.timezone;
     const isProduction = mode === 'production';
-
-    const migrationsRaw = orm?.migrations as any;
-    const migrations = migrationsRaw
-      ? {
-          path: migrationsRaw.path,
-          pathTs: migrationsRaw.pathts || migrationsRaw.pathTs,
-        }
-      : undefined;
+    const migrations = this.normalizeMigrationsConfig(orm?.migrations);
 
     const baseConfig: MikroOrmModuleOptions = {
       registerRequestContext: false,
-      allowGlobalContext: true,
+      allowGlobalContext: false,
       dbName: database,
-      debug: !isProduction && (dev?.debug || false),
-      migrations: {
-        ...migrations,
-        // migrationsList: MainMigrations,
-      },
+      debug: !isProduction && dev.debug,
+      ...(migrations ? { migrations } : {}),
       discovery: {
         disableDynamicFileAccess: true,
       },
@@ -58,7 +47,6 @@ export class MikroOrmConfigService {
       },
     };
 
-    // Config theo loại database
     if (dbType === 'postgresql') {
       return {
         ...baseConfig,
@@ -93,6 +81,35 @@ export class MikroOrmConfigService {
       };
     }
 
-    throw new Error(`Unsupported database connection: ${dbType}`);
+    throw new Error('Unsupported database connection');
+  }
+
+  private getDatabaseConfig(contextName: DbContext): DatabaseConfig {
+    const databases =
+      this.configService.get<Record<string, DatabaseConfig>>('databases');
+
+    if (!databases) {
+      throw new Error('Database config not found');
+    }
+
+    const dbConfig = databases[contextName];
+    if (!dbConfig) {
+      throw new Error(`Database config for context "${contextName}" not found`);
+    }
+
+    return dbConfig;
+  }
+
+  private normalizeMigrationsConfig(
+    migrations?: MigrationOrmConfig,
+  ): MikroOrmModuleOptions['migrations'] | undefined {
+    if (!migrations) {
+      return undefined;
+    }
+
+    return {
+      path: migrations.path,
+      pathTs: migrations.pathTs,
+    };
   }
 }

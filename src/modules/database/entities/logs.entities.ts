@@ -1,4 +1,3 @@
-import { Type } from '@nestjs/common';
-// import { AuditLogEntity } from 'src/modules/audit-logs/entities/audit-log.entity';
+export const LOGS_ENTITIES: never[] = [];
 
-export const LogsEntities: Type[] = [];
+export const LogsEntities = LOGS_ENTITIES;

@@ -2,8 +2,9 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
+import type { StringValue } from 'ms';
 import { UserService } from '../../users/services/user.service';
-import { UserEntity } from '../../users/entities/user.entity';
+import { UserModel } from '../../database/models/user.model';
 import { AuthConfig } from '../../../config/root/auth.config';
 import { JwtPayload } from '../strategies/jwt.strategy';
 import { OAuthProfile } from '../interfaces/oauth-profile.interface';
@@ -20,6 +21,11 @@ export interface LoginResponse {
     provider: AuthProvider;
   };
 }
+
+export type AuthTokenUser = Pick<
+  UserModel,
+  '_id' | 'email' | 'firstName' | 'lastName' | 'provider' | 'roles'
+>;
 
 @Injectable()
 export class AuthService {
@@ -77,7 +83,7 @@ export class AuthService {
     return this.generateTokens(user);
   }
 
-  async validateOAuthUser(profile: OAuthProfile): Promise<UserEntity> {
+  async validateOAuthUser(profile: OAuthProfile): Promise<UserModel> {
     let user = await this.userService.getOneOrNull(null, {
       provider: profile.provider,
       providerId: profile.providerId,
@@ -89,7 +95,7 @@ export class AuthService {
       });
 
       if (user) {
-        user = await this.userService.updateById(null, user._id.toString(), {
+        user = await this.userService.updateById(null, this.getUserId(user), {
           provider: profile.provider,
           providerId: profile.providerId,
           avatar: profile.avatar,
@@ -129,11 +135,12 @@ export class AuthService {
     }
   }
 
-  generateTokens(user: any): LoginResponse {
+  generateTokens(user: AuthTokenUser): LoginResponse {
     const authConfig = this.configService.get<AuthConfig>('auth');
+    const userId = this.getUserId(user);
 
     const payload: JwtPayload = {
-      sub: user._id,
+      sub: userId,
       email: user.email,
       roles: user.roles || ['user'],
     };
@@ -142,19 +149,23 @@ export class AuthService {
 
     const refreshToken = this.jwtService.sign(payload, {
       secret: authConfig?.jwtRefreshSecret || 'default-refresh-secret',
-      expiresIn: (authConfig?.jwtRefreshExpiresIn || '7d') as any,
+      expiresIn: (authConfig?.jwtRefreshExpiresIn || '7d') as StringValue,
     });
 
     return {
       accessToken,
       refreshToken,
       user: {
-        id: user._id,
+        id: userId,
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
         provider: user.provider || AuthProvider.LOCAL,
       },
     };
+  }
+
+  private getUserId(user: Pick<AuthTokenUser, '_id'>): string {
+    return typeof user._id === 'string' ? user._id : user._id.toString();
   }
 }

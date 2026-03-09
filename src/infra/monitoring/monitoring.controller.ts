@@ -55,7 +55,10 @@ export class MonitoringController {
         logs: recent,
       };
     } catch (error) {
-      return { error: 'Failed to read logs', message: error.message };
+      return {
+        error: 'Failed to read logs',
+        message: this.getErrorMessage(error),
+      };
     }
   }
 
@@ -78,7 +81,10 @@ export class MonitoringController {
         logs: recent,
       };
     } catch (error) {
-      return { error: 'Failed to read error logs', message: error.message };
+      return {
+        error: 'Failed to read error logs',
+        message: this.getErrorMessage(error),
+      };
     }
   }
 
@@ -101,7 +107,10 @@ export class MonitoringController {
         logs: recent,
       };
     } catch (error) {
-      return { error: 'Failed to read cluster logs', message: error.message };
+      return {
+        error: 'Failed to read cluster logs',
+        message: this.getErrorMessage(error),
+      };
     }
   }
 
@@ -136,5 +145,9 @@ export class MonitoringController {
         nodeVersion: process.version,
       },
     };
+  }
+
+  private getErrorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : 'Unknown error';
   }
 }

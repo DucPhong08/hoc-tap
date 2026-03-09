@@ -1,4 +1,4 @@
-import { IsIn, IsString, ValidateNested } from 'class-validator';
+import { IsIn, IsOptional, IsString, ValidateNested } from 'class-validator';
 import { Type, Transform, plainToInstance } from 'class-transformer';
 import { HostConfig } from './root/host.config';
 import { CorsConfig } from './root/cors.config';
@@ -9,6 +9,7 @@ import { ValidationConfig } from './root/validation.config';
 import { AuthConfig } from './root/auth.config';
 import { CacheConfig } from './root/cache.config';
 import { ClusterConfig } from './root/cluster.config';
+import { OAuthConfig } from './root/oauth.config';
 
 export class RootConfig {
   @IsString()
@@ -36,6 +37,11 @@ export class RootConfig {
   auth!: AuthConfig;
 
   @ValidateNested()
+  @Type(() => OAuthConfig)
+  @IsOptional()
+  oauth?: OAuthConfig;
+
+  @ValidateNested()
   @Type(() => CacheConfig)
   cache!: CacheConfig;
 
@@ -44,11 +50,14 @@ export class RootConfig {
   cluster!: ClusterConfig;
 
   @Transform(({ value }) => {
-    if (!value || typeof value !== 'object') return value;
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      return {};
+    }
     const result: Record<string, DatabaseConfig> = {};
-    for (const key in value) {
-      if (value.hasOwnProperty(key)) {
-        result[key] = plainToInstance(DatabaseConfig, value[key], {
+    const rawValue = value as Record<string, unknown>;
+    for (const key in rawValue) {
+      if (Object.prototype.hasOwnProperty.call(rawValue, key)) {
+        result[key] = plainToInstance(DatabaseConfig, rawValue[key], {
           enableImplicitConversion: true,
         });
       }
@@ -57,7 +66,7 @@ export class RootConfig {
   })
   databases!: Record<string, DatabaseConfig>;
 
-  @ValidateNested({ each: true })
+  @ValidateNested()
   @Type(() => CorsConfig)
   cors!: CorsConfig;
 }

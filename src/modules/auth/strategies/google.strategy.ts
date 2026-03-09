@@ -1,6 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
-import { Strategy, VerifyCallback } from 'passport-google-oauth20';
+import {
+  Strategy,
+  VerifyCallback,
+  type Profile,
+} from 'passport-google-oauth20';
 import { ConfigService } from '@nestjs/config';
 import { AuthService } from '../services/auth.service';
 import { AuthProvider } from '../enums/auth-provider.enum';
@@ -12,31 +16,45 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
     private authService: AuthService,
   ) {
     super({
-      clientID: configService.get<string>('GOOGLE_CLIENT_ID') || '',
-      clientSecret: configService.get<string>('GOOGLE_CLIENT_SECRET') || '',
-      callbackURL: configService.get<string>('GOOGLE_CALLBACK_URL') || '',
+      clientID: configService.get<string>('oauth.google.clientId') || '',
+      clientSecret:
+        configService.get<string>('oauth.google.clientSecret') || '',
+      callbackURL: configService.get<string>('oauth.google.callbackUrl') || '',
       scope: ['email', 'profile'],
     });
   }
 
   async validate(
-    accessToken: string,
-    refreshToken: string,
-    profile: any,
+    _accessToken: string,
+    _refreshToken: string,
+    profile: Profile,
     done: VerifyCallback,
-  ): Promise<any> {
+  ): Promise<void> {
     const { id, emails, name, photos } = profile;
+    const email = emails?.[0]?.value;
+
+    if (!email) {
+      done(
+        new UnauthorizedException('Tài khoản Google không cung cấp email'),
+        undefined,
+      );
+      return;
+    }
 
     const oauthProfile = {
       provider: AuthProvider.GOOGLE,
       providerId: id,
-      email: emails[0].value,
-      firstName: name.givenName,
-      lastName: name.familyName,
+      email,
+      firstName: name?.givenName || '',
+      lastName: name?.familyName || '',
       avatar: photos?.[0]?.value,
     };
 
-    const user = await this.authService.validateOAuthUser(oauthProfile);
-    done(null, user);
+    try {
+      const user = await this.authService.validateOAuthUser(oauthProfile);
+      done(null, user);
+    } catch (error) {
+      done(error as Error, undefined);
+    }
   }
 }

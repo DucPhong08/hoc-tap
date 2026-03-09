@@ -1,17 +1,15 @@
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import type { RedisClientType } from 'redis';
 import { CacheStrategy, CacheConfig } from './cache.interface';
-
-type RedisClientType = any;
 
 @Injectable()
 export class RedisCacheService
   implements CacheStrategy, OnModuleInit, OnModuleDestroy
 {
-  // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
   private client: RedisClientType | null = null;
-  private config: CacheConfig;
-  private tagPrefix = 'tag:';
+  private readonly config: CacheConfig;
+  private readonly tagPrefix = 'tag:';
   private isConnected = false;
 
   constructor(private configService: ConfigService) {
@@ -22,16 +20,16 @@ export class RedisCacheService
     };
   }
 
-  async onModuleInit() {
+  async onModuleInit(): Promise<void> {
     if (this.config.enabled) {
       await this.initRedis();
     }
   }
 
-  private async initRedis() {
+  private async initRedis(): Promise<void> {
     try {
       // Dynamically import redis only if cache is enabled
-      const redis = await import('redis');
+      const { createClient } = await import('redis');
       const redisConfig = this.config?.redis;
 
       if (!redisConfig) {
@@ -39,7 +37,7 @@ export class RedisCacheService
         return;
       }
 
-      this.client = redis.createClient({
+      this.client = createClient({
         socket: {
           host: redisConfig.host,
           port: redisConfig.port,
@@ -48,12 +46,16 @@ export class RedisCacheService
         database: redisConfig.db || 0,
       });
 
-      this.client.on('error', (err: Error) =>
-        console.error('Redis error:', err),
-      );
+      this.client.on('error', (err: unknown) => {
+        this.isConnected = false;
+        console.error('Redis error:', err);
+      });
       this.client.on('connect', () => {
         console.log('Redis connected');
         this.isConnected = true;
+      });
+      this.client.on('end', () => {
+        this.isConnected = false;
       });
 
       await this.client.connect();
@@ -73,7 +75,11 @@ export class RedisCacheService
 
     try {
       const data = await this.client.get(this.getKey(key));
-      return data ? JSON.parse(data) : null;
+      if (data === null) {
+        return null;
+      }
+
+      return JSON.parse(data) as T;
     } catch (error) {
       console.error('Cache get error:', error);
       return null;
@@ -85,7 +91,7 @@ export class RedisCacheService
 
     try {
       const cacheKey = this.getKey(key);
-      const expiry = ttl || this.config.ttl;
+      const expiry = ttl ?? this.config.ttl;
 
       await this.client.setEx(cacheKey, expiry, JSON.stringify(value));
     } catch (error) {
@@ -178,14 +184,17 @@ export class RedisCacheService
     }
   }
 
-  async onModuleDestroy() {
-    if (this.client && this.isConnected) {
-      try {
-        await this.client.quit();
-        console.log('Redis disconnected');
-      } catch (error) {
-        console.error('Error disconnecting Redis:', error);
-      }
+  async onModuleDestroy(): Promise<void> {
+    if (!this.client) {
+      return;
+    }
+
+    try {
+      await this.client.quit();
+      this.isConnected = false;
+      console.log('Redis disconnected');
+    } catch (error) {
+      console.error('Error disconnecting Redis:', error);
     }
   }
 }

@@ -1,11 +1,18 @@
-import { Global, Module } from '@nestjs/common';
+import {
+  Global,
+  Module,
+  type NestModule,
+  type MiddlewareConsumer,
+  RequestMethod,
+} from '@nestjs/common';
 import { MikroOrmModule } from '@mikro-orm/nestjs';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MikroOrmConfigService } from './mikro-orm-config.service';
 import { MigrationService } from './migration.service';
+import { MikroOrmRequestContextMiddleware } from './mikro-orm-request-context.middleware';
 import { RootConfig } from '../../config/root.config';
-import { MainEntities } from '../../modules/database/entities/main.entities';
-import { DB_CONTEXTS } from 'src/modules/database/constants';
+import { MAIN_ENTITIES } from '../../modules/database/entities/main.entities';
+import { DB_CONTEXTS } from '../../modules/database/constants';
 
 @Global()
 @Module({
@@ -18,17 +25,23 @@ import { DB_CONTEXTS } from 'src/modules/database/constants';
         const config = ormConfigService.createMikroOrmOptions(DB_CONTEXTS.MAIN);
         return {
           ...config,
-          entities: MainEntities,
+          entities: MAIN_ENTITIES,
         };
       },
       contextName: DB_CONTEXTS.MAIN,
     }),
     MikroOrmModule.forFeature({
-      entities: MainEntities,
+      entities: MAIN_ENTITIES,
       contextName: DB_CONTEXTS.MAIN,
     }),
   ],
-  providers: [MigrationService],
+  providers: [MigrationService, MikroOrmRequestContextMiddleware],
   exports: [MikroOrmModule],
 })
-export class OrmMikroModule {}
+export class OrmMikroModule implements NestModule {
+  configure(consumer: MiddlewareConsumer): void {
+    consumer
+      .apply(MikroOrmRequestContextMiddleware)
+      .forRoutes({ path: '*path', method: RequestMethod.ALL });
+  }
+}
