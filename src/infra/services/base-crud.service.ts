@@ -43,6 +43,17 @@ export abstract class BaseCrudService<
     this.transaction = config?.transaction;
   }
 
+  protected ensureFound<T>(value: T | null, message: string): T {
+    if (!value) {
+      throw new NotFoundException(message);
+    }
+    return value;
+  }
+
+  protected idNotFoundMessage(id: string): string {
+    return `${this.notFoundMessage} với ID: ${id}`;
+  }
+
   async create(
     user: UserContext,
     dto: Partial<E>,
@@ -69,12 +80,7 @@ export abstract class BaseCrudService<
     query?: GetByIdQuery<E> & BaseQueryOption<TContext>,
   ): Promise<E> {
     const entity = await this.repository.getById(id, query);
-
-    if (!entity) {
-      throw new NotFoundException(`${this.notFoundMessage} với ID: ${id}`);
-    }
-
-    return entity;
+    return this.ensureFound(entity, this.idNotFoundMessage(id));
   }
 
   async getByIdOrNull(
@@ -91,12 +97,7 @@ export abstract class BaseCrudService<
     query?: GetOneQuery<E> & BaseQueryOption<TContext>,
   ): Promise<E> {
     const entity = await this.repository.getOne(condition, query);
-
-    if (!entity) {
-      throw new NotFoundException(this.notFoundMessage);
-    }
-
-    return entity;
+    return this.ensureFound(entity, this.notFoundMessage);
   }
 
   async getOneOrNull(
@@ -131,12 +132,7 @@ export abstract class BaseCrudService<
   ): Promise<E> {
     return this.executeWithTransaction(query, async (txQuery) => {
       const entity = await this.repository.updateById(id, update, txQuery);
-
-      if (!entity) {
-        throw new NotFoundException(`${this.notFoundMessage} với ID: ${id}`);
-      }
-
-      return entity;
+      return this.ensureFound(entity, this.idNotFoundMessage(id));
     });
   }
 
@@ -152,12 +148,7 @@ export abstract class BaseCrudService<
         update,
         txQuery,
       );
-
-      if (!entity) {
-        throw new NotFoundException(this.notFoundMessage);
-      }
-
-      return entity;
+      return this.ensureFound(entity, this.notFoundMessage);
     });
   }
 
@@ -193,12 +184,7 @@ export abstract class BaseCrudService<
   ): Promise<E> {
     return this.executeWithTransaction(query, async (txQuery) => {
       const entity = await this.repository.deleteById(id, txQuery);
-
-      if (!entity) {
-        throw new NotFoundException(`${this.notFoundMessage} với ID: ${id}`);
-      }
-
-      return entity;
+      return this.ensureFound(entity, this.idNotFoundMessage(id));
     });
   }
 
@@ -209,12 +195,7 @@ export abstract class BaseCrudService<
   ): Promise<E> {
     return this.executeWithTransaction(query, async (txQuery) => {
       const entity = await this.repository.deleteOne(condition, txQuery);
-
-      if (!entity) {
-        throw new NotFoundException(this.notFoundMessage);
-      }
-
-      return entity;
+      return this.ensureFound(entity, this.notFoundMessage);
     });
   }
 
@@ -261,7 +242,7 @@ export abstract class BaseCrudService<
     callback: (txQuery: BaseCommandOption<TContext>) => Promise<T>,
   ): Promise<T> {
     const hasExternalTransaction = Boolean(query?.transaction);
-    const txQuery = query || {};
+    const txQuery: BaseCommandOption<TContext> = { ...(query ?? {}) };
 
     if (!hasExternalTransaction && this.transaction) {
       txQuery.transaction = await this.transaction.startTransaction();

@@ -23,7 +23,7 @@ import {
 export abstract class CachedBaseRepository<
   E extends BaseEntity,
 > extends MikroOrmBaseRepository<E> {
-  protected defaultCacheTtl = 300; // 5 minutes
+  protected defaultCacheTtl = 300;
 
   constructor(
     protected readonly em: EntityManager,
@@ -43,101 +43,76 @@ export abstract class CachedBaseRepository<
     return Boolean(query?.transaction);
   }
 
+  private async readThroughCache<TResult>(
+    cacheKey: string,
+    query: BaseQueryOption<unknown> | undefined,
+    tags: string[],
+    fetcher: () => Promise<TResult>,
+  ): Promise<TResult> {
+    if (this.hasTransaction(query)) {
+      return fetcher();
+    }
+
+    const cached = await this.cacheService.get<TResult>(cacheKey);
+    if (cached !== null && cached !== undefined) {
+      return cached;
+    }
+
+    const fresh = await fetcher();
+    if (fresh !== null && fresh !== undefined) {
+      await this.cacheService.setWithTags(
+        cacheKey,
+        fresh,
+        tags,
+        this.defaultCacheTtl,
+      );
+    }
+
+    return fresh;
+  }
+
   async getById(
     id: string,
     query?: GetByIdQuery<E> & BaseQueryOption<unknown>,
   ): Promise<E | null> {
-    if (this.hasTransaction(query)) {
-      return super.getById(id, query);
-    }
-
     const cacheKey = this.getCacheKey('id', id, query);
-
-    const cached = await this.cacheService.get<E>(cacheKey);
-    if (cached) return cached;
-
-    const entity = await super.getById(id, query);
-    if (entity) {
-      await this.cacheService.setWithTags(
-        cacheKey,
-        entity,
-        [this.entityName, `${this.entityName}:${id}`],
-        this.defaultCacheTtl,
-      );
-    }
-    return entity;
+    return this.readThroughCache(
+      cacheKey,
+      query,
+      [this.entityName, `${this.entityName}:${id}`],
+      () => super.getById(id, query),
+    );
   }
 
   async getOne(
     condition: QueryCondition<E>,
     query?: GetOneQuery<E> & BaseQueryOption<unknown>,
   ): Promise<E | null> {
-    if (this.hasTransaction(query)) {
-      return super.getOne(condition, query);
-    }
-
     const cacheKey = this.getCacheKey('one', condition, query);
-
-    const cached = await this.cacheService.get<E>(cacheKey);
-    if (cached) return cached;
-
-    const entity = await super.getOne(condition, query);
-    if (entity) {
-      await this.cacheService.setWithTags(
-        cacheKey,
-        entity,
-        [this.entityName],
-        this.defaultCacheTtl,
-      );
-    }
-    return entity;
+    return this.readThroughCache(cacheKey, query, [this.entityName], () =>
+      super.getOne(condition, query),
+    );
   }
 
   async getMany(
     condition: QueryCondition<E>,
     query?: GetManyQuery<E> & BaseQueryOption<unknown>,
   ): Promise<E[]> {
-    if (this.hasTransaction(query)) {
-      return super.getMany(condition, query);
-    }
-
     const cacheKey = this.getCacheKey('many', condition, query);
-
-    const cached = await this.cacheService.get<E[]>(cacheKey);
-    if (cached) return cached;
-
-    const entities = await super.getMany(condition, query);
-    await this.cacheService.setWithTags(
-      cacheKey,
-      entities,
-      [this.entityName],
-      this.defaultCacheTtl,
+    return this.readThroughCache(cacheKey, query, [this.entityName], () =>
+      super.getMany(condition, query),
     );
-    return entities;
   }
 
   async getPage(
     condition: QueryCondition<E>,
     query: GetPageQuery<E> & BaseQueryOption<unknown>,
   ): Promise<PaginationResult<E>> {
-    if (this.hasTransaction(query)) {
-      return super.getPage(condition, query);
-    }
-
     const { page, limit } = query;
     const cacheKey = this.getCacheKey('page', condition, page, limit, query);
-
-    const cached = await this.cacheService.get<PaginationResult<E>>(cacheKey);
-    if (cached) return cached;
-
-    const result = await super.getPage(condition, query);
-    await this.cacheService.setWithTags(
-      cacheKey,
-      result,
-      [this.entityName],
-      this.defaultCacheTtl,
+    return this.readThroughCache(cacheKey, query, [this.entityName], () =>
+      super.getPage(condition, query),
     );
-    return result;
   }
 
   async create(
@@ -163,23 +138,10 @@ export abstract class CachedBaseRepository<
     condition?: QueryCondition<E>,
     query?: BaseQueryOption<unknown>,
   ): Promise<E[K][]> {
-    if (this.hasTransaction(query)) {
-      return super.distinct(field, condition, query);
-    }
-
     const cacheKey = this.getCacheKey('distinct', field, condition, query);
-
-    const cached = await this.cacheService.get<E[K][]>(cacheKey);
-    if (cached) return cached;
-
-    const values = await super.distinct(field, condition, query);
-    await this.cacheService.setWithTags(
-      cacheKey,
-      values,
-      [this.entityName],
-      this.defaultCacheTtl,
+    return this.readThroughCache(cacheKey, query, [this.entityName], () =>
+      super.distinct(field, condition, query),
     );
-    return values;
   }
 
   async updateById(

@@ -1,102 +1,64 @@
 import { FilterQuery } from '@mikro-orm/core';
 import type { QueryCondition } from '../../../common/interfaces/query';
 
-/**
- * Options for building filters
- */
 export interface FilterBuildOptions {
   withDeleted?: boolean;
 }
 
-/**
- * Filter Builder - Converts QueryCondition to MikroORM FilterQuery
- */
+const LOGICAL_OPERATORS = new Set(['$and', '$or', '$not']);
+const OPERATOR_ALIASES: Record<string, string> = { $regex: '$re' };
+
+const isPlainObject = (value: unknown): value is Record<string, unknown> => {
+  return (
+    Boolean(value) &&
+    typeof value === 'object' &&
+    !Array.isArray(value) &&
+    !(value instanceof Date)
+  );
+};
+
 export class FilterBuilder {
-  /**
-   * Build MikroORM FilterQuery from QueryCondition
-   * @param condition - Query condition to convert
-   * @param options - Optional build options (e.g., withDeleted)
-   */
   static build<E>(
     condition: QueryCondition<E>,
     options?: FilterBuildOptions,
   ): FilterQuery<E> {
-    const filter: any = {};
+    const source = (condition ?? {}) as Record<string, unknown>;
+    const filter: Record<string, unknown> = {};
 
-    for (const [key, value] of Object.entries(condition)) {
-      // Handle logical operators
-      if (key === '$and' || key === '$or' || key === '$not') {
+    for (const [key, value] of Object.entries(source)) {
+      if (LOGICAL_OPERATORS.has(key)) {
         if (Array.isArray(value)) {
-          filter[key] = value.map((c) => FilterBuilder.build(c, options));
+          filter[key] = value.map((item) =>
+            FilterBuilder.build(item as QueryCondition<E>, options),
+          );
         } else {
-          filter[key] = FilterBuilder.build(value, options);
+          filter[key] = FilterBuilder.build(
+            (value ?? {}) as QueryCondition<E>,
+            options,
+          );
         }
         continue;
       }
 
-      // Handle field conditions
-      if (
-        value &&
-        typeof value === 'object' &&
-        !Array.isArray(value) &&
-        !(value instanceof Date)
-      ) {
-        const operators: any = {};
-
-        for (const [op, val] of Object.entries(value)) {
-          switch (op) {
-            case '$eq':
-              filter[key] = val;
-              break;
-            case '$ne':
-              operators.$ne = val;
-              break;
-            case '$gt':
-              operators.$gt = val;
-              break;
-            case '$gte':
-              operators.$gte = val;
-              break;
-            case '$lt':
-              operators.$lt = val;
-              break;
-            case '$lte':
-              operators.$lte = val;
-              break;
-            case '$in':
-              operators.$in = val;
-              break;
-            case '$nin':
-              operators.$nin = val;
-              break;
-            case '$like':
-              operators.$like = val;
-              break;
-            case '$ilike':
-              operators.$ilike = val;
-              break;
-            case '$re':
-            case '$regex':
-              operators.$re = val;
-              break;
-            case '$exists':
-              operators.$exists = val;
-              break;
-            default:
-              operators[op] = val;
-          }
-        }
-
-        if (Object.keys(operators).length > 0) {
-          filter[key] = operators;
-        }
-      } else {
-        // Direct value
+      if (!isPlainObject(value)) {
         filter[key] = value;
+        continue;
       }
+
+      const operators: Record<string, unknown> = {};
+      for (const [rawOperator, operatorValue] of Object.entries(value)) {
+        if (rawOperator === '$eq') {
+          filter[key] = operatorValue;
+          continue;
+        }
+
+        const normalizedOperator = OPERATOR_ALIASES[rawOperator] ?? rawOperator;
+        operators[normalizedOperator] = operatorValue;
+      }
+
+      filter[key] = Object.keys(operators).length > 0 ? operators : value;
     }
 
-    // Add soft delete filter: exclude deleted records unless withDeleted is true
     if (!options?.withDeleted) {
       filter.deletedAt = null;
     }

@@ -31,10 +31,6 @@ import type {
 } from '../../common/interfaces/repository.interface';
 import { FilterBuilder, OptionsBuilder, UpdateHelper } from './mikro-orm';
 
-type MongoCollectionLike = {
-  distinct: (field: string, filter?: unknown) => Promise<unknown[]>;
-};
-
 type RepositoryQueryContext<T> = BaseQueryOption<T> | BaseCommandOption<T>;
 
 export abstract class MikroOrmBaseRepository<
@@ -48,20 +44,6 @@ export abstract class MikroOrmBaseRepository<
 
   protected get entityName(): string {
     return this.repository.getEntityName();
-  }
-
-  private isMongoDriver(em: EntityManager): boolean {
-    return em.getDriver().constructor.name.includes('Mongo');
-  }
-
-  private createSqlQueryBuilder(em: EntityManager, entityName: string) {
-    if (this.isMongoDriver(em)) {
-      throw new Error('createQueryBuilder is not supported for MongoDB driver');
-    }
-
-    return (
-      em as unknown as { createQueryBuilder(name: string): any }
-    ).createQueryBuilder(entityName);
   }
 
   private isTransactionEntityManager(value: unknown): value is EntityManager {
@@ -124,31 +106,8 @@ export abstract class MikroOrmBaseRepository<
 
     const populateOptions = OptionsBuilder.buildPopulate(populate);
     if (populateOptions) {
-      await em.populate(entity, populateOptions);
+      await em.populate(entity, populateOptions as any);
     }
-  }
-
-  private isOperatorUpdate(data: UpdateData<E>): boolean {
-    if (!data || typeof data !== 'object') {
-      return false;
-    }
-
-    const updateDoc = data as Record<string, unknown>;
-    return ['$set', '$inc', '$unset', '$push', '$pull'].some(
-      (operator) => operator in updateDoc,
-    );
-  }
-
-  private getNativeUpdatePayload(data: UpdateData<E>): EntityData<E> | null {
-    if (this.isOperatorUpdate(data)) {
-      return null;
-    }
-
-    return data as EntityData<E>;
-  }
-
-  private findByIdCondition(id: string): QueryCondition<E> {
-    return { _id: id } as unknown as QueryCondition<E>;
   }
 
   private async findOneForWrite(
@@ -158,27 +117,8 @@ export abstract class MikroOrmBaseRepository<
     return repository.findOne(this.buildFilter(condition));
   }
 
-  private getMongoCollection(
-    em: EntityManager,
-    repository: EntityRepository<E>,
-  ): MongoCollectionLike {
-    const repoLike = repository as unknown as {
-      getCollection?: () => MongoCollectionLike;
-    };
-
-    if (typeof repoLike.getCollection === 'function') {
-      return repoLike.getCollection();
-    }
-
-    const driverLike = em.getDriver() as unknown as {
-      getCollection?: (name: string) => MongoCollectionLike;
-    };
-
-    if (typeof driverLike.getCollection === 'function') {
-      return driverLike.getCollection(this.entityName);
-    }
-
-    throw new Error('Mongo collection is not available');
+  private byIdCondition(id: string): QueryCondition<E> {
+    return { _id: id } as unknown as QueryCondition<E>;
   }
 
   async create(
@@ -207,10 +147,7 @@ export abstract class MikroOrmBaseRepository<
     query?: GetByIdQuery<E> & BaseQueryOption<T>,
   ): Promise<E | null> {
     const { repository } = this.getContext(query);
-    const filter = this.buildFilter(
-      { _id: id } as unknown as QueryCondition<E>,
-      query?.withDeleted,
-    );
+    const filter = this.buildFilter(this.byIdCondition(id), query?.withDeleted);
 
     return repository.findOne(
       filter,
@@ -275,7 +212,7 @@ export abstract class MikroOrmBaseRepository<
     const { em, repository } = this.getContext(query);
     const entity = await this.findOneForWrite(
       repository,
-      this.findByIdCondition(id),
+      this.byIdCondition(id),
     );
     if (!entity) {
       return null;
@@ -311,10 +248,19 @@ export abstract class MikroOrmBaseRepository<
   ): Promise<UpdateManyResult> {
     const { em, repository } = this.getContext(query);
     const filter = this.buildFilter(condition);
-    const nativePayload = this.getNativeUpdatePayload(data);
+    const updateDoc = data as Record<string, unknown>;
+    const hasOperators =
+      data &&
+      typeof data === 'object' &&
+      ['$set', '$inc', '$unset', '$push', '$pull'].some(
+        (operator) => operator in updateDoc,
+      );
 
-    if (nativePayload) {
-      const affected = await repository.nativeUpdate(filter, nativePayload);
+    if (!hasOperators) {
+      const affected = await repository.nativeUpdate(
+        filter,
+        data as EntityData<E>,
+      );
       return { affected };
     }
 
@@ -332,7 +278,7 @@ export abstract class MikroOrmBaseRepository<
     const { em, repository } = this.getContext(query);
     const entity = await this.findOneForWrite(
       repository,
-      this.findByIdCondition(id),
+      this.byIdCondition(id),
     );
     if (!entity) {
       return null;
@@ -399,9 +345,7 @@ export abstract class MikroOrmBaseRepository<
     condition: QueryCondition<E>,
     query?: ExistsQuery & BaseQueryOption<T>,
   ): Promise<boolean> {
-    const { repository } = this.getContext(
-      query as BaseQueryOption<T> | undefined,
-    );
+    const { repository } = this.getContext(query);
     const filter = this.buildFilter(condition, query?.withDeleted);
 
     const entity = await repository.findOne(filter, {
@@ -420,16 +364,42 @@ export abstract class MikroOrmBaseRepository<
     const { em, repository } = this.getContext(query);
     const filter = this.buildFilter(condition, query?.withDeleted);
 
-    if (!this.isMongoDriver(em)) {
-      const qb = this.createSqlQueryBuilder(em, this.entityName)
-        .select(field as string, true)
-        .where(filter);
+    const isMongo = em.getDriver().constructor.name.includes('Mongo');
+    if (!isMongo) {
+      const qb = (
+        em as unknown as { createQueryBuilder(name: string): any }
+      ).createQueryBuilder(this.entityName);
+      qb.select(field as string, true).where(filter);
 
       const rows = await qb.execute();
       return rows.map((row: any) => row[field as string] as E[K]);
     }
 
-    const collection = this.getMongoCollection(em, repository);
+    const repoLike = repository as unknown as {
+      getCollection?: () => {
+        distinct: (
+          distinctField: string,
+          distinctFilter?: unknown,
+        ) => Promise<unknown[]>;
+      };
+    };
+    const collection =
+      repoLike.getCollection?.() ??
+      (
+        em.getDriver() as unknown as {
+          getCollection?: (name: string) => {
+            distinct: (
+              distinctField: string,
+              distinctFilter?: unknown,
+            ) => Promise<unknown[]>;
+          };
+        }
+      ).getCollection?.(this.entityName);
+
+    if (!collection) {
+      throw new Error('Mongo collection is not available');
+    }
+
     const values = await collection.distinct(field as string, filter);
     return values as E[K][];
   }

@@ -1,90 +1,82 @@
 import { FindOptions } from '@mikro-orm/core';
-import type { PopulateOptions } from '../../../common/interfaces/query';
+import type {
+  PopulateInput,
+  PopulateOptions,
+} from '../../../common/interfaces/query';
 
-/**
- * Options Builder - Converts Query options to MikroORM FindOptions
- */
+type ReadQueryOptions<E> = {
+  select?: (keyof E)[];
+  populate?: PopulateInput;
+  sort?: Partial<Record<keyof E, 1 | -1>>;
+  limit?: number;
+  offset?: number;
+  withDeleted?: boolean;
+};
+
+type BuiltPopulate = Array<
+  | string
+  | {
+      field: string;
+      fields?: string[];
+      children?: BuiltPopulate;
+      orderBy?: Record<string, 1 | -1>;
+      limit?: number;
+    }
+>;
+
 export class OptionsBuilder {
-  /**
-   * Build MikroORM FindOptions from Query
-   */
-  static build<E>(query?: any): FindOptions<E> {
-    if (!query) return {};
+  static build<E>(query?: ReadQueryOptions<E>): FindOptions<E> {
+    if (!query) {
+      return {};
+    }
 
     const findOptions: FindOptions<E> = {};
 
-    // Select fields
     if (query.select) {
-      findOptions.fields = query.select;
+      findOptions.fields = query.select as any;
     }
 
-    // Populate (JOIN)
-    if (query.populate) {
-      findOptions.populate = OptionsBuilder.buildPopulate(query.populate);
+    const populate = OptionsBuilder.buildPopulate(query.populate);
+    if (populate) {
+      findOptions.populate = populate as any;
     }
 
-    // Sort
     if (query.sort) {
-      findOptions.orderBy = query.sort;
+      findOptions.orderBy = query.sort as any;
     }
 
-    // Limit
     if (query.limit !== undefined) {
       findOptions.limit = query.limit;
     }
 
-    // Offset
     if (query.offset !== undefined) {
       findOptions.offset = query.offset;
     }
 
-    // Soft delete filter
-    if (query.withDeleted === true) {
+    if (query.withDeleted) {
       findOptions.filters = false as any;
     }
 
     return findOptions;
   }
 
-  /**
-   * Build populate array from PopulateInput
-   */
-  static buildPopulate(populate: any): any {
-    if (!populate) return undefined;
-
-    // Simple array: ['user', 'items.product']
-    if (Array.isArray(populate)) {
-      // Check if it's array of strings or PopulateOptions
-      if (populate.length === 0) return undefined;
-
-      if (typeof populate[0] === 'string') {
-        return populate;
-      }
-
-      // Array of PopulateOptions
-      return populate.map((p: PopulateOptions) => {
-        const result: any = { field: p.path };
-
-        if (p.select) {
-          result.fields = p.select;
-        }
-
-        if (p.populate) {
-          result.children = OptionsBuilder.buildPopulate(p.populate);
-        }
-
-        if (p.sort) {
-          result.orderBy = p.sort;
-        }
-
-        if (p.limit) {
-          result.limit = p.limit;
-        }
-
-        return result;
-      });
+  static buildPopulate(populate?: PopulateInput): BuiltPopulate | undefined {
+    if (!populate || populate.length === 0) {
+      return undefined;
     }
 
-    return populate;
+    if (typeof populate[0] === 'string') {
+      return populate as string[];
+    }
+
+    return (populate as PopulateOptions[]).map((item) => ({
+      field: item.path,
+      ...(item.select ? { fields: item.select } : {}),
+      ...(item.populate
+        ? { children: OptionsBuilder.buildPopulate(item.populate) }
+        : {}),
+      ...(item.sort ? { orderBy: item.sort } : {}),
+      ...(item.limit !== undefined ? { limit: item.limit } : {}),
+    }));
   }
 }

@@ -1,71 +1,79 @@
 import { wrap } from '@mikro-orm/core';
 import type { UpdateData } from '../../../common/interfaces/query';
 
-/**
- * Update Helper - Applies update operations to entity
- */
+const UPDATE_OPERATOR_KEYS = ['$set', '$inc', '$unset', '$push', '$pull'];
+
+const isObjectRecord = (value: unknown): value is Record<string, unknown> => {
+  return Boolean(value) && typeof value === 'object';
+};
+
 export class UpdateHelper {
-  /**
-   * Apply update operations to entity
-   */
+  private static hasOperators<E>(data: UpdateData<E>): boolean {
+    if (!isObjectRecord(data)) {
+      return false;
+    }
+
+    return UPDATE_OPERATOR_KEYS.some((key) => key in data);
+  }
+
   static apply<E extends object>(entity: E, data: UpdateData<E>): void {
-    // Check if it's operator-based update
-    if (typeof data === 'object' && data !== null) {
-      // $set operator
-      if ('$set' in data && data.$set) {
-        wrap(entity).assign(data.$set as any);
-      }
-
-      // $inc operator (increment)
-      if ('$inc' in data && data.$inc) {
-        for (const [key, value] of Object.entries(data.$inc)) {
-          if (typeof entity[key] === 'number' && typeof value === 'number') {
-            (entity as any)[key] += value;
-          }
-        }
-      }
-
-      // $unset operator (remove field)
-      if ('$unset' in data && data.$unset) {
-        for (const key of Object.keys(data.$unset)) {
-          (entity as any)[key] = null;
-        }
-      }
-
-      // $push operator (add to array)
-      if ('$push' in data && data.$push) {
-        for (const [key, value] of Object.entries(data.$push)) {
-          if (Array.isArray(entity[key])) {
-            (entity as any)[key].push(value);
-          }
-        }
-      }
-
-      // $pull operator (remove from array)
-      if ('$pull' in data && data.$pull) {
-        for (const [key, value] of Object.entries(data.$pull)) {
-          if (Array.isArray(entity[key])) {
-            const index = (entity as any)[key].indexOf(value);
-            if (index > -1) {
-              (entity as any)[key].splice(index, 1);
-            }
-          }
-        }
-      }
-
-      // If no operators, treat as regular update
-      if (
-        !('$set' in data) &&
-        !('$inc' in data) &&
-        !('$unset' in data) &&
-        !('$push' in data) &&
-        !('$pull' in data)
-      ) {
-        wrap(entity).assign(data as any);
-      }
-    } else {
-      // Regular update
+    if (!UpdateHelper.hasOperators(data)) {
       wrap(entity).assign(data as any);
+      return;
+    }
+
+    const entityRecord = entity as Record<string, unknown>;
+    const operation = data as Record<string, unknown>;
+
+    const setData = operation.$set;
+    if (isObjectRecord(setData)) {
+      wrap(entity).assign(setData as any);
+    }
+
+    const incData = operation.$inc;
+    if (isObjectRecord(incData)) {
+      for (const [key, value] of Object.entries(incData)) {
+        if (typeof value !== 'number') {
+          continue;
+        }
+
+        const current = entityRecord[key];
+        if (typeof current === 'number') {
+          entityRecord[key] = current + value;
+        }
+      }
+    }
+
+    const unsetData = operation.$unset;
+    if (isObjectRecord(unsetData)) {
+      for (const key of Object.keys(unsetData)) {
+        entityRecord[key] = null;
+      }
+    }
+
+    const pushData = operation.$push;
+    if (isObjectRecord(pushData)) {
+      for (const [key, value] of Object.entries(pushData)) {
+        const list = entityRecord[key];
+        if (Array.isArray(list)) {
+          list.push(value);
+        }
+      }
+    }
+
+    const pullData = operation.$pull;
+    if (isObjectRecord(pullData)) {
+      for (const [key, value] of Object.entries(pullData)) {
+        const list = entityRecord[key];
+        if (!Array.isArray(list)) {
+          continue;
+        }
+
+        const index = list.indexOf(value);
+        if (index > -1) {
+          list.splice(index, 1);
+        }
+      }
     }
   }
 }

@@ -32,6 +32,7 @@ import type { ParsedQueryOptions } from '../../common/pipes/request-query.pipe';
 import type {
   QueryCondition,
   UpdateData,
+  GetByIdQuery,
   GetOneQuery,
   GetManyQuery,
   GetPageQuery,
@@ -48,7 +49,6 @@ import {
   type ControllerFactoryOptions,
   normalizeRouteConfig,
   checkRouteEnabled,
-  notFoundError,
   createDtos,
 } from './crud';
 import { BaseCrudService } from '../services/base-crud.service';
@@ -175,13 +175,7 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
       @RequestQuery() query: ParsedQueryOptions,
     ): Promise<E> {
       checkRouteEnabled(routeConfigs.getById);
-      const item = await this.service.getById(
-        user,
-        id,
-        query as GetOneQuery<E>,
-      );
-      if (!item) notFoundError(this.resourceName, id);
-      return item;
+      return this.service.getById(user, id, query as GetByIdQuery<E>);
     }
 
     @Put(':id')
@@ -202,9 +196,7 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
       @Body() dto: UpdateData<E>,
     ): Promise<E> {
       checkRouteEnabled(routeConfigs.updateById);
-      const updated = await this.service.updateById(user, id, dto);
-      if (!updated) notFoundError(this.resourceName, id);
-      return updated;
+      return this.service.updateById(user, id, dto);
     }
 
     @Put('many/ids')
@@ -282,8 +274,7 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
       @Param('id') id: string,
     ): Promise<void> {
       checkRouteEnabled(routeConfigs.deleteById);
-      const deleted = await this.service.deleteById(user, id);
-      if (!deleted) notFoundError(this.resourceName, id);
+      await this.service.deleteById(user, id);
     }
 
     @Delete('many/ids')
