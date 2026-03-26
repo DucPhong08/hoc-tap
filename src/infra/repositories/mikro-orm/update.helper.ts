@@ -1,71 +1,127 @@
 import { wrap } from '@mikro-orm/core';
-import type { UpdateData } from '../../../common/interfaces/query';
+import type {
+  UpdateData,
+  UpdateOperator,
+} from '../../../common/interfaces/query';
 
-/**
- * Update Helper - Applies update operations to entity
- */
+const UPDATE_OPERATOR_KEYS = [
+  '$set',
+  '$inc',
+  '$unset',
+  '$push',
+  '$pull',
+] as const;
+
+type MutableEntity = Record<string, unknown>;
+
 export class UpdateHelper {
-  /**
-   * Apply update operations to entity
-   */
   static apply<E extends object>(entity: E, data: UpdateData<E>): void {
-    // Check if it's operator-based update
-    if (typeof data === 'object' && data !== null) {
-      // $set operator
-      if ('$set' in data && data.$set) {
-        wrap(entity).assign(data.$set as any);
-      }
-
-      // $inc operator (increment)
-      if ('$inc' in data && data.$inc) {
-        for (const [key, value] of Object.entries(data.$inc)) {
-          if (typeof entity[key] === 'number' && typeof value === 'number') {
-            (entity as any)[key] += value;
-          }
-        }
-      }
-
-      // $unset operator (remove field)
-      if ('$unset' in data && data.$unset) {
-        for (const key of Object.keys(data.$unset)) {
-          (entity as any)[key] = null;
-        }
-      }
-
-      // $push operator (add to array)
-      if ('$push' in data && data.$push) {
-        for (const [key, value] of Object.entries(data.$push)) {
-          if (Array.isArray(entity[key])) {
-            (entity as any)[key].push(value);
-          }
-        }
-      }
-
-      // $pull operator (remove from array)
-      if ('$pull' in data && data.$pull) {
-        for (const [key, value] of Object.entries(data.$pull)) {
-          if (Array.isArray(entity[key])) {
-            const index = (entity as any)[key].indexOf(value);
-            if (index > -1) {
-              (entity as any)[key].splice(index, 1);
-            }
-          }
-        }
-      }
-
-      // If no operators, treat as regular update
-      if (
-        !('$set' in data) &&
-        !('$inc' in data) &&
-        !('$unset' in data) &&
-        !('$push' in data) &&
-        !('$pull' in data)
-      ) {
-        wrap(entity).assign(data as any);
-      }
-    } else {
-      // Regular update
-      wrap(entity).assign(data as any);
+    if (!this.isObject(data)) {
+      this.assign(entity, data as Partial<E>);
+      return;
     }
+
+    if (!this.hasOperatorPayload(data)) {
+      this.assign(entity, data);
+      return;
+    }
+
+    if (data.$set) {
+      this.assign(entity, data.$set);
+    }
+
+    if (data.$inc) {
+      this.applyIncrements(entity, data.$inc);
+    }
+
+    if (data.$unset) {
+      this.applyUnset(entity, data.$unset);
+    }
+
+    if (data.$push) {
+      this.applyPush(entity, data.$push);
+    }
+
+    if (data.$pull) {
+      this.applyPull(entity, data.$pull);
+    }
+  }
+
+  private static assign<E extends object>(entity: E, data: Partial<E>): void {
+    wrap(entity).assign(data as object);
+  }
+
+  private static applyIncrements<E extends object>(
+    entity: E,
+    increments: Partial<Record<keyof E, number>>,
+  ): void {
+    const entityRecord = this.toMutableEntity(entity);
+
+    for (const [fieldName, value] of Object.entries(increments)) {
+      const currentValue = entityRecord[fieldName];
+
+      if (typeof currentValue === 'number' && typeof value === 'number') {
+        entityRecord[fieldName] = currentValue + value;
+      }
+    }
+  }
+
+  private static applyUnset<E extends object>(
+    entity: E,
+    fields: Partial<Record<keyof E, boolean>>,
+  ): void {
+    const entityRecord = this.toMutableEntity(entity);
+
+    for (const fieldName of Object.keys(fields)) {
+      entityRecord[fieldName] = null;
+    }
+  }
+
+  private static applyPush<E extends object>(
+    entity: E,
+    values: Partial<Record<keyof E, unknown>>,
+  ): void {
+    const entityRecord = this.toMutableEntity(entity);
+
+    for (const [fieldName, value] of Object.entries(values)) {
+      const currentValue = entityRecord[fieldName];
+
+      if (Array.isArray(currentValue)) {
+        currentValue.push(value);
+      }
+    }
+  }
+
+  private static applyPull<E extends object>(
+    entity: E,
+    values: Partial<Record<keyof E, unknown>>,
+  ): void {
+    const entityRecord = this.toMutableEntity(entity);
+
+    for (const [fieldName, value] of Object.entries(values)) {
+      const currentValue = entityRecord[fieldName];
+
+      if (Array.isArray(currentValue)) {
+        const index = currentValue.indexOf(value);
+
+        if (index > -1) {
+          currentValue.splice(index, 1);
+        }
+      }
+    }
+  }
+
+  private static toMutableEntity<E extends object>(entity: E): MutableEntity {
+    return entity as MutableEntity;
+  }
+
+  private static hasOperatorPayload<E extends object>(
+    data: Record<string, unknown>,
+  ): data is UpdateOperator<E> {
+    return UPDATE_OPERATOR_KEYS.some((operator) => operator in data);
+  }
+
+  private static isObject(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null;
   }
 }
