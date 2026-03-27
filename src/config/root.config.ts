@@ -8,7 +8,6 @@ import { SwaggerConfig } from './root/swagger.config';
 import { ValidationConfig } from './root/validation.config';
 import { AuthConfig } from './root/auth.config';
 import { CacheConfig } from './root/cache.config';
-import { ClusterConfig } from './root/cluster.config';
 
 export class RootConfig {
   @IsString()
@@ -38,10 +37,6 @@ export class RootConfig {
   @ValidateNested()
   @Type(() => CacheConfig)
   cache!: CacheConfig;
-
-  @ValidateNested()
-  @Type(() => ClusterConfig)
-  cluster!: ClusterConfig;
 
   @Transform(({ value }) => {
     if (!value || typeof value !== 'object') return value;

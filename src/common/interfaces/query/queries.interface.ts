@@ -39,34 +39,34 @@ export interface ExistsQuery {
   withDeleted?: boolean;
 }
 
-export interface CreateQuery {
+export interface CreateCommand {
   populate?: PopulateInput;
 }
 
-export interface InsertManyQuery {
+export interface InsertManyCommand {
   ordered?: boolean;
 }
 
-export interface UpdateByIdQuery {
+export interface UpdateByIdCommand {
   populate?: PopulateInput;
 }
 
-export interface UpdateOneQuery {
+export interface UpdateOneCommand {
   populate?: PopulateInput;
 }
 
-export interface UpdateManyQuery {
+export interface UpdateManyCommand {
   ordered?: boolean;
 }
 
-export interface DeleteByIdQuery {
+export interface DeleteByIdCommand {
   soft?: boolean;
 }
 
-export interface DeleteOneQuery {
+export interface DeleteOneCommand {
   soft?: boolean;
 }
 
-export interface DeleteManyQuery {
+export interface DeleteManyCommand {
   soft?: boolean;
 }

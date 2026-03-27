@@ -9,14 +9,14 @@ import type {
   GetPageQuery,
   CountQuery,
   ExistsQuery,
-  CreateQuery,
-  InsertManyQuery,
-  UpdateByIdQuery,
-  UpdateOneQuery,
-  UpdateManyQuery,
-  DeleteByIdQuery,
-  DeleteOneQuery,
-  DeleteManyQuery,
+  CreateCommand,
+  InsertManyCommand,
+  UpdateByIdCommand,
+  UpdateOneCommand,
+  UpdateManyCommand,
+  DeleteByIdCommand,
+  DeleteOneCommand,
+  DeleteManyCommand,
   PaginationResult,
   UpdateManyResult,
   DeleteManyResult,
@@ -33,20 +33,12 @@ type SerializableEntity = {
   toJSON(): unknown;
 };
 
-type EntityResultQuery = {
+type EntityResultCommand = {
   plain?: boolean;
-  populate?: CreateQuery['populate'];
+  populate?: CreateCommand['populate'];
 };
 
-type RepositoryFindQuery<E, TContext> = BaseQueryOption<TContext> & {
-  select?: (keyof E)[];
-  populate?: CreateQuery['populate'];
-  sort?: Partial<Record<keyof E, 1 | -1>>;
-  limit?: number;
-  offset?: number;
-};
-
-type SoftDeleteQuery = {
+type SoftDeleteCommand = {
   soft?: boolean;
 };
 
@@ -93,61 +85,20 @@ export abstract class MikroOrmBaseRepository<
     ).createQueryBuilder(this.entityName);
   }
 
-  private buildIdCondition(id: string): QueryCondition<E> {
-    return { [PRIMARY_KEY_FIELD]: id } as QueryCondition<E>;
-  }
-
-  private buildFilter(
-    condition: QueryCondition<E>,
-    withDeleted?: boolean,
-  ): FilterQuery<E> {
-    return FilterBuilder.build(condition, { withDeleted });
-  }
-
-  private buildFindOptions(query?: RepositoryFindQuery<E, TContext>) {
-    return OptionsBuilder.build<E>(query);
-  }
-
-  private findOneEntity(
-    condition: FilterQuery<E>,
-    options?: unknown,
-  ): Promise<E | null> {
-    return this.repository.findOne(
-      condition,
-      options as never,
-    ) as Promise<E | null>;
-  }
-
-  private findManyEntities(
-    condition: FilterQuery<E>,
-    options?: unknown,
-  ): Promise<E[]> {
-    return this.repository.find(condition, options as never) as Promise<E[]>;
-  }
-
-  private findAndCountEntities(
-    condition: FilterQuery<E>,
-    options?: unknown,
-  ): Promise<[E[], number]> {
-    return this.repository.findAndCount(condition, options as never) as Promise<
-      [E[], number]
-    >;
-  }
-
-  private async populateEntity(
+  private async populateRelations(
     entity: E,
-    populate?: CreateQuery['populate'],
+    populate?: CreateCommand['populate'],
   ): Promise<void> {
     if (!populate) {
       return;
     }
 
-    const populateOptions = OptionsBuilder.buildPopulate(populate);
-    if (!populateOptions) {
+    const populateQuery = OptionsBuilder.buildPopulate(populate);
+    if (!populateQuery) {
       return;
     }
 
-    await this.em.populate(entity, populateOptions as never);
+    await this.em.populate(entity, populateQuery as never);
   }
 
   private serializeEntity(entity: E, plain?: boolean): E {
@@ -158,34 +109,25 @@ export abstract class MikroOrmBaseRepository<
     return (entity as E & SerializableEntity).toJSON() as E;
   }
 
-  private async prepareEntityResult(
-    entity: E,
-    query?: EntityResultQuery,
-  ): Promise<E> {
-    await this.populateEntity(entity, query?.populate);
-    return this.serializeEntity(entity, query?.plain);
-  }
-
-  private async applyUpdateAndFlush(
+  private async updateEntity(
     entity: E,
     data: UpdateData<E>,
-    query?: EntityResultQuery,
+    command?: EntityResultCommand,
   ): Promise<E> {
     UpdateHelper.apply(entity, data);
     await this.em.flush();
+    await this.populateRelations(entity, command?.populate);
 
-    return this.prepareEntityResult(entity, query);
-  }
-
-  private shouldUseSoftDelete(query?: SoftDeleteQuery): boolean {
-    return query?.soft !== false;
+    return this.serializeEntity(entity, command?.plain);
   }
 
   private async deleteEntity(
     entity: E,
-    query?: SoftDeleteQuery,
+    command?: SoftDeleteCommand,
   ): Promise<void> {
-    if (this.shouldUseSoftDelete(query)) {
+    const useSoftDelete = command?.soft !== false;
+
+    if (useSoftDelete) {
       entity.deletedAt = new Date();
       await this.em.flush();
       return;
@@ -194,39 +136,23 @@ export abstract class MikroOrmBaseRepository<
     await this.em.remove(entity).flush();
   }
 
-  private async deleteEntities(
-    entities: E[],
-    query?: SoftDeleteQuery,
-  ): Promise<void> {
-    if (this.shouldUseSoftDelete(query)) {
-      const deletedAt = new Date();
-
-      entities.forEach((entity) => {
-        entity.deletedAt = deletedAt;
-      });
-
-      await this.em.flush();
-      return;
-    }
-
-    await this.em.remove(entities).flush();
-  }
-
   async create(
     data: Partial<E>,
-    query?: CreateQuery & BaseCommandOption<TContext>,
+    command?: CreateCommand & BaseCommandOption<TContext>,
   ): Promise<E> {
     const entity = this.repository.create(data as E);
     await this.em.persist(entity).flush();
+    await this.populateRelations(entity, command?.populate);
 
-    return this.prepareEntityResult(entity, query);
+    return this.serializeEntity(entity, command?.plain);
   }
 
   async insertMany(
     data: Partial<E>[],
-    query?: InsertManyQuery & BaseCommandOption<TContext>,
+    command?: InsertManyCommand & BaseCommandOption<TContext>,
   ): Promise<{ n: number }> {
-    void query;
+    void command;
+
     const entities = data.map((item) => this.repository.create(item as E));
     await this.em.persist(entities).flush();
 
@@ -237,30 +163,43 @@ export abstract class MikroOrmBaseRepository<
     id: string,
     query?: GetByIdQuery<E> & BaseQueryOption<TContext>,
   ): Promise<E | null> {
-    return this.findOneEntity(
-      this.buildFilter(this.buildIdCondition(id), query?.withDeleted),
-      this.buildFindOptions(query),
+    const filter = FilterBuilder.build(
+      { [PRIMARY_KEY_FIELD]: id } as QueryCondition<E>,
+      { withDeleted: query?.withDeleted },
     );
+    const findOptions = OptionsBuilder.build<E>(query);
+
+    return this.repository.findOne(
+      filter,
+      findOptions as never,
+    ) as Promise<E | null>;
   }
 
   async getOne(
     condition: QueryCondition<E>,
     query?: GetOneQuery<E> & BaseQueryOption<TContext>,
   ): Promise<E | null> {
-    return this.findOneEntity(
-      this.buildFilter(condition, query?.withDeleted),
-      this.buildFindOptions(query),
-    );
+    const filter = FilterBuilder.build(condition, {
+      withDeleted: query?.withDeleted,
+    });
+    const findOptions = OptionsBuilder.build<E>(query);
+
+    return this.repository.findOne(
+      filter,
+      findOptions as never,
+    ) as Promise<E | null>;
   }
 
   async getMany(
     condition: QueryCondition<E>,
     query?: GetManyQuery<E> & BaseQueryOption<TContext>,
   ): Promise<E[]> {
-    return this.findManyEntities(
-      this.buildFilter(condition, query?.withDeleted),
-      this.buildFindOptions(query),
-    );
+    const filter = FilterBuilder.build(condition, {
+      withDeleted: query?.withDeleted,
+    });
+    const findOptions = OptionsBuilder.build<E>(query);
+
+    return this.repository.find(filter, findOptions as never) as Promise<E[]>;
   }
 
   async getPage(
@@ -269,17 +208,19 @@ export abstract class MikroOrmBaseRepository<
   ): Promise<PaginationResult<E>> {
     const { page, limit } = query;
     const offset = (page - 1) * limit;
-    const filter = this.buildFilter(condition, query.withDeleted);
-    const findOptions = this.buildFindOptions(query);
+    const filter = FilterBuilder.build(condition, {
+      withDeleted: query.withDeleted,
+    });
+    const findOptions = OptionsBuilder.build<E>(query);
 
-    const [data, total] = await this.findAndCountEntities(filter, {
+    const [data, total] = (await this.repository.findAndCount(filter, {
       ...findOptions,
       limit,
       offset,
-    });
+    } as never)) as [E[], number];
 
     return {
-      data: data,
+      data,
       total,
       page,
       limit,
@@ -290,35 +231,36 @@ export abstract class MikroOrmBaseRepository<
   async updateById(
     id: string,
     data: UpdateData<E>,
-    query?: UpdateByIdQuery & BaseCommandOption<TContext>,
+    command?: UpdateByIdCommand & BaseCommandOption<TContext>,
   ): Promise<E | null> {
     const entity = await this.getById(id);
     if (!entity) {
       return null;
     }
 
-    return this.applyUpdateAndFlush(entity, data, query);
+    return this.updateEntity(entity, data, command);
   }
 
   async updateOne(
     condition: QueryCondition<E>,
     data: UpdateData<E>,
-    query?: UpdateOneQuery & BaseCommandOption<TContext>,
+    command?: UpdateOneCommand & BaseCommandOption<TContext>,
   ): Promise<E | null> {
     const entity = await this.getOne(condition);
     if (!entity) {
       return null;
     }
 
-    return this.applyUpdateAndFlush(entity, data, query);
+    return this.updateEntity(entity, data, command);
   }
 
   async updateMany(
     condition: QueryCondition<E>,
     data: UpdateData<E>,
-    query?: UpdateManyQuery & BaseCommandOption<TContext>,
+    command?: UpdateManyCommand & BaseCommandOption<TContext>,
   ): Promise<UpdateManyResult> {
-    void query;
+    void command;
+
     const entities = await this.getMany(condition);
 
     entities.forEach((entity) => {
@@ -332,36 +274,48 @@ export abstract class MikroOrmBaseRepository<
 
   async deleteById(
     id: string,
-    query?: DeleteByIdQuery & BaseCommandOption<TContext>,
+    command?: DeleteByIdCommand & BaseCommandOption<TContext>,
   ): Promise<E | null> {
     const entity = await this.getById(id);
     if (!entity) {
       return null;
     }
 
-    await this.deleteEntity(entity, query);
-    return this.serializeEntity(entity, query?.plain);
+    await this.deleteEntity(entity, command);
+    return this.serializeEntity(entity, command?.plain);
   }
 
   async deleteOne(
     condition: QueryCondition<E>,
-    query?: DeleteOneQuery & BaseCommandOption<TContext>,
+    command?: DeleteOneCommand & BaseCommandOption<TContext>,
   ): Promise<E | null> {
     const entity = await this.getOne(condition);
     if (!entity) {
       return null;
     }
 
-    await this.deleteEntity(entity, query);
-    return this.serializeEntity(entity, query?.plain);
+    await this.deleteEntity(entity, command);
+    return this.serializeEntity(entity, command?.plain);
   }
 
   async deleteMany(
     condition: QueryCondition<E>,
-    query?: DeleteManyQuery & BaseCommandOption<TContext>,
+    command?: DeleteManyCommand & BaseCommandOption<TContext>,
   ): Promise<DeleteManyResult> {
     const entities = await this.getMany(condition);
-    await this.deleteEntities(entities, query);
+    const useSoftDelete = command?.soft !== false;
+
+    if (useSoftDelete) {
+      const deletedAt = new Date();
+
+      entities.forEach((entity) => {
+        entity.deletedAt = deletedAt;
+      });
+
+      await this.em.flush();
+    } else {
+      await this.em.remove(entities).flush();
+    }
 
     return { deleted: entities.length };
   }
@@ -370,12 +324,11 @@ export abstract class MikroOrmBaseRepository<
     condition?: QueryCondition<E>,
     query?: CountQuery & BaseQueryOption<TContext>,
   ): Promise<number> {
-    return this.repository.count(
-      this.buildFilter(
-        condition ?? ({} as QueryCondition<E>),
-        query?.withDeleted,
-      ),
-    );
+    const filter = FilterBuilder.build(condition ?? ({} as QueryCondition<E>), {
+      withDeleted: query?.withDeleted,
+    });
+
+    return this.repository.count(filter);
   }
 
   async exists(
@@ -383,10 +336,13 @@ export abstract class MikroOrmBaseRepository<
     query?: ExistsQuery & BaseQueryOption<TContext>,
   ): Promise<boolean> {
     if (this.isMongoDriver()) {
-      const entity = await this.findOneEntity(condition as FilterQuery<E>, {
-        ...this.buildFindOptions(query),
-        fields: [PRIMARY_KEY_FIELD] as never,
-      });
+      const entity = (await this.repository.findOne(
+        condition as FilterQuery<E>,
+        {
+          fields: [PRIMARY_KEY_FIELD] as never,
+          filters: query?.withDeleted ? false : undefined,
+        } as never,
+      )) as E | null;
 
       return entity !== null;
     }
@@ -411,6 +367,7 @@ export abstract class MikroOrmBaseRepository<
     query?: BaseQueryOption<TContext>,
   ): Promise<E[K][]> {
     void query;
+
     const fieldName = String(field);
 
     if (!this.isMongoDriver()) {
@@ -441,12 +398,12 @@ export abstract class MikroOrmBaseRepository<
 
   async restore(
     id: string,
-    query?: BaseCommandOption<TContext>,
+    command?: BaseCommandOption<TContext>,
   ): Promise<E | null> {
-    const entity = await this.findOneEntity(
-      this.buildIdCondition(id) as FilterQuery<E>,
-      this.buildFindOptions({ withDeleted: true }),
-    );
+    const entity = (await this.repository.findOne(
+      { [PRIMARY_KEY_FIELD]: id } as FilterQuery<E>,
+      { filters: false } as never,
+    )) as E | null;
 
     if (!entity) {
       return null;
@@ -455,6 +412,6 @@ export abstract class MikroOrmBaseRepository<
     entity.deletedAt = null;
     await this.em.flush();
 
-    return this.serializeEntity(entity, query?.plain);
+    return this.serializeEntity(entity, command?.plain);
   }
 }

@@ -23,14 +23,14 @@ export type {
   GetPageQuery,
   CountQuery,
   ExistsQuery,
-  CreateQuery,
-  InsertManyQuery,
-  UpdateByIdQuery,
-  UpdateOneQuery,
-  UpdateManyQuery,
-  DeleteByIdQuery,
-  DeleteOneQuery,
-  DeleteManyQuery,
+  CreateCommand,
+  InsertManyCommand,
+  UpdateByIdCommand,
+  UpdateOneCommand,
+  UpdateManyCommand,
+  DeleteByIdCommand,
+  DeleteOneCommand,
+  DeleteManyCommand,
 } from './queries.interface';
 
 // Results

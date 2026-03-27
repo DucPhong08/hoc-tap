@@ -6,14 +6,14 @@ import {
   GetOneQuery,
   GetManyQuery,
   GetPageQuery,
-  CreateQuery,
-  InsertManyQuery,
-  UpdateByIdQuery,
-  UpdateOneQuery,
-  UpdateManyQuery,
-  DeleteByIdQuery,
-  DeleteOneQuery,
-  DeleteManyQuery,
+  CreateCommand,
+  InsertManyCommand,
+  UpdateByIdCommand,
+  UpdateOneCommand,
+  UpdateManyCommand,
+  DeleteByIdCommand,
+  DeleteOneCommand,
+  DeleteManyCommand,
   PaginationResult,
   UpdateManyResult,
   DeleteManyResult,
@@ -54,17 +54,13 @@ export abstract class CachedBaseRepository<
     return `${this.entityName}:${prefix}:${serializedParts}`;
   }
 
-  private buildEntityCacheTag(id: string): string {
-    return `${this.entityName}:${id}`;
-  }
-
   private buildCacheTags(id?: string): string[] {
     return id
-      ? [this.entityName, this.buildEntityCacheTag(id)]
+      ? [this.entityName, `${this.entityName}:${id}`]
       : [this.entityName];
   }
 
-  private async remember<TValue>({
+  private async rememberCache<TValue>({
     key,
     tags,
     load,
@@ -89,14 +85,14 @@ export abstract class CachedBaseRepository<
   }
 
   private async invalidateEntityCache(id?: string): Promise<void> {
-    await this.invalidateCache(this.buildCacheTags(id));
+    await this.cacheService.delByTags(this.buildCacheTags(id));
   }
 
   async getById(
     id: string,
     query?: GetByIdQuery<E> & BaseQueryOption<TContext>,
   ): Promise<E | null> {
-    return this.remember({
+    return this.rememberCache({
       key: this.buildCacheKey('id', id, query),
       tags: this.buildCacheTags(id),
       load: () => super.getById(id, query),
@@ -108,7 +104,7 @@ export abstract class CachedBaseRepository<
     condition: QueryCondition<E>,
     query?: GetOneQuery<E> & BaseQueryOption<TContext>,
   ): Promise<E | null> {
-    return this.remember({
+    return this.rememberCache({
       key: this.buildCacheKey('one', condition, query),
       tags: this.buildCacheTags(),
       load: () => super.getOne(condition, query),
@@ -120,7 +116,7 @@ export abstract class CachedBaseRepository<
     condition: QueryCondition<E>,
     query?: GetManyQuery<E> & BaseQueryOption<TContext>,
   ): Promise<E[]> {
-    return this.remember({
+    return this.rememberCache({
       key: this.buildCacheKey('many', condition, query),
       tags: this.buildCacheTags(),
       load: () => super.getMany(condition, query),
@@ -133,7 +129,7 @@ export abstract class CachedBaseRepository<
   ): Promise<PaginationResult<E>> {
     const { page, limit } = query;
 
-    return this.remember({
+    return this.rememberCache({
       key: this.buildCacheKey('page', condition, page, limit, query),
       tags: this.buildCacheTags(),
       load: () => super.getPage(condition, query),
@@ -142,9 +138,9 @@ export abstract class CachedBaseRepository<
 
   async create(
     data: Partial<E>,
-    query?: CreateQuery & BaseCommandOption<TContext>,
+    command?: CreateCommand & BaseCommandOption<TContext>,
   ): Promise<E> {
-    const entity = await super.create(data, query);
+    const entity = await super.create(data, command);
     await this.invalidateEntityCache();
 
     return entity;
@@ -152,9 +148,9 @@ export abstract class CachedBaseRepository<
 
   async insertMany(
     data: Partial<E>[],
-    query?: InsertManyQuery & BaseCommandOption<TContext>,
+    command?: InsertManyCommand & BaseCommandOption<TContext>,
   ): Promise<{ n: number }> {
-    const result = await super.insertMany(data, query);
+    const result = await super.insertMany(data, command);
     await this.invalidateEntityCache();
 
     return result;
@@ -165,7 +161,7 @@ export abstract class CachedBaseRepository<
     condition?: QueryCondition<E>,
     query?: BaseQueryOption<TContext>,
   ): Promise<E[K][]> {
-    return this.remember({
+    return this.rememberCache({
       key: this.buildCacheKey('distinct', field, condition, query),
       tags: this.buildCacheTags(),
       load: () => super.distinct(field, condition, query),
@@ -175,9 +171,9 @@ export abstract class CachedBaseRepository<
   async updateById(
     id: string,
     data: UpdateData<E>,
-    query?: UpdateByIdQuery & BaseCommandOption<TContext>,
+    command?: UpdateByIdCommand & BaseCommandOption<TContext>,
   ): Promise<E | null> {
-    const entity = await super.updateById(id, data, query);
+    const entity = await super.updateById(id, data, command);
     if (entity) {
       await this.invalidateEntityCache(id);
     }
@@ -188,9 +184,9 @@ export abstract class CachedBaseRepository<
   async updateOne(
     condition: QueryCondition<E>,
     data: UpdateData<E>,
-    query?: UpdateOneQuery & BaseCommandOption<TContext>,
+    command?: UpdateOneCommand & BaseCommandOption<TContext>,
   ): Promise<E | null> {
-    const entity = await super.updateOne(condition, data, query);
+    const entity = await super.updateOne(condition, data, command);
     if (entity) {
       await this.invalidateEntityCache();
     }
@@ -201,9 +197,9 @@ export abstract class CachedBaseRepository<
   async updateMany(
     condition: QueryCondition<E>,
     data: UpdateData<E>,
-    query?: UpdateManyQuery & BaseCommandOption<TContext>,
+    command?: UpdateManyCommand & BaseCommandOption<TContext>,
   ): Promise<UpdateManyResult> {
-    const result = await super.updateMany(condition, data, query);
+    const result = await super.updateMany(condition, data, command);
     await this.invalidateEntityCache();
 
     return result;
@@ -211,9 +207,9 @@ export abstract class CachedBaseRepository<
 
   async deleteById(
     id: string,
-    query?: DeleteByIdQuery & BaseCommandOption<TContext>,
+    command?: DeleteByIdCommand & BaseCommandOption<TContext>,
   ): Promise<E | null> {
-    const entity = await super.deleteById(id, query);
+    const entity = await super.deleteById(id, command);
     if (entity) {
       await this.invalidateEntityCache(id);
     }
@@ -223,9 +219,9 @@ export abstract class CachedBaseRepository<
 
   async deleteOne(
     condition: QueryCondition<E>,
-    query?: DeleteOneQuery & BaseCommandOption<TContext>,
+    command?: DeleteOneCommand & BaseCommandOption<TContext>,
   ): Promise<E | null> {
-    const entity = await super.deleteOne(condition, query);
+    const entity = await super.deleteOne(condition, command);
     if (entity) {
       await this.invalidateEntityCache();
     }
@@ -235,9 +231,9 @@ export abstract class CachedBaseRepository<
 
   async deleteMany(
     condition: QueryCondition<E>,
-    query?: DeleteManyQuery & BaseCommandOption<TContext>,
+    command?: DeleteManyCommand & BaseCommandOption<TContext>,
   ): Promise<DeleteManyResult> {
-    const result = await super.deleteMany(condition, query);
+    const result = await super.deleteMany(condition, command);
     await this.invalidateEntityCache();
 
     return result;
@@ -245,17 +241,13 @@ export abstract class CachedBaseRepository<
 
   async restore(
     id: string,
-    query?: BaseCommandOption<TContext>,
+    command?: BaseCommandOption<TContext>,
   ): Promise<E | null> {
-    const entity = await super.restore(id, query);
+    const entity = await super.restore(id, command);
     if (entity) {
       await this.invalidateEntityCache(id);
     }
 
     return entity;
-  }
-
-  protected async invalidateCache(tags: string[]): Promise<void> {
-    await this.cacheService.delByTags(tags);
   }
 }

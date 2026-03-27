@@ -18,15 +18,23 @@ export class MigrationService implements OnModuleInit {
     const devConfig = this.configService.get('databases.main.dev', {
       infer: true,
     });
+    const connectionType = this.configService.get(
+      'databases.main.connection.connection',
+      { infer: true },
+    );
     const autoMigrate = devConfig?.autoMigrate === true;
+    const shouldRunSqlSchemaTasks =
+      connectionType === 'postgresql' || connectionType === 'mysql';
 
-    if (mode === 'production' || !autoMigrate) return;
+    if (mode === 'production' || !autoMigrate || !shouldRunSqlSchemaTasks) {
+      return;
+    }
 
     // 1. Chạy pending migrations (nếu có)
     try {
       await this.runPendingMigrations();
-    } catch (error) {
-      console.warn(`⚠️ Migration warning: ${(error as Error).message}`);
+    } catch {
+      // Ignore migration extension/runtime warnings in development startup flow.
     }
 
     // 2. Auto sync schema từ entity → DB (luôn chạy)
@@ -39,17 +47,8 @@ export class MigrationService implements OnModuleInit {
 
     if (pending.length === 0) return;
 
-    console.log(
-      `\n🔄 Auto-migration: Found ${pending.length} pending migration(s)`,
-    );
-    pending.forEach((m) => console.log(`   - ${m.name}`));
-
     const executed = await migrator.up();
-    if (executed.length > 0) {
-      console.log(
-        `✅ Auto-migration: Executed ${executed.length} migration(s) successfully`,
-      );
-    }
+    if (executed.length === 0) return;
   }
 
   private async syncSchema() {
@@ -58,8 +57,6 @@ export class MigrationService implements OnModuleInit {
 
     if (!updateDiff.trim()) return;
 
-    console.log(`\n🔄 Auto-sync: Detected schema changes`);
     await generator.updateSchema();
-    console.log(`✅ Auto-sync: Schema updated successfully\n`);
   }
 }

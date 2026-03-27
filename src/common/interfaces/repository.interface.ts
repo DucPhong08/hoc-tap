@@ -7,14 +7,14 @@ import type {
   GetPageQuery,
   CountQuery,
   ExistsQuery,
-  CreateQuery,
-  InsertManyQuery,
-  UpdateByIdQuery,
-  UpdateOneQuery,
-  UpdateManyQuery,
-  DeleteByIdQuery,
-  DeleteOneQuery,
-  DeleteManyQuery,
+  CreateCommand,
+  InsertManyCommand,
+  UpdateByIdCommand,
+  UpdateOneCommand,
+  UpdateManyCommand,
+  DeleteByIdCommand,
+  DeleteOneCommand,
+  DeleteManyCommand,
   PaginationResult,
   UpdateManyResult,
   DeleteManyResult,
@@ -31,14 +31,14 @@ export type {
   GetPageQuery,
   CountQuery,
   ExistsQuery,
-  CreateQuery,
-  InsertManyQuery,
-  UpdateByIdQuery,
-  UpdateOneQuery,
-  UpdateManyQuery,
-  DeleteByIdQuery,
-  DeleteOneQuery,
-  DeleteManyQuery,
+  CreateCommand,
+  InsertManyCommand,
+  UpdateByIdCommand,
+  UpdateOneCommand,
+  UpdateManyCommand,
+  DeleteByIdCommand,
+  DeleteOneCommand,
+  DeleteManyCommand,
   PaginationResult,
   UpdateManyResult,
   DeleteManyResult,
@@ -49,13 +49,13 @@ export type {
 
 export interface IBaseRepository<E extends BaseEntity, TContext = unknown> {
   create(
-    document: Partial<E>,
-    query?: CreateQuery & BaseCommandOption<TContext>,
+    data: Partial<E>,
+    command?: CreateCommand & BaseCommandOption<TContext>,
   ): Promise<E>;
 
   insertMany(
-    documents: Partial<E>[],
-    query?: InsertManyQuery & BaseCommandOption<TContext>,
+    data: Partial<E>[],
+    command?: InsertManyCommand & BaseCommandOption<TContext>,
   ): Promise<{ n: number }>;
 
   getById(
@@ -81,34 +81,34 @@ export interface IBaseRepository<E extends BaseEntity, TContext = unknown> {
   updateById(
     id: string,
     data: UpdateData<E>,
-    query?: UpdateByIdQuery & BaseCommandOption<TContext>,
+    command?: UpdateByIdCommand & BaseCommandOption<TContext>,
   ): Promise<E | null>;
 
   updateOne(
     condition: QueryCondition<E>,
     data: UpdateData<E>,
-    query?: UpdateOneQuery & BaseCommandOption<TContext>,
+    command?: UpdateOneCommand & BaseCommandOption<TContext>,
   ): Promise<E | null>;
 
   updateMany(
     condition: QueryCondition<E>,
     data: UpdateData<E>,
-    query?: UpdateManyQuery & BaseCommandOption<TContext>,
+    command?: UpdateManyCommand & BaseCommandOption<TContext>,
   ): Promise<UpdateManyResult>;
 
   deleteById(
     id: string,
-    query?: DeleteByIdQuery & BaseCommandOption<TContext>,
+    command?: DeleteByIdCommand & BaseCommandOption<TContext>,
   ): Promise<E | null>;
 
   deleteOne(
     condition: QueryCondition<E>,
-    query?: DeleteOneQuery & BaseCommandOption<TContext>,
+    command?: DeleteOneCommand & BaseCommandOption<TContext>,
   ): Promise<E | null>;
 
   deleteMany(
     condition: QueryCondition<E>,
-    query?: DeleteManyQuery & BaseCommandOption<TContext>,
+    command?: DeleteManyCommand & BaseCommandOption<TContext>,
   ): Promise<DeleteManyResult>;
 
   count(
@@ -127,5 +127,5 @@ export interface IBaseRepository<E extends BaseEntity, TContext = unknown> {
     query?: BaseQueryOption<TContext>,
   ): Promise<E[K][]>;
 
-  restore(id: string, query?: BaseCommandOption<TContext>): Promise<E | null>;
+  restore(id: string, command?: BaseCommandOption<TContext>): Promise<E | null>;
 }

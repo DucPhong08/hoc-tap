@@ -22,7 +22,6 @@ export class MonitoringController {
   getWorkerInfo() {
     return {
       workerId: process.pid,
-      isCluster: process.env.CLUSTER_ENABLED === 'true',
       memory: {
         rss: `${Math.round(process.memoryUsage().rss / 1024 / 1024)}MB`,
         heapTotal: `${Math.round(process.memoryUsage().heapTotal / 1024 / 1024)}MB`,
@@ -79,29 +78,6 @@ export class MonitoringController {
       };
     } catch (error) {
       return { error: 'Failed to read error logs', message: error.message };
-    }
-  }
-
-  @Get('logs/cluster')
-  @Public()
-  getClusterLogs() {
-    try {
-      const logPath = path.join('logs', 'cluster.log');
-      if (!fs.existsSync(logPath)) {
-        return { logs: [], message: 'No cluster logs found' };
-      }
-
-      const content = fs.readFileSync(logPath, 'utf-8');
-      const lines = content.split('\n').filter((line) => line.trim());
-      const recent = lines.slice(-30); // Last 30 lines
-
-      return {
-        total: lines.length,
-        recent: recent.length,
-        logs: recent,
-      };
-    } catch (error) {
-      return { error: 'Failed to read cluster logs', message: error.message };
     }
   }
 

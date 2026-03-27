@@ -1,21 +1,20 @@
 import { ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 import { DevConfig } from './database/dev.config';
-import { ConnectionConfig } from './database/connection.config';
 import { OrmConfig } from './database/orm.config';
 
 export class DatabaseConfig {
+  profile?: 'sql' | 'mongo';
+
   @ValidateNested()
   @Type(() => DevConfig)
   dev!: DevConfig;
 
-  @ValidateNested()
-  @Type(() => ConnectionConfig)
-  connection!: ConnectionConfig;
+  connection?: Record<string, unknown>;
 
   @ValidateNested()
   @Type(() => OrmConfig)
   orm!: OrmConfig;
 
-  driverOptions?: any;
+  driverOptions?: Record<string, unknown>;
 }

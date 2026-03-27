@@ -1,164 +1,82 @@
-import { merge, set } from 'lodash';
 import * as dotenv from 'dotenv';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { merge } from 'lodash';
 import { plainToInstance } from 'class-transformer';
 import { validateSync } from 'class-validator';
 import { RootConfig } from './root.config';
+import { DEFAULT_BCRYPT_ROUNDS } from './loader/constants';
+import { RawConfig } from './loader/types';
+import { applyDatabaseEnv } from './loader/database-env';
+import { ensureObject } from './loader/helpers';
 
-type ConfigValue =
-  | string
-  | number
-  | boolean
-  | null
-  | ConfigValue[]
-  | ConfigObject;
-type ConfigObject = { [key: string]: ConfigValue };
-type RawConfig = ConfigObject;
-
-const APP_PREFIX = 'BE' as const;
-const ENV_PREFIX = `${APP_PREFIX}_` as const;
-
-function toCamelCase(str: string): string {
-  return str
-    .toLowerCase()
-    .replace(/_([a-z])/g, (_, letter: string) => letter.toUpperCase());
-}
-
-function ensureObject(obj: ConfigObject, key: string): ConfigObject {
-  if (!obj[key] || typeof obj[key] !== 'object' || Array.isArray(obj[key])) {
-    obj[key] = {};
-  }
-  return obj[key];
-}
-
-function ensureArray(obj: ConfigObject, key: string): ConfigValue[] {
-  if (!obj[key] || !Array.isArray(obj[key])) {
-    obj[key] = [];
-  }
-  return obj[key] as ConfigValue[];
-}
-
-function getNestedValue(
-  obj: ConfigObject,
-  path: string,
-): ConfigValue | undefined {
-  return path.split('.').reduce((current: ConfigValue | undefined, key) => {
-    if (current && typeof current === 'object' && !Array.isArray(current)) {
-      return current[key];
-    }
-    return undefined;
-  }, obj);
-}
-
-function setArrayValue(
-  obj: ConfigObject,
-  pathParts: string[],
-  index: number,
-  value: string | undefined | null,
-): void {
-  const arrayKey = pathParts.pop()!;
-
-  if (pathParts.length > 0) {
-    const parent = pathParts.reduce(
-      (current, key) => ensureObject(current, key),
-      obj,
+const packageMetadata: {
+  name?: string;
+  version?: string;
+} = (() => {
+  try {
+    const parsed: unknown = JSON.parse(
+      readFileSync(join(process.cwd(), 'package.json'), 'utf8'),
     );
-    const arr = ensureArray(parent, arrayKey);
-    arr[index] = value ?? null;
-  } else {
-    const arr = ensureArray(obj, arrayKey);
-    arr[index] = value ?? null;
-  }
-}
-
-function loadEnvironment(env: Record<string, string | undefined>): RawConfig {
-  const result: RawConfig = {};
-
-  const envKeys = Object.keys(env).filter((key) => key.startsWith(ENV_PREFIX));
-
-  for (const k of envKeys) {
-    const value = env[k];
-    const keyWithoutPrefix = k.replace(ENV_PREFIX, '');
-    const firstUnderscoreIndex = keyWithoutPrefix.indexOf('_');
-
-    if (firstUnderscoreIndex === -1) {
-      result[keyWithoutPrefix.toLowerCase()] = value ?? null;
-      continue;
+    if (typeof parsed !== 'object' || parsed === null) {
+      return {};
     }
 
-    const topLevel = keyWithoutPrefix
-      .substring(0, firstUnderscoreIndex)
-      .toLowerCase();
-    const rest = keyWithoutPrefix.substring(firstUnderscoreIndex + 1);
-    const arrayMatch = rest.match(/^(.+)_(\d+)$/);
-
-    if (arrayMatch) {
-      const [, arrayPath, indexStr] = arrayMatch;
-      const index = parseInt(indexStr, 10);
-      const topLevelObj = ensureObject(result, topLevel);
-
-      if (topLevel === 'databases') {
-        const parts = arrayPath.split('_').map((part) => part.toLowerCase());
-        const path = parts.join('.');
-        const existing = getNestedValue(topLevelObj, path);
-
-        if (!existing || !Array.isArray(existing)) {
-          setArrayValue(topLevelObj, [...parts], index, value);
-        } else {
-          existing[index] = value ?? null;
-        }
-      } else {
-        const arrayKey = toCamelCase(arrayPath);
-        const arr = ensureArray(topLevelObj, arrayKey);
-        arr[index] = value ?? null;
-      }
-    } else {
-      const topLevelObj = ensureObject(result, topLevel);
-
-      if (topLevel === 'databases') {
-        const path = rest
-          .split('_')
-          .map((part) => part.toLowerCase())
-          .join('.');
-        set(topLevelObj, path, value);
-      } else {
-        topLevelObj[toCamelCase(rest)] = value ?? null;
-      }
-    }
+    const metadata = parsed as { name?: unknown; version?: unknown };
+    return {
+      name: typeof metadata.name === 'string' ? metadata.name : undefined,
+      version:
+        typeof metadata.version === 'string' ? metadata.version : undefined,
+    };
+  } catch {
+    return {};
   }
+})();
 
-  // Load cache config (without BE_ prefix)
-  if (env.CACHE_ENABLED !== undefined) {
-    const cache = ensureObject(result, 'cache');
-    cache.enabled = env.CACHE_ENABLED === 'true';
-    cache.ttl = parseInt(env.CACHE_TTL || '300', 10);
-    cache.prefix = env.CACHE_PREFIX || 'app';
+function loadEnvironment(
+  environmentVariables: Record<string, string | undefined>,
+): RawConfig {
+  const config: RawConfig = {};
+
+  applyDatabaseEnv(config, environmentVariables);
+
+  if (environmentVariables.CACHE_ENABLED !== undefined) {
+    const cache = ensureObject(config, 'cache');
+    cache.enabled = environmentVariables.CACHE_ENABLED === 'true';
+    cache.ttl = parseInt(environmentVariables.CACHE_TTL || '300', 10);
+    cache.prefix = environmentVariables.CACHE_PREFIX || 'app';
 
     const redis = ensureObject(cache, 'redis');
-    redis.host = env.REDIS_HOST || 'localhost';
-    redis.port = parseInt(env.REDIS_PORT || '6379', 10);
-    if (env.REDIS_PASSWORD) {
-      redis.password = env.REDIS_PASSWORD;
+    redis.host = environmentVariables.REDIS_HOST || 'localhost';
+    redis.port = parseInt(environmentVariables.REDIS_PORT || '6379', 10);
+    if (environmentVariables.REDIS_PASSWORD) {
+      redis.password = environmentVariables.REDIS_PASSWORD;
     }
-    redis.db = parseInt(env.REDIS_DB || '0', 10);
+    redis.db = parseInt(environmentVariables.REDIS_DB || '0', 10);
   }
 
-  // Load cluster config (without BE_ prefix)
-  if (env.CLUSTER_ENABLED !== undefined) {
-    const cluster = ensureObject(result, 'cluster');
-    cluster.enabled = env.CLUSTER_ENABLED === 'true';
-    cluster.workers = parseInt(env.CLUSTER_WORKERS || '0', 10);
-  }
-
-  return result;
+  return config;
 }
 
 export default (): RootConfig => {
   dotenv.config();
 
   const envConfig = loadEnvironment(process.env ?? {});
-  const config = merge({}, envConfig);
+  const mergedConfig = merge(
+    {},
+    {
+      app: {
+        appName: packageMetadata.name ?? 'app',
+        appVersion: packageMetadata.version ?? '0.0.1',
+      },
+      auth: {
+        bcryptRounds: DEFAULT_BCRYPT_ROUNDS,
+      },
+    },
+    envConfig,
+  );
 
-  const validatedConfig = plainToInstance(RootConfig, config, {
+  const validatedConfig = plainToInstance(RootConfig, mergedConfig, {
     enableImplicitConversion: true,
   });
 
