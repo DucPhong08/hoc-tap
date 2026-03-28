@@ -1,5 +1,5 @@
 import { FilterQuery } from '@mikro-orm/core';
-import type { QueryCondition } from '../../../common/interfaces/query';
+import type { QueryCondition } from '../../../common/types/repository.types';
 
 const SOFT_DELETE_FIELD = 'deletedAt';
 const REGEX_OPERATOR = '$re';

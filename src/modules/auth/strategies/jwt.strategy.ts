@@ -3,7 +3,7 @@ import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
 import { UserService } from '../../users/services/user.service';
-import { AuthConfig } from '../../../config/root/auth.config';
+import type { AuthConfig } from '../../../config/configuration.types';
 
 export interface JwtPayload {
   sub: string;
@@ -28,7 +28,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: JwtPayload) {
-    const user = await this.userService.getByIdOrNull(null, payload.sub);
+    const user = await this.userService.getByIdOrNull(payload.sub);
 
     if (!user) {
       throw new UnauthorizedException('Không tìm thấy người dùng');

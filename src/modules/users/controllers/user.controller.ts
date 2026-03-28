@@ -1,12 +1,12 @@
 import { Controller, Get, Param } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
-import { BaseCrudControllerFactory } from '../../../infra/controllers/base-crud.controller';
+import { createCrudController } from '../../../infra/controllers/base-crud.controller';
 import { UserEntity } from '../entities/user.entity';
 import { UserService } from '../services/user.service';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { UpdateUserDto } from '../dto/update-user.dto';
 
-const BaseController = BaseCrudControllerFactory(
+const UserCrudController = createCrudController(
   UserEntity,
   CreateUserDto,
   UpdateUserDto,
@@ -18,10 +18,10 @@ const BaseController = BaseCrudControllerFactory(
       getPage: true,
       getById: true,
       getOne: true,
+      updateOne: { roles: ['admin'] },
       updateById: { roles: ['admin', 'user'] },
       updateByIds: { roles: ['admin'] },
-      upsert: { roles: ['admin'] },
-      getOneOrUpsert: { roles: ['admin'] },
+      deleteOne: { roles: ['admin'] },
       deleteById: { roles: ['admin'] },
       deleteByIds: { roles: ['admin'] },
     },
@@ -30,9 +30,9 @@ const BaseController = BaseCrudControllerFactory(
 
 @ApiTags('users')
 @Controller('users')
-export class UserController extends BaseController {
+export class UserController extends UserCrudController {
   constructor(private readonly userService: UserService) {
-    super(userService, 'User');
+    super(userService);
   }
 
   @Get('email/:email')

@@ -1,11 +1,11 @@
 import { FindOptions } from '@mikro-orm/core';
 import type {
-  BaseQueryOption,
+  QueryOptions,
   PopulateInput,
   PopulateOptions,
-} from '../../../common/interfaces/query';
+} from '../../../common/types/repository.types';
 
-type QueryBuildOptions<E> = BaseQueryOption & {
+type QueryBuildOptions<E> = QueryOptions & {
   select?: (keyof E)[];
   populate?: PopulateInput;
   sort?: Partial<Record<keyof E, 1 | -1>>;

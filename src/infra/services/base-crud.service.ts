@@ -3,25 +3,17 @@ import type {
   QueryCondition,
   PaginationResult,
   UpdateData,
-  GetByIdQuery,
-  GetOneQuery,
-  GetManyQuery,
-  GetPageQuery,
+  FindQuery,
   CreateCommand,
-  InsertManyCommand,
-  UpdateByIdCommand,
-  UpdateOneCommand,
-  UpdateManyCommand,
-  DeleteByIdCommand,
-  DeleteOneCommand,
-  DeleteManyCommand,
-  BaseQueryOption,
-  BaseCommandOption,
+  UpdateCommand,
+  DeleteCommand,
+  BulkCommand,
+  QueryOptions,
+  CommandOptions,
 } from '../../common/interfaces/repository.interface';
 import type { IBaseRepository } from '../../common/interfaces/repository.interface';
 import { BaseEntity } from '../../common/entity/base.entity';
 import type { BaseTransaction } from '../transaction/base-transaction.interface';
-import type { UserContext } from '../../common/types/user.type';
 
 export interface BaseCrudServiceConfig<TContext = unknown> {
   notFoundMessage?: string;
@@ -45,31 +37,28 @@ export abstract class BaseCrudService<
   }
 
   async create(
-    user: UserContext,
     dto: Partial<E>,
-    command?: CreateCommand & BaseCommandOption<TContext>,
+    options?: CreateCommand & CommandOptions<TContext>,
   ): Promise<E> {
-    return this.executeWithTransaction(command, async (txCommand) => {
-      return this.repository.create(dto, txCommand);
+    return this.executeWithTransaction(options, async (txOptions) => {
+      return this.repository.create(dto, txOptions);
     });
   }
 
   async insertMany(
-    user: UserContext,
     list: Partial<E>[],
-    command?: InsertManyCommand & BaseCommandOption<TContext>,
+    options?: BulkCommand & CommandOptions<TContext>,
   ): Promise<{ n: number }> {
-    return this.executeWithTransaction(command, async (txCommand) => {
-      return this.repository.insertMany(list, txCommand);
+    return this.executeWithTransaction(options, async (txOptions) => {
+      return this.repository.insertMany(list, txOptions);
     });
   }
 
   async getById(
-    user: UserContext,
     id: string,
-    query?: GetByIdQuery<E> & BaseQueryOption<TContext>,
+    options?: FindQuery<E> & QueryOptions<TContext>,
   ): Promise<E> {
-    const entity = await this.repository.getById(id, query);
+    const entity = await this.repository.getById(id, options);
 
     if (!entity) {
       throw new NotFoundException(`${this.notFoundMessage} với ID: ${id}`);
@@ -79,19 +68,17 @@ export abstract class BaseCrudService<
   }
 
   async getByIdOrNull(
-    user: UserContext,
     id: string,
-    query?: GetByIdQuery<E> & BaseQueryOption<TContext>,
+    options?: FindQuery<E> & QueryOptions<TContext>,
   ): Promise<E | null> {
-    return this.repository.getById(id, query);
+    return this.repository.getById(id, options);
   }
 
   async getOne(
-    user: UserContext,
     condition: QueryCondition<E>,
-    query?: GetOneQuery<E> & BaseQueryOption<TContext>,
+    options?: FindQuery<E> & QueryOptions<TContext>,
   ): Promise<E> {
-    const entity = await this.repository.getOne(condition, query);
+    const entity = await this.repository.getOne(condition, options);
 
     if (!entity) {
       throw new NotFoundException(this.notFoundMessage);
@@ -100,38 +87,28 @@ export abstract class BaseCrudService<
     return entity;
   }
 
-  async getOneOrNull(
-    user: UserContext,
-    condition: QueryCondition<E>,
-    query?: GetOneQuery<E> & BaseQueryOption<TContext>,
-  ): Promise<E | null> {
-    return this.repository.getOne(condition, query);
-  }
-
   async getMany(
-    user: UserContext,
     condition: QueryCondition<E>,
-    query?: GetManyQuery<E> & BaseQueryOption<TContext>,
+    options?: FindQuery<E> & QueryOptions<TContext>,
   ): Promise<E[]> {
-    return this.repository.getMany(condition, query);
+    return this.repository.getMany(condition, options);
   }
 
   async getPage(
-    user: UserContext,
     condition: QueryCondition<E>,
-    query: GetPageQuery<E> & BaseQueryOption<TContext>,
+    options: FindQuery<E> &
+      QueryOptions<TContext> & { page: number; limit: number },
   ): Promise<PaginationResult<E>> {
-    return this.repository.getPage(condition, query);
+    return this.repository.getPage(condition, options);
   }
 
   async updateById(
-    user: UserContext,
     id: string,
     update: UpdateData<E>,
-    command?: UpdateByIdCommand & BaseCommandOption<TContext>,
+    options?: UpdateCommand & CommandOptions<TContext>,
   ): Promise<E> {
-    return this.executeWithTransaction(command, async (txCommand) => {
-      const entity = await this.repository.updateById(id, update, txCommand);
+    return this.executeWithTransaction(options, async (txOptions) => {
+      const entity = await this.repository.updateById(id, update, txOptions);
 
       if (!entity) {
         throw new NotFoundException(`${this.notFoundMessage} với ID: ${id}`);
@@ -142,16 +119,15 @@ export abstract class BaseCrudService<
   }
 
   async updateOne(
-    user: UserContext,
     condition: QueryCondition<E>,
     update: UpdateData<E>,
-    command?: UpdateOneCommand & BaseCommandOption<TContext>,
+    options?: UpdateCommand & CommandOptions<TContext>,
   ): Promise<E> {
-    return this.executeWithTransaction(command, async (txCommand) => {
+    return this.executeWithTransaction(options, async (txOptions) => {
       const entity = await this.repository.updateOne(
         condition,
         update,
-        txCommand,
+        txOptions,
       );
 
       if (!entity) {
@@ -163,37 +139,33 @@ export abstract class BaseCrudService<
   }
 
   async updateMany(
-    user: UserContext,
     condition: QueryCondition<E>,
     update: UpdateData<E>,
-    command?: UpdateManyCommand & BaseCommandOption<TContext>,
+    options?: BulkCommand & CommandOptions<TContext>,
   ): Promise<{ affected: number }> {
-    return this.executeWithTransaction(command, async (txCommand) => {
-      return this.repository.updateMany(condition, update, txCommand);
+    return this.executeWithTransaction(options, async (txOptions) => {
+      return this.repository.updateMany(condition, update, txOptions);
     });
   }
 
   async updateManyByIds(
-    user: UserContext,
     ids: string[],
     update: UpdateData<E>,
-    command?: UpdateManyCommand & BaseCommandOption<TContext>,
+    options?: BulkCommand & CommandOptions<TContext>,
   ): Promise<{ affected: number }> {
     return this.updateMany(
-      user,
       { _id: { $in: ids } } as QueryCondition<E>,
       update,
-      command,
+      options,
     );
   }
 
   async deleteById(
-    user: UserContext,
     id: string,
-    command?: DeleteByIdCommand & BaseCommandOption<TContext>,
+    options?: DeleteCommand & CommandOptions<TContext>,
   ): Promise<E> {
-    return this.executeWithTransaction(command, async (txCommand) => {
-      const entity = await this.repository.deleteById(id, txCommand);
+    return this.executeWithTransaction(options, async (txOptions) => {
+      const entity = await this.repository.deleteById(id, txOptions);
 
       if (!entity) {
         throw new NotFoundException(`${this.notFoundMessage} với ID: ${id}`);
@@ -204,12 +176,11 @@ export abstract class BaseCrudService<
   }
 
   async deleteOne(
-    user: UserContext,
     condition: QueryCondition<E>,
-    command?: DeleteOneCommand & BaseCommandOption<TContext>,
+    options?: DeleteCommand & CommandOptions<TContext>,
   ): Promise<E> {
-    return this.executeWithTransaction(command, async (txCommand) => {
-      const entity = await this.repository.deleteOne(condition, txCommand);
+    return this.executeWithTransaction(options, async (txOptions) => {
+      const entity = await this.repository.deleteOne(condition, txOptions);
 
       if (!entity) {
         throw new NotFoundException(this.notFoundMessage);
@@ -220,63 +191,55 @@ export abstract class BaseCrudService<
   }
 
   async deleteMany(
-    user: UserContext,
     condition: QueryCondition<E>,
-    command?: DeleteManyCommand & BaseCommandOption<TContext>,
+    options?: DeleteCommand & CommandOptions<TContext>,
   ): Promise<{ deleted: number }> {
-    return this.executeWithTransaction(command, async (txCommand) => {
-      return this.repository.deleteMany(condition, txCommand);
+    return this.executeWithTransaction(options, async (txOptions) => {
+      return this.repository.deleteMany(condition, txOptions);
     });
   }
 
   async deleteManyByIds(
-    user: UserContext,
     ids: string[],
-    command?: DeleteManyCommand & BaseCommandOption<TContext>,
+    options?: DeleteCommand & CommandOptions<TContext>,
   ): Promise<{ deleted: number }> {
-    return this.deleteMany(
-      user,
-      { _id: { $in: ids } } as QueryCondition<E>,
-      command,
-    );
+    return this.deleteMany({ _id: { $in: ids } } as QueryCondition<E>, options);
   }
 
   async count(
-    user: UserContext,
     condition?: QueryCondition<E>,
-    query?: BaseQueryOption<TContext>,
+    options?: QueryOptions<TContext>,
   ): Promise<number> {
-    return this.repository.count(condition, query);
+    return this.repository.count(condition, options);
   }
 
   async exists(
-    user: UserContext,
     condition: QueryCondition<E>,
-    query?: BaseQueryOption<TContext>,
+    options?: QueryOptions<TContext>,
   ): Promise<boolean> {
-    return this.repository.exists(condition, query);
+    return this.repository.exists(condition, options);
   }
 
   protected async executeWithTransaction<T>(
-    command: BaseCommandOption<TContext> | undefined,
-    callback: (txCommand: BaseCommandOption<TContext>) => Promise<T>,
+    options: CommandOptions<TContext> | undefined,
+    callback: (txOptions: CommandOptions<TContext>) => Promise<T>,
   ): Promise<T> {
-    const hasExternalTransaction = Boolean(command?.transaction);
-    const txCommand = command || {};
+    const hasExternalTransaction = Boolean(options?.transaction);
+    const txOptions = options || {};
 
     if (!hasExternalTransaction && this.transaction) {
-      txCommand.transaction = await this.transaction.startTransaction();
+      txOptions.transaction = await this.transaction.startTransaction();
     }
 
     try {
-      const result = await callback(txCommand);
+      const result = await callback(txOptions);
 
       if (
         !hasExternalTransaction &&
         this.transaction &&
-        txCommand.transaction
+        txOptions.transaction
       ) {
-        await this.transaction.commitTransaction(txCommand.transaction);
+        await this.transaction.commitTransaction(txOptions.transaction);
       }
 
       return result;
@@ -284,9 +247,9 @@ export abstract class BaseCrudService<
       if (
         !hasExternalTransaction &&
         this.transaction &&
-        txCommand.transaction
+        txOptions.transaction
       ) {
-        await this.transaction.abortTransaction(txCommand.transaction);
+        await this.transaction.abortTransaction(txOptions.transaction);
       }
       throw error;
     }

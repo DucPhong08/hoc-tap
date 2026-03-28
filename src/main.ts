@@ -4,12 +4,14 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
-import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
-import { AppConfig } from './config/root/app.config';
-import { SwaggerConfig } from './config/root/swagger.config';
-import { ValidationConfig } from './config/root/validation.config';
-import { CorsConfig } from './config/root/cors.config';
+import type {
+  AppConfig,
+  CorsConfig,
+  HostConfig,
+  SwaggerConfig,
+  ValidationConfig,
+} from './config/configuration.types';
 
 export async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
@@ -47,7 +49,6 @@ export async function bootstrap() {
 
   app.useGlobalInterceptors(
     new TransformInterceptor(), // Transform response first
-    new LoggingInterceptor(), // Then log
   );
 
   // Swagger
@@ -70,7 +71,7 @@ export async function bootstrap() {
     });
   }
 
-  const host = configService.get<{ host: string; port: number }>('host');
+  const host = configService.get<HostConfig>('host');
   const port = host?.port || 3000;
 
   await app.listen(port);

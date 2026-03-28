@@ -4,7 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import { UserService } from '../../users/services/user.service';
 import { UserEntity } from '../../users/entities/user.entity';
-import { AuthConfig } from '../../../config/root/auth.config';
+import type { AuthConfig } from '../../../config/configuration.types';
 import { JwtPayload } from '../strategies/jwt.strategy';
 import { OAuthProfile } from '../interfaces/oauth-profile.interface';
 import { AuthProvider } from '../enums/auth-provider.enum';
@@ -41,7 +41,7 @@ export class AuthService {
       authConfig?.bcryptRounds || 10,
     );
 
-    const user = await this.userService.create(null, {
+    const user = await this.userService.create({
       email,
       password: hashedPassword,
       firstName,
@@ -78,24 +78,22 @@ export class AuthService {
   }
 
   async validateOAuthUser(profile: OAuthProfile): Promise<UserEntity> {
-    let user = await this.userService.getOneOrNull(null, {
-      provider: profile.provider,
-      providerId: profile.providerId,
-    });
+    let user = await this.userService.findByProviderAccount(
+      profile.provider,
+      profile.providerId,
+    );
 
     if (!user) {
-      user = await this.userService.getOneOrNull(null, {
-        email: profile.email,
-      });
+      user = await this.userService.findByEmail(profile.email);
 
       if (user) {
-        user = await this.userService.updateById(null, user._id.toString(), {
+        user = await this.userService.updateById(user._id.toString(), {
           provider: profile.provider,
           providerId: profile.providerId,
           avatar: profile.avatar,
         });
       } else {
-        user = await this.userService.create(null, {
+        user = await this.userService.create({
           email: profile.email,
           firstName: profile.firstName,
           lastName: profile.lastName,
@@ -117,7 +115,7 @@ export class AuthService {
         secret: authConfig?.jwtRefreshSecret,
       });
 
-      const user = await this.userService.getByIdOrNull(null, payload.sub);
+      const user = await this.userService.getByIdOrNull(payload.sub);
 
       if (!user) {
         throw new UnauthorizedException('Không tìm thấy người dùng');

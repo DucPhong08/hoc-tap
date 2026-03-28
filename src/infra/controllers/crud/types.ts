@@ -6,17 +6,29 @@ export type BaseRoute =
   | 'getPage'
   | 'getById'
   | 'getOne'
+  | 'updateOne'
   | 'updateById'
   | 'updateByIds'
-  | 'upsert'
-  | 'getOneOrUpsert'
+  | 'deleteOne'
   | 'deleteById'
   | 'deleteByIds';
+
+export type CrudHandlerName =
+  | 'createEntity'
+  | 'listEntities'
+  | 'paginateEntities'
+  | 'findOneByCondition'
+  | 'findEntityById'
+  | 'updateOneByCondition'
+  | 'updateEntityById'
+  | 'updateEntitiesByIds'
+  | 'deleteOneByCondition'
+  | 'deleteEntityById'
+  | 'deleteEntitiesByIds';
 
 export interface RouteConfig {
   enabled?: boolean;
   roles?: string[];
-  public?: boolean;
 }
 
 export interface CrudOptions {
@@ -26,9 +38,20 @@ export interface CrudOptions {
   };
 }
 
-export interface ControllerFactoryOptions {
+export interface ControllerFactoryOptions extends CrudOptions {
   conditionDto?: Type<unknown>;
   createDto?: Type<unknown>;
   updateDto?: Type<unknown>;
-  routes?: CrudOptions['routes'];
+}
+
+export interface CrudRouteDefinition {
+  route: BaseRoute;
+  handlerName: CrudHandlerName;
+}
+
+export interface CrudControllerFactoryConfig {
+  conditionDto?: Type<unknown>;
+  createDto?: Type<unknown>;
+  updateDto?: Type<unknown>;
+  options: CrudOptions;
 }

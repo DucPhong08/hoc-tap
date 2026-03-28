@@ -2,7 +2,7 @@ import { wrap } from '@mikro-orm/core';
 import type {
   UpdateData,
   UpdateOperator,
-} from '../../../common/interfaces/query';
+} from '../../../common/types/repository.types';
 
 const UPDATE_OPERATOR_KEYS = [
   '$set',

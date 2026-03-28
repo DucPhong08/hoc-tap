@@ -5,8 +5,17 @@
   "author": "",
   "private": true,
   "license": "UNLICENSED",
+  "mikro-orm": {
+    "configPaths": [
+      "./dist/infra/database/cli/mikro-orm.cli.config.js",
+      "./src/infra/database/cli/mikro-orm.cli.config.ts"
+    ]
+  },
   "scripts": {
     "build": "nest build",
+    "db:migration:create": "mikro-orm migration:create",
+    "db:migration:up": "mikro-orm migration:up",
+    "db:migration:down": "mikro-orm migration:down",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
     "start:dev": "nest start --watch",
