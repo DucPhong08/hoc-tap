@@ -17,14 +17,6 @@ export default function configuration(): ApplicationConfiguration {
 
   const config = {
     mode,
-    app: {
-      apiPrefix: readStringValue(environment.API_PREFIX, 'api'),
-      appName: readStringValue(environment.APP_NAME, 'hoc-tap'),
-      appVersion: readStringValue(environment.APP_VERSION, '0.0.1'),
-      timezone:
-        readStringValue(environment.APP_TIMEZONE) ??
-        readStringValue(environment.TZ, '+07:00'),
-    },
     host: {
       host: readStringValue(environment.HOST, '0.0.0.0'),
       port: readNumberValue(environment.PORT, 3000),
@@ -52,24 +44,6 @@ export default function configuration(): ApplicationConfiguration {
         password: readStringValue(environment.REDIS_PASSWORD),
         db: readNumberValue(environment.REDIS_DB, 0),
       },
-    },
-    swagger: {
-      enabled: readBooleanValue(environment.SWAGGER_ENABLED, true),
-      title: readStringValue(environment.SWAGGER_TITLE, 'API Documentation'),
-      description: readStringValue(
-        environment.SWAGGER_DESCRIPTION,
-        'API Documentation',
-      ),
-      version: readStringValue(environment.SWAGGER_VERSION, '1.0'),
-      path: readStringValue(environment.SWAGGER_PATH, 'api'),
-    },
-    validation: {
-      whitelist: readBooleanValue(environment.VALIDATION_WHITELIST, true),
-      forbidNonWhitelisted: readBooleanValue(
-        environment.VALIDATION_FORBID_NON_WHITELISTED,
-        true,
-      ),
-      transform: readBooleanValue(environment.VALIDATION_TRANSFORM, true),
     },
     GOOGLE_CLIENT_ID: readStringValue(environment.GOOGLE_CLIENT_ID, ''),
     GOOGLE_CLIENT_SECRET: readStringValue(environment.GOOGLE_CLIENT_SECRET, ''),

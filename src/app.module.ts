@@ -1,4 +1,9 @@
-import { Module } from '@nestjs/common';
+import {
+  MiddlewareConsumer,
+  Module,
+  NestModule,
+  RequestMethod,
+} from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { AppController } from './app.controller';
@@ -16,6 +21,7 @@ import { CacheModule } from './infra/cache/cache.module';
 import { MonitoringModule } from './infra/monitoring/monitoring.module';
 import { WebsocketModule } from './infra/websocket/websocket.module';
 import { CronModule } from './infra/cron/cron.module';
+import { RequestLoggingMiddleware } from './common/middleware/request-logging.middleware';
 
 @Module({
   imports: [
@@ -48,4 +54,11 @@ import { CronModule } from './infra/cron/cron.module';
     },
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(RequestLoggingMiddleware).forRoutes({
+      path: '{*path}',
+      method: RequestMethod.ALL,
+    });
+  }
+}

@@ -1,10 +1,3 @@
-export interface AppConfig {
-  apiPrefix: string;
-  appName: string;
-  appVersion: string;
-  timezone?: string;
-}
-
 export interface HostConfig {
   host: string;
   port: number;
@@ -18,23 +11,8 @@ export interface AuthConfig {
   bcryptRounds: number;
 }
 
-export interface SwaggerConfig {
-  enabled: boolean;
-  path: string;
-  title: string;
-  description: string;
-  version: string;
-}
-
-export interface ValidationConfig {
-  whitelist: boolean;
-  forbidNonWhitelisted: boolean;
-  transform: boolean;
-}
-
 export interface ApplicationConfiguration {
   mode: 'development' | 'production' | 'test';
-  app: AppConfig;
   host: HostConfig;
   auth: AuthConfig;
   cache: {
@@ -48,8 +26,6 @@ export interface ApplicationConfiguration {
       db: number;
     };
   };
-  swagger: SwaggerConfig;
-  validation: ValidationConfig;
   GOOGLE_CLIENT_ID: string;
   GOOGLE_CLIENT_SECRET: string;
   GOOGLE_CALLBACK_URL: string;

@@ -47,13 +47,12 @@ export class MigrationService implements OnModuleInit {
   }
 
   private async syncSchema() {
-    const generator = this.orm.getSchemaGenerator();
-    const pendingSchemaDiff = await generator.getUpdateSchemaSQL();
+    const pendingSchemaDiff = await this.orm.schema.getUpdateSchemaSQL();
 
     if (!pendingSchemaDiff.trim()) {
       return;
     }
 
-    await generator.updateSchema();
+    await this.orm.schema.updateSchema();
   }
 }

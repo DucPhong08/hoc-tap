@@ -5,12 +5,12 @@ import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
-import type {
-  AppConfig,
-  HostConfig,
-  SwaggerConfig,
-  ValidationConfig,
-} from './config/configuration.types';
+import type { HostConfig } from './config/configuration.types';
+
+const API_PREFIX = 'api';
+const SWAGGER_TITLE = 'API Documentation';
+const SWAGGER_DESCRIPTION = 'API Documentation';
+const SWAGGER_VERSION = '1.0';
 
 export async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
@@ -21,21 +21,17 @@ export async function bootstrap() {
   const configService = app.get(ConfigService);
 
   // App config
-  const appConfig = configService.get<AppConfig>('app');
-  if (appConfig?.apiPrefix) {
-    app.setGlobalPrefix(appConfig.apiPrefix);
-  }
+  app.setGlobalPrefix(API_PREFIX);
 
   // CORS
   app.enableCors({});
 
   // Validation
-  const validationConfig = configService.get<ValidationConfig>('validation');
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: validationConfig?.whitelist ?? true,
-      forbidNonWhitelisted: validationConfig?.forbidNonWhitelisted ?? true,
-      transform: validationConfig?.transform ?? true,
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
     }),
   );
 
@@ -47,31 +43,25 @@ export async function bootstrap() {
   );
 
   // Swagger
-  const swaggerConfig = configService.get<SwaggerConfig>('swagger');
-  if (swaggerConfig?.enabled) {
-    const config = new DocumentBuilder()
-      .setTitle(swaggerConfig.title)
-      .setDescription(swaggerConfig.description)
-      .setVersion(swaggerConfig.version)
-      .addBearerAuth()
-      .addTag('auth')
-      .addTag('users')
-      .addTag('products')
-      .build();
-    const document = SwaggerModule.createDocument(app, config);
-    SwaggerModule.setup(swaggerConfig.path, app, document, {
-      swaggerOptions: {
-        defaultModelsExpandDepth: -1,
-      },
-    });
-  }
+  const config = new DocumentBuilder()
+    .setTitle(SWAGGER_TITLE)
+    .setDescription(SWAGGER_DESCRIPTION)
+    .setVersion(SWAGGER_VERSION)
+    .addBearerAuth()
+    .build();
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup(API_PREFIX, app, document, {
+    swaggerOptions: {
+      defaultModelsExpandDepth: -1,
+    },
+  });
 
   const host = configService.get<HostConfig>('host');
   const port = host?.port || 3000;
 
   await app.listen(port);
   console.log(`Application is running on: http://localhost:${port}`);
-  console.log(`Swagger documentation: http://localhost:${port}/api`);
+  console.log(`Swagger documentation: http://localhost:${port}/${API_PREFIX}`);
 }
 
 if (require.main === module) {

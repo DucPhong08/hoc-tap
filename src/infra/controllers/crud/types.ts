@@ -1,5 +1,3 @@
-import { Type } from '@nestjs/common';
-
 export type BaseRoute =
   | 'create'
   | 'getMany'
@@ -38,20 +36,7 @@ export interface CrudOptions {
   };
 }
 
-export interface ControllerFactoryOptions extends CrudOptions {
-  conditionDto?: Type<unknown>;
-  createDto?: Type<unknown>;
-  updateDto?: Type<unknown>;
-}
-
 export interface CrudRouteDefinition {
   route: BaseRoute;
   handlerName: CrudHandlerName;
-}
-
-export interface CrudControllerFactoryConfig {
-  conditionDto?: Type<unknown>;
-  createDto?: Type<unknown>;
-  updateDto?: Type<unknown>;
-  options: CrudOptions;
 }

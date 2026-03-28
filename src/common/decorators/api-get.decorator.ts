@@ -16,16 +16,6 @@ const ApiCondition = () =>
 export const ApiQueryOptions = (mode: QueryMode) => {
   const decorators = [
     ApiQuery({
-      name: 'select',
-      required: false,
-      type: String,
-    }),
-    ApiQuery({
-      name: 'populate',
-      required: false,
-      type: String,
-    }),
-    ApiQuery({
       name: 'sort',
       required: false,
       type: String,
@@ -39,18 +29,19 @@ export const ApiQueryOptions = (mode: QueryMode) => {
   ];
 
   if (mode === 'many') {
-    decorators.push(
-      ApiQuery({
-        name: 'limit',
-        required: false,
-        type: Number,
-      }),
-      ApiQuery({
-        name: 'offset',
-        required: false,
-        type: Number,
-      }),
-    );
+    decorators
+      .push
+      // ApiQuery({
+      //   name: 'limit',
+      //   required: false,
+      //   type: Number,
+      // }),
+      // ApiQuery({
+      //   name: 'offset',
+      //   required: false,
+      //   type: Number,
+      // }),
+      ();
   }
 
   if (mode === 'page') {
@@ -58,11 +49,13 @@ export const ApiQueryOptions = (mode: QueryMode) => {
       ApiQuery({
         name: 'page',
         required: false,
+        default: 1,
         type: Number,
       }),
       ApiQuery({
         name: 'limit',
         required: false,
+        default: 10,
         type: Number,
       }),
     );

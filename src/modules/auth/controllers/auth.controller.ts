@@ -14,8 +14,8 @@ import { RegisterDto } from '../dto/register.dto';
 import { LoginDto } from '../dto/login.dto';
 import { RefreshTokenDto } from '../dto/refresh-token.dto';
 import { Public } from '../../../common/decorators/public.decorator';
-import { GoogleAuthGuard } from '../guards/google-auth.guard';
-import { FacebookAuthGuard } from '../guards/facebook-auth.guard';
+import { GoogleAuthGuard } from '../../../common/guards/google-auth.guard';
+import { FacebookAuthGuard } from '../../../common/guards/facebook-auth.guard';
 import type { Request } from 'express';
 
 @ApiTags('auth')

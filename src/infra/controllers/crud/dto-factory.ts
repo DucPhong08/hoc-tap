@@ -7,7 +7,7 @@ import type {
   QueryCondition,
   UpdateData,
 } from '../../../common/interfaces/repository.interface';
-import { AbstractValidationPipe } from '../../../common/pipes/abstract-validation.pipe';
+import { DtoValidationPipe } from '../../../common/pipes';
 import { DeleteManyByIdsDto } from '../../../common/dto/delete-many-byIds.dto';
 import { renameGeneratedClass } from './helpers';
 
@@ -19,27 +19,24 @@ export interface CrudDtoBundle {
   UpdateManyIdsDto: Type<unknown>;
   DeleteOneDto: Type<unknown>;
   validationPipes: {
-    create: AbstractValidationPipe;
-    update: AbstractValidationPipe;
-    updateOne: AbstractValidationPipe;
-    updateManyByIds: AbstractValidationPipe;
-    deleteOne: AbstractValidationPipe;
-    deleteManyByIds: AbstractValidationPipe;
+    create: DtoValidationPipe;
+    update: DtoValidationPipe;
+    updateOne: DtoValidationPipe;
+    updateManyByIds: DtoValidationPipe;
+    deleteOne: DtoValidationPipe;
+    deleteManyByIds: DtoValidationPipe;
   };
 }
 
 export const createCrudDtoBundle = <E extends BaseEntity>(
   entityType: Type<E>,
-  conditionDto?: Type<unknown>,
   createDto?: Type<unknown>,
   updateDto?: Type<unknown>,
 ): CrudDtoBundle => {
-  const ConditionDto =
-    conditionDto ||
-    renameGeneratedClass(
-      `${entityType.name}ConditionDto`,
-      PartialType(entityType),
-    );
+  const ConditionDto = renameGeneratedClass(
+    `${entityType.name}ConditionDto`,
+    PartialType(entityType),
+  );
 
   const CreateDto =
     createDto ||
@@ -115,27 +112,21 @@ export const createCrudDtoBundle = <E extends BaseEntity>(
   );
 
   const validationPipes = {
-    create: new AbstractValidationPipe(
-      { whitelist: true },
-      { body: CreateDto },
-    ),
-    update: new AbstractValidationPipe(
-      { whitelist: true },
-      { body: UpdateDto },
-    ),
-    updateOne: new AbstractValidationPipe(
+    create: new DtoValidationPipe({ whitelist: true }, { body: CreateDto }),
+    update: new DtoValidationPipe({ whitelist: true }, { body: UpdateDto }),
+    updateOne: new DtoValidationPipe(
       { whitelist: true },
       { body: UpdateOneByConditionDto },
     ),
-    updateManyByIds: new AbstractValidationPipe(
+    updateManyByIds: new DtoValidationPipe(
       { whitelist: true },
       { body: UpdateManyIdsDto },
     ),
-    deleteOne: new AbstractValidationPipe(
+    deleteOne: new DtoValidationPipe(
       { whitelist: true },
       { body: DeleteOneByConditionDto },
     ),
-    deleteManyByIds: new AbstractValidationPipe(
+    deleteManyByIds: new DtoValidationPipe(
       { whitelist: true },
       { body: DeleteManyByIdsDto },
     ),

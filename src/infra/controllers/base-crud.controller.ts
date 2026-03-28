@@ -32,7 +32,7 @@ import {
   ApiGet,
   ApiQueryOptions,
 } from '../../common/decorators/api-get.decorator';
-import type { ParsedQueryOptions } from '../../common/pipes/request-query.pipe';
+import type { ParsedQueryOptions } from '../../common/pipes';
 import type {
   FindQuery,
   QueryCondition,
@@ -45,15 +45,13 @@ import {
   buildRouteConfigMap,
   createCrudDtoBundle,
   renameGeneratedClass,
-  resolveCrudControllerFactoryConfig,
   type BaseRoute,
-  type ControllerFactoryOptions,
   type CrudOptions,
   type CrudRouteDefinition,
   type RouteConfig,
 } from './crud';
 
-export type { BaseRoute, ControllerFactoryOptions, CrudOptions, RouteConfig };
+export type { BaseRoute, CrudOptions, RouteConfig };
 
 const CRUD_ROUTE_DEFINITIONS: CrudRouteDefinition[] = [
   { route: 'create', handlerName: 'createEntity' },
@@ -71,26 +69,10 @@ const CRUD_ROUTE_DEFINITIONS: CrudRouteDefinition[] = [
 
 export function createCrudController<E extends BaseEntity>(
   entityType: Type<E>,
-  options: ControllerFactoryOptions,
-): Type<object>;
-export function createCrudController<E extends BaseEntity>(
-  entityType: Type<E>,
   createDto?: Type<unknown>,
   updateDto?: Type<unknown>,
-  options?: CrudOptions,
-): Type<object>;
-export function createCrudController<E extends BaseEntity>(
-  entityType: Type<E>,
-  optionsOrCreateDto?: ControllerFactoryOptions | Type<unknown>,
-  updateDtoLegacy?: Type<unknown>,
-  optionsLegacy?: CrudOptions,
+  options: CrudOptions = {},
 ): Type<object> {
-  const { conditionDto, createDto, updateDto, options } =
-    resolveCrudControllerFactoryConfig(
-      optionsOrCreateDto,
-      updateDtoLegacy,
-      optionsLegacy,
-    );
   const routeConfigs = buildRouteConfigMap(options.routes);
   const {
     ConditionDto,
@@ -100,7 +82,7 @@ export function createCrudController<E extends BaseEntity>(
     UpdateManyIdsDto,
     DeleteOneDto,
     validationPipes,
-  } = createCrudDtoBundle(entityType, conditionDto, createDto, updateDto);
+  } = createCrudDtoBundle(entityType, createDto, updateDto);
 
   class CrudControllerHost {
     constructor(protected readonly service: BaseCrudService<E>) {}

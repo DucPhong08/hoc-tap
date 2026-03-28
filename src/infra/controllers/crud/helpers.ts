@@ -2,8 +2,6 @@ import { Type, NotFoundException } from '@nestjs/common';
 import { Authorize } from '../../../common/decorators/authorize.decorator';
 import type {
   BaseRoute,
-  ControllerFactoryOptions,
-  CrudControllerFactoryConfig,
   CrudOptions,
   CrudRouteDefinition,
   RouteConfig,
@@ -57,30 +55,6 @@ export const assertRouteEnabled = (config: RouteConfig): void => {
   }
 };
 
-export function resolveCrudControllerFactoryConfig(
-  optionsOrCreateDto?: ControllerFactoryOptions | Type<unknown>,
-  updateDtoLegacy?: Type<unknown>,
-  optionsLegacy?: CrudOptions,
-): CrudControllerFactoryConfig {
-  if (isControllerFactoryOptions(optionsOrCreateDto)) {
-    return {
-      conditionDto: optionsOrCreateDto.conditionDto,
-      createDto: optionsOrCreateDto.createDto,
-      updateDto: optionsOrCreateDto.updateDto,
-      options: {
-        defaultRoles: optionsOrCreateDto.defaultRoles,
-        routes: optionsOrCreateDto.routes,
-      },
-    };
-  }
-
-  return {
-    createDto: optionsOrCreateDto,
-    updateDto: updateDtoLegacy,
-    options: optionsLegacy ?? {},
-  };
-}
-
 export function applyCrudAuthorization(
   controllerClass: Type<object>,
   routeDefinitions: CrudRouteDefinition[],
@@ -112,10 +86,4 @@ export function applyCrudAuthorization(
       handlerDescriptor,
     );
   });
-}
-
-function isControllerFactoryOptions(
-  value: ControllerFactoryOptions | Type<unknown> | undefined,
-): value is ControllerFactoryOptions {
-  return Boolean(value) && typeof value === 'object';
 }
