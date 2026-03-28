@@ -42,8 +42,7 @@ export class PostgreSqlOptionsStrategy implements DatabaseDriverOptionsStrategy 
       },
       migrations: {
         path: settings.migrationPath,
-        pathTs: settings.migrationTsPath,
-        migrationsList: context.definition.migrationDefinitions,
+        emit: 'js',
       },
       ...(settings.autoMigrationEnabled &&
       settings.applicationMode !== 'production'

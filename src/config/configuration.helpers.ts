@@ -1,5 +1,3 @@
-type Environment = Record<string, string | undefined>;
-
 export function readStringValue(value: string | undefined): string | undefined;
 export function readStringValue(
   value: string | undefined,
@@ -48,46 +46,4 @@ export function readBooleanValue(
   }
 
   return fallbackValue;
-}
-
-export function readIndexedListValue(
-  environment: Environment,
-  indexedPrefix: string,
-  directKey: string,
-  fallbackValues: string[],
-): string[] {
-  const indexedValues = Object.keys(environment)
-    .filter((key) => key.startsWith(indexedPrefix))
-    .map((key) => {
-      const indexText = key.slice(indexedPrefix.length);
-      const index = Number.parseInt(indexText, 10);
-      const rawValue = environment[key];
-
-      return {
-        index,
-        value: typeof rawValue === 'string' ? rawValue.trim() : undefined,
-      };
-    })
-    .filter(
-      (entry) =>
-        Number.isFinite(entry.index) &&
-        typeof entry.value === 'string' &&
-        entry.value.length > 0,
-    )
-    .sort((left, right) => left.index - right.index)
-    .map((entry) => entry.value as string);
-
-  if (indexedValues.length > 0) {
-    return indexedValues;
-  }
-
-  const directValue = readStringValue(environment[directKey]);
-  if (!directValue) {
-    return fallbackValues;
-  }
-
-  return directValue
-    .split(',')
-    .map((item) => item.trim())
-    .filter(Boolean);
 }

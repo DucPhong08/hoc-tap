@@ -15,7 +15,6 @@ type DatabaseEnvironmentAliases = {
   debugEnabled: string[];
   autoMigrationEnabled: string[];
   migrationPath: string[];
-  migrationTsPath: string[];
   poolMinSize: string[];
   poolMaxSize: string[];
   timezone: string[];
@@ -40,8 +39,6 @@ export class DatabaseEnvironmentReader {
       connectionUri: this.readString(aliases.connectionUri),
       debugEnabled: this.readBoolean(aliases.debugEnabled),
       autoMigrationEnabled: this.readBoolean(aliases.autoMigrationEnabled),
-      migrationPath: this.readString(aliases.migrationPath),
-      migrationTsPath: this.readString(aliases.migrationTsPath),
       poolMinSize: this.readInteger(aliases.poolMinSize),
       poolMaxSize: this.readInteger(aliases.poolMaxSize),
       timezone: this.readString(aliases.timezone),
@@ -66,7 +63,6 @@ export class DatabaseEnvironmentReader {
       debugEnabled: [`${prefix}DEBUG`],
       autoMigrationEnabled: [`${prefix}AUTO_MIGRATE`],
       migrationPath: [`${prefix}MIGRATIONS_PATH`],
-      migrationTsPath: [`${prefix}MIGRATIONS_TS_PATH`],
       poolMinSize: [`${prefix}POOL_MIN`],
       poolMaxSize: [`${prefix}POOL_MAX`],
       timezone: [`${prefix}TIMEZONE`],

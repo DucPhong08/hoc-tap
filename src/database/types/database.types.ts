@@ -1,21 +1,13 @@
-import { AnyEntity, Constructor, EntityClass } from '@mikro-orm/core';
-import { Migration } from '@mikro-orm/migrations';
+import { AnyEntity, EntityClass } from '@mikro-orm/core';
 
 export type DatabaseDriverName = 'postgresql' | 'mongodb';
 export type DatabaseProfileName = 'sql' | 'mongo';
 export type ApplicationMode = 'development' | 'production';
 
-export interface DatabaseMigrationDefinition {
-  name: string;
-  class: Constructor<Migration>;
-}
-
 export interface DatabaseContextDefinition {
   contextName: string;
   entities: EntityClass<AnyEntity>[];
-  migrationDefinitions?: DatabaseMigrationDefinition[];
   defaultMigrationPath?: string;
-  defaultMigrationTsPath?: string;
   defaultPoolMinSize?: number;
   defaultPoolMaxSize?: number;
   defaultTimezone?: string;
@@ -35,8 +27,6 @@ export interface DatabaseEnvironmentSnapshot {
   connectionUri?: string;
   debugEnabled?: boolean;
   autoMigrationEnabled?: boolean;
-  migrationPath?: string;
-  migrationTsPath?: string;
   poolMinSize?: number;
   poolMaxSize?: number;
   timezone?: string;
@@ -60,7 +50,6 @@ export interface ResolvedSqlDatabaseSettings extends BaseResolvedDatabaseSetting
   timezone: string;
   autoMigrationEnabled: boolean;
   migrationPath: string;
-  migrationTsPath: string;
   poolMinSize: number;
   poolMaxSize: number;
 }

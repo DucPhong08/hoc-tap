@@ -7,7 +7,6 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import type {
   AppConfig,
-  CorsConfig,
   HostConfig,
   SwaggerConfig,
   ValidationConfig,
@@ -28,11 +27,7 @@ export async function bootstrap() {
   }
 
   // CORS
-  const corsConfig = configService.get<CorsConfig>('cors');
-  app.enableCors({
-    origin: corsConfig?.origins || ['http://localhost:3000'],
-    credentials: true,
-  });
+  app.enableCors({});
 
   // Validation
   const validationConfig = configService.get<ValidationConfig>('validation');

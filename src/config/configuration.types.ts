@@ -32,10 +32,6 @@ export interface ValidationConfig {
   transform: boolean;
 }
 
-export interface CorsConfig {
-  origins: string[];
-}
-
 export interface ApplicationConfiguration {
   mode: 'development' | 'production' | 'test';
   app: AppConfig;
@@ -52,7 +48,6 @@ export interface ApplicationConfiguration {
       db: number;
     };
   };
-  cors: CorsConfig;
   swagger: SwaggerConfig;
   validation: ValidationConfig;
   GOOGLE_CLIENT_ID: string;

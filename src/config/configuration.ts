@@ -1,6 +1,5 @@
 import {
   readBooleanValue,
-  readIndexedListValue,
   readNumberValue,
   readStringValue,
 } from './configuration.helpers';
@@ -53,14 +52,6 @@ export default function configuration(): ApplicationConfiguration {
         password: readStringValue(environment.REDIS_PASSWORD),
         db: readNumberValue(environment.REDIS_DB, 0),
       },
-    },
-    cors: {
-      origins: readIndexedListValue(
-        environment,
-        'CORS_ORIGINS_',
-        'CORS_ORIGINS',
-        ['http://localhost:3000'],
-      ),
     },
     swagger: {
       enabled: readBooleanValue(environment.SWAGGER_ENABLED, true),

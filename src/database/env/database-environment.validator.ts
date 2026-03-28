@@ -71,13 +71,7 @@ export class DatabaseEnvironmentValidator {
         environmentSnapshot.debugEnabled ?? applicationMode !== 'production',
       autoMigrationEnabled: environmentSnapshot.autoMigrationEnabled ?? false,
       migrationPath:
-        environmentSnapshot.migrationPath ??
-        contextDefinition.defaultMigrationPath ??
-        'dist/migrations',
-      migrationTsPath:
-        environmentSnapshot.migrationTsPath ??
-        contextDefinition.defaultMigrationTsPath ??
-        'src/migrations',
+        contextDefinition.defaultMigrationPath ?? 'mikro-base/migrations',
       poolMinSize,
       poolMaxSize,
       timezone:
