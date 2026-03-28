@@ -3,37 +3,44 @@ import { OmitType, PartialType, ApiProperty } from '@nestjs/swagger';
 import { Type as TransformType } from 'class-transformer';
 import { IsString, ValidateNested } from 'class-validator';
 import { BaseEntity } from '../../../common/entity/base.entity';
-import type { UpdateData } from '../../../common/interfaces/repository.interface';
-import { AbstractValidationPipe } from '../../../common/pipes/abstract-validation.pipe';
+import type {
+  QueryCondition,
+  UpdateData,
+} from '../../../common/interfaces/repository.interface';
+import { DtoValidationPipe } from '../../../common/pipes';
 import { DeleteManyByIdsDto } from '../../../common/dto/delete-many-byIds.dto';
-import { ClassName } from './helpers';
+import { renameGeneratedClass } from './helpers';
 
-export interface DtoFactoryResult {
+export interface CrudDtoBundle {
   ConditionDto: Type<unknown>;
   CreateDto: Type<unknown>;
   UpdateDto: Type<unknown>;
+  UpdateOneDto: Type<unknown>;
   UpdateManyIdsDto: Type<unknown>;
-  pipes: {
-    create: AbstractValidationPipe;
-    update: AbstractValidationPipe;
-    updateManyByIds: AbstractValidationPipe;
-    deleteManyByIds: AbstractValidationPipe;
+  DeleteOneDto: Type<unknown>;
+  validationPipes: {
+    create: DtoValidationPipe;
+    update: DtoValidationPipe;
+    updateOne: DtoValidationPipe;
+    updateManyByIds: DtoValidationPipe;
+    deleteOne: DtoValidationPipe;
+    deleteManyByIds: DtoValidationPipe;
   };
 }
 
-export const createDtos = <E extends BaseEntity>(
+export const createCrudDtoBundle = <E extends BaseEntity>(
   entityType: Type<E>,
-  conditionDto?: Type<unknown>,
   createDto?: Type<unknown>,
   updateDto?: Type<unknown>,
-): DtoFactoryResult => {
-  const ConditionDto =
-    conditionDto ||
-    ClassName(`${entityType.name}ConditionDto`, PartialType(entityType));
+): CrudDtoBundle => {
+  const ConditionDto = renameGeneratedClass(
+    `${entityType.name}ConditionDto`,
+    PartialType(entityType),
+  );
 
   const CreateDto =
     createDto ||
-    ClassName(
+    renameGeneratedClass(
       `Create${entityType.name}Dto`,
       OmitType(entityType, [
         '_id',
@@ -46,7 +53,7 @@ export const createDtos = <E extends BaseEntity>(
 
   const UpdateDto =
     updateDto ||
-    ClassName(
+    renameGeneratedClass(
       `Update${entityType.name}Dto`,
       PartialType(
         OmitType(entityType, [
@@ -70,25 +77,56 @@ export const createDtos = <E extends BaseEntity>(
     update: UpdateData<E>;
   }
 
-  const UpdateManyIdsDto = ClassName(
+  const UpdateManyIdsDto = renameGeneratedClass(
     `UpdateMany${entityType.name}IdsDto`,
     UpdateManyByIdsDto,
   );
 
-  const pipes = {
-    create: new AbstractValidationPipe(
+  class UpdateOneDto {
+    @ApiProperty({ type: ConditionDto, description: 'Filter condition' })
+    @ValidateNested()
+    @TransformType(() => ConditionDto)
+    condition: QueryCondition<E>;
+
+    @ApiProperty({ type: UpdateDto, description: 'Update data' })
+    @ValidateNested()
+    @TransformType(() => UpdateDto)
+    update: UpdateData<E>;
+  }
+
+  const UpdateOneByConditionDto = renameGeneratedClass(
+    `UpdateOne${entityType.name}Dto`,
+    UpdateOneDto,
+  );
+
+  class DeleteOneDto {
+    @ApiProperty({ type: ConditionDto, description: 'Filter condition' })
+    @ValidateNested()
+    @TransformType(() => ConditionDto)
+    condition: QueryCondition<E>;
+  }
+
+  const DeleteOneByConditionDto = renameGeneratedClass(
+    `DeleteOne${entityType.name}Dto`,
+    DeleteOneDto,
+  );
+
+  const validationPipes = {
+    create: new DtoValidationPipe({ whitelist: true }, { body: CreateDto }),
+    update: new DtoValidationPipe({ whitelist: true }, { body: UpdateDto }),
+    updateOne: new DtoValidationPipe(
       { whitelist: true },
-      { body: CreateDto },
+      { body: UpdateOneByConditionDto },
     ),
-    update: new AbstractValidationPipe(
-      { whitelist: true },
-      { body: UpdateDto },
-    ),
-    updateManyByIds: new AbstractValidationPipe(
+    updateManyByIds: new DtoValidationPipe(
       { whitelist: true },
       { body: UpdateManyIdsDto },
     ),
-    deleteManyByIds: new AbstractValidationPipe(
+    deleteOne: new DtoValidationPipe(
+      { whitelist: true },
+      { body: DeleteOneByConditionDto },
+    ),
+    deleteManyByIds: new DtoValidationPipe(
       { whitelist: true },
       { body: DeleteManyByIdsDto },
     ),
@@ -98,7 +136,9 @@ export const createDtos = <E extends BaseEntity>(
     ConditionDto,
     CreateDto,
     UpdateDto,
+    UpdateOneDto: UpdateOneByConditionDto,
     UpdateManyIdsDto,
-    pipes,
+    DeleteOneDto: DeleteOneByConditionDto,
+    validationPipes,
   };
 };

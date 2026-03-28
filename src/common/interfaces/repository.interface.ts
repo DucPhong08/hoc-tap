@@ -1,131 +1,114 @@
 import { BaseEntity } from '../entity/base.entity';
 import type {
   QueryCondition,
-  GetByIdQuery,
-  GetOneQuery,
-  GetManyQuery,
-  GetPageQuery,
-  CountQuery,
-  ExistsQuery,
-  CreateQuery,
-  InsertManyQuery,
-  UpdateByIdQuery,
-  UpdateOneQuery,
-  UpdateManyQuery,
-  DeleteByIdQuery,
-  DeleteOneQuery,
-  DeleteManyQuery,
+  FindQuery,
+  CreateCommand,
+  UpdateCommand,
+  DeleteCommand,
+  BulkCommand,
   PaginationResult,
-  UpdateManyResult,
-  DeleteManyResult,
+  BulkWriteResult,
+  BulkDeleteResult,
   UpdateData,
-  BaseQueryOption,
-  BaseCommandOption,
-} from './query';
+  QueryOptions,
+  CommandOptions,
+} from '../types/repository.types';
 
 export type {
   QueryCondition,
-  GetByIdQuery,
-  GetOneQuery,
-  GetManyQuery,
-  GetPageQuery,
-  CountQuery,
-  ExistsQuery,
-  CreateQuery,
-  InsertManyQuery,
-  UpdateByIdQuery,
-  UpdateOneQuery,
-  UpdateManyQuery,
-  DeleteByIdQuery,
-  DeleteOneQuery,
-  DeleteManyQuery,
+  FindQuery,
+  CreateCommand,
+  UpdateCommand,
+  DeleteCommand,
+  BulkCommand,
   PaginationResult,
-  UpdateManyResult,
-  DeleteManyResult,
+  BulkWriteResult,
+  BulkDeleteResult,
   UpdateData,
-  BaseQueryOption,
-  BaseCommandOption,
+  QueryOptions,
+  CommandOptions,
 };
 
 export interface IBaseRepository<E extends BaseEntity, TContext = unknown> {
   create(
-    document: Partial<E>,
-    query?: CreateQuery & BaseCommandOption<TContext>,
+    data: Partial<E>,
+    options?: CreateCommand & CommandOptions<TContext>,
   ): Promise<E>;
 
   insertMany(
-    documents: Partial<E>[],
-    query?: InsertManyQuery & BaseCommandOption<TContext>,
+    data: Partial<E>[],
+    options?: BulkCommand & CommandOptions<TContext>,
   ): Promise<{ n: number }>;
 
   getById(
     id: string,
-    query?: GetByIdQuery<E> & BaseQueryOption<TContext>,
+    options?: FindQuery<E> & QueryOptions<TContext>,
   ): Promise<E | null>;
 
   getOne(
     condition: QueryCondition<E>,
-    query?: GetOneQuery<E> & BaseQueryOption<TContext>,
+    options?: FindQuery<E> & QueryOptions<TContext>,
   ): Promise<E | null>;
 
   getMany(
     condition: QueryCondition<E>,
-    query?: GetManyQuery<E> & BaseQueryOption<TContext>,
+    options?: FindQuery<E> & QueryOptions<TContext>,
   ): Promise<E[]>;
 
   getPage(
     condition: QueryCondition<E>,
-    query: GetPageQuery<E> & BaseQueryOption<TContext>,
+    options: FindQuery<E> &
+      QueryOptions<TContext> & { page: number; limit: number },
   ): Promise<PaginationResult<E>>;
 
   updateById(
     id: string,
     data: UpdateData<E>,
-    query?: UpdateByIdQuery & BaseCommandOption<TContext>,
+    options?: UpdateCommand & CommandOptions<TContext>,
   ): Promise<E | null>;
 
   updateOne(
     condition: QueryCondition<E>,
     data: UpdateData<E>,
-    query?: UpdateOneQuery & BaseCommandOption<TContext>,
+    options?: UpdateCommand & CommandOptions<TContext>,
   ): Promise<E | null>;
 
   updateMany(
     condition: QueryCondition<E>,
     data: UpdateData<E>,
-    query?: UpdateManyQuery & BaseCommandOption<TContext>,
-  ): Promise<UpdateManyResult>;
+    options?: BulkCommand & CommandOptions<TContext>,
+  ): Promise<BulkWriteResult>;
 
   deleteById(
     id: string,
-    query?: DeleteByIdQuery & BaseCommandOption<TContext>,
+    options?: DeleteCommand & CommandOptions<TContext>,
   ): Promise<E | null>;
 
   deleteOne(
     condition: QueryCondition<E>,
-    query?: DeleteOneQuery & BaseCommandOption<TContext>,
+    options?: DeleteCommand & CommandOptions<TContext>,
   ): Promise<E | null>;
 
   deleteMany(
     condition: QueryCondition<E>,
-    query?: DeleteManyQuery & BaseCommandOption<TContext>,
-  ): Promise<DeleteManyResult>;
+    options?: DeleteCommand & CommandOptions<TContext>,
+  ): Promise<BulkDeleteResult>;
 
   count(
     condition?: QueryCondition<E>,
-    query?: CountQuery & BaseQueryOption<TContext>,
+    options?: QueryOptions<TContext>,
   ): Promise<number>;
 
   exists(
     condition: QueryCondition<E>,
-    query?: ExistsQuery & BaseQueryOption<TContext>,
+    options?: QueryOptions<TContext>,
   ): Promise<boolean>;
 
   distinct<K extends keyof E>(
     field: K,
     condition?: QueryCondition<E>,
-    query?: BaseQueryOption<TContext>,
+    options?: QueryOptions<TContext>,
   ): Promise<E[K][]>;
 
-  restore(id: string, query?: BaseCommandOption<TContext>): Promise<E | null>;
+  restore(id: string, options?: CommandOptions<TContext>): Promise<E | null>;
 }

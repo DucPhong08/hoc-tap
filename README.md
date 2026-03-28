@@ -21,13 +21,11 @@ Boilerplate NestJS với Clean Architecture, tích hợp sẵn:
 
 - ✅ **MikroORM** - ORM hiện đại với TypeScript
 - ✅ **Redis Cache** - Hệ thống cache với decorator `@Cacheable`
-- ✅ **Multi-core Clustering** - Tận dụng tất cả CPU cores
 - ✅ **JWT Authentication** - Xác thực với JWT + Refresh Token
 - ✅ **OAuth2** - Google & Facebook login
 - ✅ **Base Repository Pattern** - CRUD operations với query operators
 - ✅ **Transaction Support** - Database transactions
 - ✅ **Monitoring** - Health check endpoints
-- ✅ **Centralized Logging** - Logging với worker PID tracking
 
 ## Cấu trúc thư mục
 
@@ -35,7 +33,6 @@ Boilerplate NestJS với Clean Architecture, tích hợp sẵn:
 src/
 ├── common/              # Shared utilities
 │   ├── cache/          # Redis cache system
-│   ├── logging/        # Cluster logging
 │   ├── monitoring/     # Health check
 │   ├── repositories/   # Base & cached repositories
 │   ├── guards/         # Auth guards
@@ -47,8 +44,7 @@ src/
 │   ├── auth/          # Authentication
 │   ├── users/         # User management
 │   └── products/      # Product management
-├── main.ts            # Single-core entry
-└── main.cluster.ts    # Multi-core entry
+└── main.ts            # API entry
 ```
 
 ## Cài đặt
@@ -70,19 +66,8 @@ Xem chi tiết trong [SETUP_GUIDE.md](./SETUP_GUIDE.md)
 ## Chạy ứng dụng
 
 ```bash
-# Development (single core)
+# Development
 npm run start:dev
-
-# Development (multi-core clustering)
-CLUSTER_ENABLED=true npm run start:dev
-
-# Production (single core)
-npm run build
-npm run start:prod
-
-# Production (multi-core clustering)
-npm run build
-npm run start:cluster
 ```
 
 ## Tính năng chính
@@ -107,24 +92,13 @@ async getUsers() {
 }
 ```
 
-### 3. Multi-core Clustering
-
-```bash
-# Tự động sử dụng tất cả CPU cores
-CLUSTER_ENABLED=true
-CLUSTER_WORKERS=0  # 0 = auto detect CPU cores
-
-# Production với clustering
-npm run start:cluster
-```
-
-### 4. Authentication
+### 3. Authentication
 
 - JWT với Access Token + Refresh Token
 - OAuth2: Google & Facebook login
 - Role-based authorization
 
-### 5. Monitoring
+### 4. Monitoring
 
 ```bash
 GET /health          # Health check
@@ -140,11 +114,8 @@ npm run start:dev
 # Build
 npm run build
 
-# Production (single core)
+# Production
 npm run start:prod
-
-# Production (multi-core)
-npm run start:cluster
 
 # Lint
 npm run lint
@@ -181,18 +152,11 @@ npm run test:cov
 
 ## Deployment
 
-### Single Server (Single Core)
+### Single Server
 
 ```bash
 npm run build
 NODE_ENV=production npm run start:prod
-```
-
-### Single Server (Multi-core Clustering)
-
-```bash
-npm run build
-CLUSTER_ENABLED=true NODE_ENV=production npm run start:cluster
 ```
 
 ### Docker
@@ -203,8 +167,7 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci --only=production
 COPY dist ./dist
-ENV CLUSTER_ENABLED=true
-CMD ["npm", "run", "start:cluster"]
+CMD ["npm", "run", "start:prod"]
 ```
 
 ### PM2 (Recommended for Production)
@@ -213,31 +176,8 @@ CMD ["npm", "run", "start:cluster"]
 # Install PM2
 npm install -g pm2
 
-# Start with clustering
-pm2 start dist/main.cluster.js --name api
-
-# Or use ecosystem file
-pm2 start ecosystem.config.js
-```
-
-**ecosystem.config.js:**
-
-```javascript
-module.exports = {
-  apps: [
-    {
-      name: 'api',
-      script: './dist/main.cluster.js',
-      instances: 1,
-      exec_mode: 'fork',
-      env: {
-        NODE_ENV: 'production',
-        CLUSTER_ENABLED: 'true',
-        CLUSTER_WORKERS: 0, // Auto detect
-      },
-    },
-  ],
-};
+# Start API process
+pm2 start dist/main.js --name api
 ```
 
 ## Tech Stack

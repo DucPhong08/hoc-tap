@@ -2,111 +2,90 @@ import {
   Body,
   Delete,
   Get,
+  HttpCode,
   Param,
   Post,
   Put,
-  HttpCode,
   Type,
   UsePipes,
 } from '@nestjs/common';
 import {
-  ApiResponse,
-  ApiOkResponse,
-  ApiCreatedResponse,
   ApiBody,
+  ApiCreatedResponse,
+  ApiOkResponse,
+  ApiResponse,
 } from '@nestjs/swagger';
+import { DeleteManyByIdsDto } from '../../common/dto/delete-many-byIds.dto';
 import { PaginatedResponseDto } from '../../common/dto/pagination.dto';
 import { BaseEntity } from '../../common/entity/base.entity';
 import {
   HTTP_STATUS,
   HTTP_STATUS_MESSAGE,
 } from '../../common/constants/http-status.constant';
-import { Authorize } from '../../common/decorators/authorize.decorator';
-import { ReqUser } from '../../common/decorators/request-user.decorator';
-import type { CurrentUserData } from '../../common/decorators/request-user.decorator';
 import {
   RequestCondition,
   RequestQuery,
 } from '../../common/decorators/query.decorator';
-import type { ParsedQueryOptions } from '../../common/pipes/request-query.pipe';
-import type {
-  QueryCondition,
-  UpdateData,
-  GetOneQuery,
-  GetManyQuery,
-  GetPageQuery,
-} from '../../common/interfaces/repository.interface';
-import { DeleteManyByIdsDto } from '../../common/dto/delete-many-byIds.dto';
+import { ReqUser } from '../../common/decorators/request-user.decorator';
+import type { CurrentUserData } from '../../common/decorators/request-user.decorator';
 import {
   ApiGet,
   ApiQueryOptions,
 } from '../../common/decorators/api-get.decorator';
-import {
-  type BaseRoute,
-  type RouteConfig,
-  type CrudOptions,
-  type ControllerFactoryOptions,
-  normalizeRouteConfig,
-  checkRouteEnabled,
-  notFoundError,
-  createDtos,
-} from './crud';
+import type { ParsedQueryOptions } from '../../common/pipes';
+import type {
+  FindQuery,
+  QueryCondition,
+  UpdateData,
+} from '../../common/interfaces/repository.interface';
 import { BaseCrudService } from '../services/base-crud.service';
+import {
+  applyCrudAuthorization,
+  assertRouteEnabled,
+  buildRouteConfigMap,
+  createCrudDtoBundle,
+  renameGeneratedClass,
+  type BaseRoute,
+  type CrudOptions,
+  type CrudRouteDefinition,
+  type RouteConfig,
+} from './crud';
 
-export type { BaseRoute, RouteConfig, CrudOptions, ControllerFactoryOptions };
+export type { BaseRoute, CrudOptions, RouteConfig };
 
-export function BaseCrudControllerFactory<E extends BaseEntity>(
+const CRUD_ROUTE_DEFINITIONS: CrudRouteDefinition[] = [
+  { route: 'create', handlerName: 'createEntity' },
+  { route: 'getMany', handlerName: 'listEntities' },
+  { route: 'getPage', handlerName: 'paginateEntities' },
+  { route: 'getById', handlerName: 'findEntityById' },
+  { route: 'getOne', handlerName: 'findOneByCondition' },
+  { route: 'updateOne', handlerName: 'updateOneByCondition' },
+  { route: 'updateById', handlerName: 'updateEntityById' },
+  { route: 'updateByIds', handlerName: 'updateEntitiesByIds' },
+  { route: 'deleteOne', handlerName: 'deleteOneByCondition' },
+  { route: 'deleteById', handlerName: 'deleteEntityById' },
+  { route: 'deleteByIds', handlerName: 'deleteEntitiesByIds' },
+];
+
+export function createCrudController<E extends BaseEntity>(
   entityType: Type<E>,
-  optionsOrCreateDto?: ControllerFactoryOptions | Type<unknown>,
-  updateDtoLegacy?: Type<unknown>,
-  optionsLegacy?: CrudOptions,
-) {
-  let conditionDto: Type<unknown> | undefined;
-  let createDto: Type<unknown> | undefined;
-  let updateDto: Type<unknown> | undefined;
-  let options: CrudOptions | undefined;
+  createDto?: Type<unknown>,
+  updateDto?: Type<unknown>,
+  options: CrudOptions = {},
+): Type<object> {
+  const routeConfigs = buildRouteConfigMap(options.routes);
+  const {
+    ConditionDto,
+    CreateDto,
+    UpdateDto,
+    UpdateOneDto,
+    UpdateManyIdsDto,
+    DeleteOneDto,
+    validationPipes,
+  } = createCrudDtoBundle(entityType, createDto, updateDto);
 
-  if (optionsOrCreateDto && 'routes' in optionsOrCreateDto) {
-    const opts = optionsOrCreateDto;
-    conditionDto = opts.conditionDto;
-    createDto = opts.createDto;
-    updateDto = opts.updateDto;
-    options = { routes: opts.routes };
-  } else if (
-    optionsOrCreateDto &&
-    typeof optionsOrCreateDto === 'function' &&
-    !updateDtoLegacy &&
-    !optionsLegacy
-  ) {
-    options = optionsOrCreateDto as unknown as CrudOptions;
-  } else {
-    createDto = optionsOrCreateDto as Type<unknown> | undefined;
-    updateDto = updateDtoLegacy;
-    options = optionsLegacy;
-  }
-
-  const routeConfigs: Record<BaseRoute, RouteConfig> = {
-    create: normalizeRouteConfig(options?.routes?.create),
-    getMany: normalizeRouteConfig(options?.routes?.getMany),
-    getPage: normalizeRouteConfig(options?.routes?.getPage),
-    getById: normalizeRouteConfig(options?.routes?.getById),
-    getOne: normalizeRouteConfig(options?.routes?.getOne),
-    updateById: normalizeRouteConfig(options?.routes?.updateById),
-    updateByIds: normalizeRouteConfig(options?.routes?.updateByIds),
-    upsert: normalizeRouteConfig(options?.routes?.upsert),
-    getOneOrUpsert: normalizeRouteConfig(options?.routes?.getOneOrUpsert),
-    deleteById: normalizeRouteConfig(options?.routes?.deleteById),
-    deleteByIds: normalizeRouteConfig(options?.routes?.deleteByIds),
-  };
-
-  const { ConditionDto, CreateDto, UpdateDto, UpdateManyIdsDto, pipes } =
-    createDtos(entityType, conditionDto, createDto, updateDto);
-
-  abstract class BaseCrudControllerHost {
-    constructor(
-      public readonly service: BaseCrudService<E>,
-      public readonly resourceName: string,
-    ) {}
+  class CrudControllerHost {
+    constructor(protected readonly service: BaseCrudService<E>) {}
 
     @Post()
     @HttpCode(HTTP_STATUS.CREATED)
@@ -115,47 +94,43 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
       type: entityType,
     })
     @ApiBody({ type: CreateDto })
-    @UsePipes(pipes.create)
-    async create(
-      @ReqUser() user: CurrentUserData,
-      @Body() dto: Partial<E>,
+    @UsePipes(validationPipes.create)
+    async createEntity(
+      @ReqUser() _currentUser: CurrentUserData,
+      @Body() body: Partial<E>,
     ): Promise<E> {
-      checkRouteEnabled(routeConfigs.create);
-      return this.service.create(user, dto);
+      this.assertRouteAvailable('create');
+      return this.service.create(body);
     }
 
     @ApiGet('many', entityType)
-    async getMany(
-      @ReqUser() user: CurrentUserData,
+    async listEntities(
+      @ReqUser() _currentUser: CurrentUserData,
       @RequestCondition(ConditionDto) condition: QueryCondition<E>,
       @RequestQuery() query: ParsedQueryOptions,
     ): Promise<E[]> {
-      checkRouteEnabled(routeConfigs.getMany);
-      return this.service.getMany(user, condition, query as GetManyQuery<E>);
+      this.assertRouteAvailable('getMany');
+      return this.service.getMany(condition, this.parseFindQuery(query));
     }
 
     @ApiGet('page', entityType)
-    async getPage(
-      @ReqUser() user: CurrentUserData,
+    async paginateEntities(
+      @ReqUser() _currentUser: CurrentUserData,
       @RequestCondition(ConditionDto) condition: QueryCondition<E>,
       @RequestQuery() query: ParsedQueryOptions,
     ): Promise<PaginatedResponseDto<E>> {
-      checkRouteEnabled(routeConfigs.getPage);
-      return this.service.getPage(user, condition, {
-        ...query,
-        page: query.page || 1,
-        limit: query.limit || 10,
-      } as GetPageQuery<E>);
+      this.assertRouteAvailable('getPage');
+      return this.service.getPage(condition, this.parsePaginationQuery(query));
     }
 
     @ApiGet('one', entityType)
-    async getOne(
-      @ReqUser() user: CurrentUserData,
+    async findOneByCondition(
+      @ReqUser() _currentUser: CurrentUserData,
       @RequestCondition(ConditionDto) condition: QueryCondition<E>,
       @RequestQuery() query: ParsedQueryOptions,
-    ): Promise<E | null> {
-      checkRouteEnabled(routeConfigs.getOne);
-      return this.service.getOne(user, condition, query as GetOneQuery<E>);
+    ): Promise<E> {
+      this.assertRouteAvailable('getOne');
+      return this.service.getOne(condition, this.parseFindQuery(query));
     }
 
     @Get(':id')
@@ -169,19 +144,13 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
       description: HTTP_STATUS_MESSAGE[HTTP_STATUS.NOT_FOUND],
     })
     @ApiQueryOptions('one')
-    async getById(
-      @ReqUser() user: CurrentUserData,
+    async findEntityById(
+      @ReqUser() _currentUser: CurrentUserData,
       @Param('id') id: string,
       @RequestQuery() query: ParsedQueryOptions,
     ): Promise<E> {
-      checkRouteEnabled(routeConfigs.getById);
-      const item = await this.service.getById(
-        user,
-        id,
-        query as GetOneQuery<E>,
-      );
-      if (!item) notFoundError(this.resourceName, id);
-      return item;
+      this.assertRouteAvailable('getById');
+      return this.service.getById(id, this.parseFindQuery(query));
     }
 
     @Put(':id')
@@ -195,76 +164,47 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
       description: HTTP_STATUS_MESSAGE[HTTP_STATUS.NOT_FOUND],
     })
     @ApiBody({ type: UpdateDto })
-    @UsePipes(pipes.update)
-    async updateById(
-      @ReqUser() user: CurrentUserData,
+    @UsePipes(validationPipes.update)
+    async updateEntityById(
+      @ReqUser() _currentUser: CurrentUserData,
       @Param('id') id: string,
-      @Body() dto: UpdateData<E>,
+      @Body() body: UpdateData<E>,
     ): Promise<E> {
-      checkRouteEnabled(routeConfigs.updateById);
-      const updated = await this.service.updateById(user, id, dto);
-      if (!updated) notFoundError(this.resourceName, id);
-      return updated;
+      this.assertRouteAvailable('updateById');
+      return this.service.updateById(id, body);
+    }
+
+    @Put('one')
+    @HttpCode(HTTP_STATUS.OK)
+    @ApiOkResponse({
+      description: HTTP_STATUS_MESSAGE[HTTP_STATUS.OK],
+      type: entityType,
+    })
+    @ApiResponse({
+      status: HTTP_STATUS.NOT_FOUND,
+      description: HTTP_STATUS_MESSAGE[HTTP_STATUS.NOT_FOUND],
+    })
+    @ApiBody({ type: UpdateOneDto })
+    @UsePipes(validationPipes.updateOne)
+    async updateOneByCondition(
+      @ReqUser() _currentUser: CurrentUserData,
+      @Body() body: { condition: QueryCondition<E>; update: UpdateData<E> },
+    ): Promise<E> {
+      this.assertRouteAvailable('updateOne');
+      return this.service.updateOne(body.condition, body.update);
     }
 
     @Put('many/ids')
     @HttpCode(HTTP_STATUS.OK)
     @ApiOkResponse({ description: HTTP_STATUS_MESSAGE[HTTP_STATUS.OK] })
     @ApiBody({ type: UpdateManyIdsDto })
-    @UsePipes(pipes.updateManyByIds)
-    async updateByIds(
-      @ReqUser() user: CurrentUserData,
-      @Body() dto: { ids: string[]; update: UpdateData<E> },
+    @UsePipes(validationPipes.updateManyByIds)
+    async updateEntitiesByIds(
+      @ReqUser() _currentUser: CurrentUserData,
+      @Body() body: { ids: string[]; update: UpdateData<E> },
     ): Promise<{ affected: number }> {
-      checkRouteEnabled(routeConfigs.updateByIds);
-      return this.service.updateManyByIds(user, dto.ids, dto.update);
-    }
-
-    @Post('upsert')
-    @HttpCode(HTTP_STATUS.OK)
-    @ApiOkResponse({
-      description: HTTP_STATUS_MESSAGE[HTTP_STATUS.OK],
-      type: entityType,
-    })
-    @ApiBody({ type: UpdateDto })
-    @UsePipes(pipes.update)
-    async upsert(
-      @ReqUser() user: CurrentUserData,
-      @Body() dto: UpdateData<E>,
-    ): Promise<E> {
-      checkRouteEnabled(routeConfigs.upsert);
-      const data = dto as Record<string, unknown>;
-      const id = (data.id || data._id) as string | undefined;
-
-      if (id) {
-        const existing = await this.service.getByIdOrNull(user, id);
-        if (existing) {
-          return this.service.updateById(user, id, dto);
-        }
-      }
-
-      return this.service.create(user, dto as Partial<E>);
-    }
-
-    @Post('one/upsert')
-    @HttpCode(HTTP_STATUS.OK)
-    @ApiOkResponse({
-      description: HTTP_STATUS_MESSAGE[HTTP_STATUS.OK],
-      type: entityType,
-    })
-    @ApiBody({ type: UpdateDto })
-    @UsePipes(pipes.update)
-    async getOneOrUpsert(
-      @ReqUser() user: CurrentUserData,
-      @Body() dto: UpdateData<E>,
-    ): Promise<E> {
-      checkRouteEnabled(routeConfigs.getOneOrUpsert);
-      const existing = await this.service.getOneOrNull(
-        user,
-        dto as QueryCondition<E>,
-      );
-      if (existing) return existing;
-      return this.service.create(user, dto as Partial<E>);
+      this.assertRouteAvailable('updateByIds');
+      return this.service.updateManyByIds(body.ids, body.update);
     }
 
     @Delete(':id')
@@ -277,51 +217,79 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
       status: HTTP_STATUS.NOT_FOUND,
       description: HTTP_STATUS_MESSAGE[HTTP_STATUS.NOT_FOUND],
     })
-    async deleteById(
-      @ReqUser() user: CurrentUserData,
+    async deleteEntityById(
+      @ReqUser() _currentUser: CurrentUserData,
       @Param('id') id: string,
     ): Promise<void> {
-      checkRouteEnabled(routeConfigs.deleteById);
-      const deleted = await this.service.deleteById(user, id);
-      if (!deleted) notFoundError(this.resourceName, id);
+      this.assertRouteAvailable('deleteById');
+      await this.service.deleteById(id);
+    }
+
+    @Delete('one')
+    @HttpCode(HTTP_STATUS.NO_CONTENT)
+    @ApiResponse({
+      status: HTTP_STATUS.NO_CONTENT,
+      description: HTTP_STATUS_MESSAGE[HTTP_STATUS.NO_CONTENT],
+    })
+    @ApiResponse({
+      status: HTTP_STATUS.NOT_FOUND,
+      description: HTTP_STATUS_MESSAGE[HTTP_STATUS.NOT_FOUND],
+    })
+    @ApiBody({ type: DeleteOneDto })
+    @UsePipes(validationPipes.deleteOne)
+    async deleteOneByCondition(
+      @ReqUser() _currentUser: CurrentUserData,
+      @Body() body: { condition: QueryCondition<E> },
+    ): Promise<void> {
+      this.assertRouteAvailable('deleteOne');
+      await this.service.deleteOne(body.condition);
     }
 
     @Delete('many/ids')
     @HttpCode(HTTP_STATUS.OK)
     @ApiOkResponse({ description: HTTP_STATUS_MESSAGE[HTTP_STATUS.OK] })
     @ApiBody({ type: DeleteManyByIdsDto })
-    @UsePipes(pipes.deleteManyByIds)
-    async deleteByIds(
-      @ReqUser() user: CurrentUserData,
-      @Body() dto: DeleteManyByIdsDto,
+    @UsePipes(validationPipes.deleteManyByIds)
+    async deleteEntitiesByIds(
+      @ReqUser() _currentUser: CurrentUserData,
+      @Body() body: DeleteManyByIdsDto,
     ): Promise<{ deleted: number }> {
-      checkRouteEnabled(routeConfigs.deleteByIds);
-      return this.service.deleteManyByIds(user, dto.ids);
+      this.assertRouteAvailable('deleteByIds');
+      return this.service.deleteManyByIds(body.ids);
+    }
+
+    private assertRouteAvailable(route: BaseRoute): void {
+      assertRouteEnabled(routeConfigs[route]);
+    }
+
+    private parseFindQuery(query: ParsedQueryOptions): FindQuery<E> {
+      return query as FindQuery<E>;
+    }
+
+    private parsePaginationQuery(
+      query: ParsedQueryOptions,
+    ): FindQuery<E> & { page: number; limit: number } {
+      return {
+        ...this.parseFindQuery(query),
+        page: query.page ?? 1,
+        limit: query.limit ?? 10,
+      };
     }
   }
 
-  const applyAuthToRoute = (methodName: string, config: RouteConfig) => {
-    if (!config.enabled) return;
-    Authorize(...(config.roles || []))(
-      BaseCrudControllerHost.prototype,
-      methodName,
-      Object.getOwnPropertyDescriptor(
-        BaseCrudControllerHost.prototype,
-        methodName,
-      ),
-    );
-  };
+  const GeneratedCrudController = renameGeneratedClass(
+    `${entityType.name}CrudController`,
+    CrudControllerHost,
+  );
 
-  Object.keys(routeConfigs).forEach((route) => {
-    applyAuthToRoute(route, routeConfigs[route as BaseRoute]);
-  });
+  applyCrudAuthorization(
+    GeneratedCrudController,
+    CRUD_ROUTE_DEFINITIONS,
+    routeConfigs,
+    options.defaultRoles,
+  );
 
-  const defaultRoles = options?.defaultRoles || [];
-  if (defaultRoles.length > 0) {
-    Authorize(...defaultRoles)(BaseCrudControllerHost);
-  } else {
-    Authorize()(BaseCrudControllerHost);
-  }
-
-  return BaseCrudControllerHost;
+  return GeneratedCrudController;
 }
+
+export const BaseCrudControllerFactory = createCrudController;

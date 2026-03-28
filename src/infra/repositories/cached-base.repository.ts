@@ -1,30 +1,38 @@
 import { EntityManager, EntityRepository } from '@mikro-orm/core';
 import { BaseEntity } from '../../common/entity/base.entity';
-import { MikroOrmBaseRepository } from './mikro-orm-base.repository';
-import { RedisCacheService } from '../cache/redis-cache.service';
 import {
   QueryCondition,
-  GetByIdQuery,
-  GetOneQuery,
-  GetManyQuery,
-  GetPageQuery,
-  UpdateByIdQuery,
-  UpdateOneQuery,
-  UpdateManyQuery,
-  DeleteByIdQuery,
-  DeleteOneQuery,
-  DeleteManyQuery,
+  FindQuery,
+  CreateCommand,
+  UpdateCommand,
+  DeleteCommand,
+  BulkCommand,
   PaginationResult,
+  BulkWriteResult,
+  BulkDeleteResult,
   UpdateData,
-  BaseQueryOption,
-  BaseCommandOption,
+  QueryOptions,
+  CommandOptions,
 } from '../../common/interfaces/repository.interface';
+import { RedisCacheService } from '../cache/redis-cache.service';
+import { MikroOrmBaseRepository } from './mikro-orm-base.repository';
+
+const DEFAULT_CACHE_TTL_SECONDS = 300;
+
+type CacheKeyPart = unknown;
+
+type RememberCacheOptions<TValue> = {
+  key: string;
+  tags: string[];
+  load: () => Promise<TValue>;
+  shouldCache?: (value: TValue) => boolean;
+};
 
 export abstract class CachedBaseRepository<
   E extends BaseEntity,
-> extends MikroOrmBaseRepository<E> {
-  protected abstract entityName: string;
-  protected defaultCacheTtl = 300; // 5 minutes
+  TContext = unknown,
+> extends MikroOrmBaseRepository<E, TContext> {
+  protected readonly defaultCacheTtl = DEFAULT_CACHE_TTL_SECONDS;
 
   constructor(
     protected readonly em: EntityManager,
@@ -34,195 +42,206 @@ export abstract class CachedBaseRepository<
     super(em, repository);
   }
 
-  private getCacheKey(prefix: string, ...parts: any[]): string {
-    return `${this.entityName}:${prefix}:${parts.map((p) => JSON.stringify(p)).join(':')}`;
+  private buildCacheKey(prefix: string, ...parts: CacheKeyPart[]): string {
+    const serializedParts = parts.map((part) => JSON.stringify(part)).join(':');
+    return `${this.entityName}:${prefix}:${serializedParts}`;
+  }
+
+  private buildCacheTags(id?: string): string[] {
+    return id
+      ? [this.entityName, `${this.entityName}:${id}`]
+      : [this.entityName];
+  }
+
+  private async rememberCache<TValue>({
+    key,
+    tags,
+    load,
+    shouldCache = () => true,
+  }: RememberCacheOptions<TValue>): Promise<TValue> {
+    const cached = await this.cacheService.get<TValue>(key);
+    if (cached !== null) {
+      return cached;
+    }
+
+    const value = await load();
+    if (shouldCache(value)) {
+      await this.cacheService.setWithTags(
+        key,
+        value,
+        tags,
+        this.defaultCacheTtl,
+      );
+    }
+
+    return value;
+  }
+
+  private async invalidateEntityCache(id?: string): Promise<void> {
+    await this.cacheService.delByTags(this.buildCacheTags(id));
   }
 
   async getById(
     id: string,
-    query?: GetByIdQuery<E> & BaseQueryOption<unknown>,
+    options?: FindQuery<E> & QueryOptions<TContext>,
   ): Promise<E | null> {
-    const cacheKey = this.getCacheKey('id', id, query);
-
-    const cached = await this.cacheService.get<E>(cacheKey);
-    if (cached) return cached;
-
-    const entity = await super.getById(id, query);
-    if (entity) {
-      await this.cacheService.setWithTags(
-        cacheKey,
-        entity,
-        [this.entityName, `${this.entityName}:${id}`],
-        this.defaultCacheTtl,
-      );
-    }
-    return entity;
+    return this.rememberCache({
+      key: this.buildCacheKey('id', id, options),
+      tags: this.buildCacheTags(id),
+      load: () => super.getById(id, options),
+      shouldCache: (entity) => entity !== null,
+    });
   }
 
   async getOne(
     condition: QueryCondition<E>,
-    query?: GetOneQuery<E> & BaseQueryOption<unknown>,
+    options?: FindQuery<E> & QueryOptions<TContext>,
   ): Promise<E | null> {
-    const cacheKey = this.getCacheKey('one', condition, query);
-
-    const cached = await this.cacheService.get<E>(cacheKey);
-    if (cached) return cached;
-
-    const entity = await super.getOne(condition, query);
-    if (entity) {
-      await this.cacheService.setWithTags(
-        cacheKey,
-        entity,
-        [this.entityName],
-        this.defaultCacheTtl,
-      );
-    }
-    return entity;
+    return this.rememberCache({
+      key: this.buildCacheKey('one', condition, options),
+      tags: this.buildCacheTags(),
+      load: () => super.getOne(condition, options),
+      shouldCache: (entity) => entity !== null,
+    });
   }
 
   async getMany(
     condition: QueryCondition<E>,
-    query?: GetManyQuery<E> & BaseQueryOption<unknown>,
+    options?: FindQuery<E> & QueryOptions<TContext>,
   ): Promise<E[]> {
-    const cacheKey = this.getCacheKey('many', condition, query);
-
-    const cached = await this.cacheService.get<E[]>(cacheKey);
-    if (cached) return cached;
-
-    const entities = await super.getMany(condition, query);
-    await this.cacheService.setWithTags(
-      cacheKey,
-      entities,
-      [this.entityName],
-      this.defaultCacheTtl,
-    );
-    return entities;
+    return this.rememberCache({
+      key: this.buildCacheKey('many', condition, options),
+      tags: this.buildCacheTags(),
+      load: () => super.getMany(condition, options),
+    });
   }
 
   async getPage(
     condition: QueryCondition<E>,
-    query: GetPageQuery<E> & BaseQueryOption<unknown>,
+    options: FindQuery<E> &
+      QueryOptions<TContext> & { page: number; limit: number },
   ): Promise<PaginationResult<E>> {
-    const { page, limit } = query;
-    const cacheKey = this.getCacheKey('page', condition, page, limit, query);
+    const { page, limit } = options;
 
-    const cached = await this.cacheService.get<PaginationResult<E>>(cacheKey);
-    if (cached) return cached;
-
-    const result = await super.getPage(condition, query);
-    await this.cacheService.setWithTags(
-      cacheKey,
-      result,
-      [this.entityName],
-      this.defaultCacheTtl,
-    );
-    return result;
+    return this.rememberCache({
+      key: this.buildCacheKey('page', condition, page, limit, options),
+      tags: this.buildCacheTags(),
+      load: () => super.getPage(condition, options),
+    });
   }
 
   async create(
     data: Partial<E>,
-    query?: BaseCommandOption<unknown>,
+    options?: CreateCommand & CommandOptions<TContext>,
   ): Promise<E> {
-    const entity = await super.create(data, query);
-    await this.invalidateCache([this.entityName]);
+    const entity = await super.create(data, options);
+    await this.invalidateEntityCache();
+
     return entity;
   }
 
   async insertMany(
-    list: Partial<E>[],
-    query?: BaseCommandOption<unknown>,
+    data: Partial<E>[],
+    options?: BulkCommand & CommandOptions<TContext>,
   ): Promise<{ n: number }> {
-    const result = await super.insertMany(list, query);
-    await this.invalidateCache([this.entityName]);
+    const result = await super.insertMany(data, options);
+    await this.invalidateEntityCache();
+
     return result;
   }
 
   async distinct<K extends keyof E>(
     field: K,
     condition?: QueryCondition<E>,
-    query?: BaseQueryOption<unknown>,
+    options?: QueryOptions<TContext>,
   ): Promise<E[K][]> {
-    const cacheKey = this.getCacheKey('distinct', field, condition, query);
-
-    const cached = await this.cacheService.get<E[K][]>(cacheKey);
-    if (cached) return cached;
-
-    const values = await super.distinct(field, condition, query);
-    await this.cacheService.setWithTags(
-      cacheKey,
-      values,
-      [this.entityName],
-      this.defaultCacheTtl,
-    );
-    return values;
+    return this.rememberCache({
+      key: this.buildCacheKey('distinct', field, condition, options),
+      tags: this.buildCacheTags(),
+      load: () => super.distinct(field, condition, options),
+    });
   }
 
   async updateById(
     id: string,
     data: UpdateData<E>,
-    query?: UpdateByIdQuery & BaseCommandOption<unknown>,
+    options?: UpdateCommand & CommandOptions<TContext>,
   ): Promise<E | null> {
-    const entity = await super.updateById(id, data, query);
+    const entity = await super.updateById(id, data, options);
     if (entity) {
-      await this.invalidateCache([this.entityName, `${this.entityName}:${id}`]);
+      await this.invalidateEntityCache(id);
     }
+
     return entity;
   }
 
   async updateOne(
     condition: QueryCondition<E>,
     data: UpdateData<E>,
-    query?: UpdateOneQuery & BaseCommandOption<unknown>,
+    options?: UpdateCommand & CommandOptions<TContext>,
   ): Promise<E | null> {
-    const entity = await super.updateOne(condition, data, query);
+    const entity = await super.updateOne(condition, data, options);
     if (entity) {
-      await this.invalidateCache([this.entityName]);
+      await this.invalidateEntityCache();
     }
+
     return entity;
   }
 
   async updateMany(
     condition: QueryCondition<E>,
     data: UpdateData<E>,
-    query?: UpdateManyQuery & BaseCommandOption<unknown>,
-  ): Promise<{ affected: number }> {
-    const result = await super.updateMany(condition, data, query);
-    await this.invalidateCache([this.entityName]);
+    options?: BulkCommand & CommandOptions<TContext>,
+  ): Promise<BulkWriteResult> {
+    const result = await super.updateMany(condition, data, options);
+    await this.invalidateEntityCache();
+
     return result;
   }
 
   async deleteById(
     id: string,
-    query?: DeleteByIdQuery & BaseCommandOption<unknown>,
+    options?: DeleteCommand & CommandOptions<TContext>,
   ): Promise<E | null> {
-    const entity = await super.deleteById(id, query);
+    const entity = await super.deleteById(id, options);
     if (entity) {
-      await this.invalidateCache([this.entityName, `${this.entityName}:${id}`]);
+      await this.invalidateEntityCache(id);
     }
+
     return entity;
   }
 
   async deleteOne(
     condition: QueryCondition<E>,
-    query?: DeleteOneQuery & BaseCommandOption<unknown>,
+    options?: DeleteCommand & CommandOptions<TContext>,
   ): Promise<E | null> {
-    const entity = await super.deleteOne(condition, query);
+    const entity = await super.deleteOne(condition, options);
     if (entity) {
-      await this.invalidateCache([this.entityName]);
+      await this.invalidateEntityCache();
     }
+
     return entity;
   }
 
   async deleteMany(
     condition: QueryCondition<E>,
-    query?: DeleteManyQuery & BaseCommandOption<unknown>,
-  ): Promise<{ deleted: number }> {
-    const result = await super.deleteMany(condition, query);
-    await this.invalidateCache([this.entityName]);
+    options?: DeleteCommand & CommandOptions<TContext>,
+  ): Promise<BulkDeleteResult> {
+    const result = await super.deleteMany(condition, options);
+    await this.invalidateEntityCache();
+
     return result;
   }
 
-  protected async invalidateCache(tags: string[]): Promise<void> {
-    await this.cacheService.delByTags(tags);
+  async restore(
+    id: string,
+    options?: CommandOptions<TContext>,
+  ): Promise<E | null> {
+    const entity = await super.restore(id, options);
+    if (entity) {
+      await this.invalidateEntityCache(id);
+    }
+
+    return entity;
   }
 }

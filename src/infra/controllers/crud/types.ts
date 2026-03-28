@@ -1,22 +1,32 @@
-import { Type } from '@nestjs/common';
-
 export type BaseRoute =
   | 'create'
   | 'getMany'
   | 'getPage'
   | 'getById'
   | 'getOne'
+  | 'updateOne'
   | 'updateById'
   | 'updateByIds'
-  | 'upsert'
-  | 'getOneOrUpsert'
+  | 'deleteOne'
   | 'deleteById'
   | 'deleteByIds';
+
+export type CrudHandlerName =
+  | 'createEntity'
+  | 'listEntities'
+  | 'paginateEntities'
+  | 'findOneByCondition'
+  | 'findEntityById'
+  | 'updateOneByCondition'
+  | 'updateEntityById'
+  | 'updateEntitiesByIds'
+  | 'deleteOneByCondition'
+  | 'deleteEntityById'
+  | 'deleteEntitiesByIds';
 
 export interface RouteConfig {
   enabled?: boolean;
   roles?: string[];
-  public?: boolean;
 }
 
 export interface CrudOptions {
@@ -26,9 +36,7 @@ export interface CrudOptions {
   };
 }
 
-export interface ControllerFactoryOptions {
-  conditionDto?: Type<unknown>;
-  createDto?: Type<unknown>;
-  updateDto?: Type<unknown>;
-  routes?: CrudOptions['routes'];
+export interface CrudRouteDefinition {
+  route: BaseRoute;
+  handlerName: CrudHandlerName;
 }

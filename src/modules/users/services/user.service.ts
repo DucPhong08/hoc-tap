@@ -1,22 +1,25 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { BaseCrudService } from '../../../infra/services/base-crud.service';
 import { UserEntity } from '../entities/user.entity';
+import { UserPolicy } from '../policies/user.policy';
 import { UserRepository } from '../repositories/user.repository';
-import { UserPolicy } from './user.policy';
-import type { UserContext } from '../../../common/types/user.type';
+import type {
+  CreateCommand,
+  UpdateCommand,
+  DeleteCommand,
+  CommandOptions,
+} from '../../../common/interfaces/repository.interface';
+import type { AuthProvider } from '../../auth/enums/auth-provider.enum';
 
 @Injectable()
 export class UserService extends BaseCrudService<UserEntity> {
   constructor(private readonly userRepository: UserRepository) {
-    super(userRepository, {
-      entityName: 'Người dùng',
-      notFoundMessage: 'Không tìm thấy người dùng',
-    });
+    super(userRepository, {});
   }
 
   async create(
-    user: UserContext,
     data: Partial<UserEntity>,
+    options?: CreateCommand & CommandOptions,
   ): Promise<UserEntity> {
     if (data.email) {
       const existingUser = await this.userRepository.findByEmail(data.email);
@@ -25,16 +28,16 @@ export class UserService extends BaseCrudService<UserEntity> {
       }
     }
 
-    return super.create(user, data);
+    return super.create(data, options);
   }
 
   async updateById(
-    user: UserContext,
     id: string,
     data: Partial<UserEntity>,
+    options?: UpdateCommand & CommandOptions,
   ): Promise<UserEntity> {
     if (data.email) {
-      const existingUser = await this.getById(user, id);
+      const existingUser = await this.getById(id);
       if (data.email !== existingUser.email) {
         if (!UserPolicy.canUpdateEmail(existingUser)) {
           throw new BadRequestException(
@@ -49,20 +52,33 @@ export class UserService extends BaseCrudService<UserEntity> {
       }
     }
 
-    return super.updateById(user, id, data);
+    return super.updateById(id, data, options);
   }
 
-  async deleteById(user: UserContext, id: string): Promise<UserEntity> {
-    const userEntity = await this.getById(user, id);
+  async deleteById(
+    id: string,
+    options?: DeleteCommand & CommandOptions,
+  ): Promise<UserEntity> {
+    const userEntity = await this.getById(id);
 
     if (!UserPolicy.canDelete(userEntity)) {
       throw new BadRequestException('Người dùng chỉ có thể xóa sau 30 ngày');
     }
 
-    return super.deleteById(user, id);
+    return super.deleteById(id, options);
   }
 
   async findByEmail(email: string): Promise<UserEntity | null> {
     return this.userRepository.findByEmail(email);
+  }
+
+  async findByProviderAccount(
+    provider: AuthProvider,
+    providerId: string,
+  ): Promise<UserEntity | null> {
+    return this.userRepository.getOne({
+      provider,
+      providerId,
+    });
   }
 }

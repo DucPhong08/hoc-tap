@@ -7,7 +7,7 @@ import { AuditLogService } from './services/audit-log.service';
 import { AuditCleanupService } from './services/audit-cleanup.service';
 import { AuditLogController } from './controllers/audit-log.controller';
 import { AuditInterceptor } from './interceptors/audit.interceptor';
-import { DB_CONTEXTS } from 'src/modules/database/constants';
+import { DB_CONTEXTS } from 'src/database/database.constants';
 
 @Global()
 @Module({
