@@ -1,17 +1,9 @@
 import { FindOptions } from '@mikro-orm/core';
+import type { FindQuery } from '../../../common/interfaces/repository.interface';
 import type {
-  QueryOptions,
   PopulateInput,
   PopulateOptions,
 } from '../../../common/types/repository.types';
-
-type QueryBuildOptions<E> = QueryOptions & {
-  select?: (keyof E)[];
-  populate?: PopulateInput;
-  sort?: Partial<Record<keyof E, 1 | -1>>;
-  limit?: number;
-  offset?: number;
-};
 
 type BuiltPopulateNode = {
   field: string;
@@ -24,18 +16,18 @@ type BuiltPopulateNode = {
 type BuiltPopulate = string[] | BuiltPopulateNode[];
 
 export class OptionsBuilder {
-  static build<E>(query?: QueryBuildOptions<E>): FindOptions<E> {
+  static build<E>(query?: FindQuery<E>): FindOptions<E> {
     if (!query) {
       return {};
     }
 
     const findOptions: Record<string, unknown> = {};
 
-    if (query.select) {
+    if (query.select?.length) {
       findOptions.fields = query.select;
     }
 
-    if (query.populate) {
+    if (query.populate?.length) {
       findOptions.populate = this.buildPopulate(query.populate);
     }
 

@@ -7,7 +7,6 @@ import type {
   CreateCommand,
   UpdateCommand,
   DeleteCommand,
-  BulkCommand,
   PaginationResult,
   BulkWriteResult,
   BulkDeleteResult,
@@ -19,23 +18,9 @@ import { FilterBuilder, OptionsBuilder, UpdateHelper } from './mikro-orm';
 
 const PRIMARY_KEY_FIELD = '_id';
 const MONGO_DRIVER_NAME_TOKEN = 'Mongo';
-type RepositoryContextOptions<TContext = unknown> = {
-  transaction?: TContext;
-};
-
-type SerializableEntity = {
-  toJSON(): unknown;
-};
-
-type EntityResultCommand<TContext = unknown> =
-  RepositoryContextOptions<TContext> & {
-    plain?: boolean;
-    populate?: CreateCommand['populate'];
-  };
-
-type SoftDeleteCommand<TContext = unknown> =
-  RepositoryContextOptions<TContext> & {
-    soft?: boolean;
+type RepositoryContextOptions<TContext extends EntityManager = EntityManager> =
+  {
+    transaction?: TContext;
   };
 
 type SqlQueryBuilder<
@@ -51,139 +36,57 @@ type SqlQueryBuilder<
 
 export abstract class MikroOrmBaseRepository<
   E extends BaseEntity,
-  TContext = unknown,
+  TContext extends EntityManager = EntityManager,
 > implements IBaseRepository<E, TContext> {
   constructor(
     protected readonly em: EntityManager,
     protected readonly repository: EntityRepository<E>,
   ) {}
 
-  protected get entityName(): string {
-    return this.repository.getEntityName();
-  }
+  private getContext(options?: RepositoryContextOptions<TContext>): {
+    em: EntityManager;
+    repository: EntityRepository<E>;
+  } {
+    const em = options?.transaction ?? this.em;
 
-  private getEntityManager(
-    options?: RepositoryContextOptions<TContext>,
-  ): EntityManager {
-    if (options?.transaction instanceof EntityManager) {
-      return options.transaction;
-    }
-
-    return this.em;
-  }
-
-  private getRepository(
-    options?: RepositoryContextOptions<TContext>,
-  ): EntityRepository<E> {
-    const em = this.getEntityManager(options);
-
-    if (em === this.em) {
-      return this.repository;
-    }
-
-    return em.getRepository(this.entityName) as unknown as EntityRepository<E>;
-  }
-
-  private isMongoDriver(options?: RepositoryContextOptions<TContext>): boolean {
-    const driverName =
-      this.getEntityManager(options).getDriver().constructor.name;
-    return driverName.includes(MONGO_DRIVER_NAME_TOKEN);
-  }
-
-  private createSqlQueryBuilder<
-    Row extends Record<string, unknown> = Record<string, unknown>,
-  >(options?: RepositoryContextOptions<TContext>): SqlQueryBuilder<Row> {
-    const em = this.getEntityManager(options);
-
-    if (this.isMongoDriver(options)) {
-      throw new Error('createQueryBuilder is not supported for MongoDB driver');
-    }
-
-    return (
-      em as unknown as {
-        createQueryBuilder(entityName: string): SqlQueryBuilder<Row>;
-      }
-    ).createQueryBuilder(this.entityName);
-  }
-
-  private async populateRelations(
-    entity: E,
-    populate?: CreateCommand['populate'],
-    options?: RepositoryContextOptions<TContext>,
-  ): Promise<void> {
-    if (!populate) {
-      return;
-    }
-
-    const populateQuery = OptionsBuilder.buildPopulate(populate);
-    if (!populateQuery) {
-      return;
-    }
-
-    await this.getEntityManager(options).populate(
-      entity,
-      populateQuery as never,
-    );
-  }
-
-  private serializeEntity(entity: E, plain?: boolean): E {
-    if (!plain) {
-      return entity;
-    }
-
-    return (entity as E & SerializableEntity).toJSON() as E;
-  }
-
-  private async updateEntity(
-    entity: E,
-    data: UpdateData<E>,
-    command?: EntityResultCommand<TContext>,
-  ): Promise<E> {
-    const em = this.getEntityManager(command);
-
-    UpdateHelper.apply(entity, data);
-    await em.flush();
-    await this.populateRelations(entity, command?.populate, command);
-
-    return this.serializeEntity(entity, command?.plain);
-  }
-
-  private async deleteEntity(
-    entity: E,
-    command?: SoftDeleteCommand<TContext>,
-  ): Promise<void> {
-    const em = this.getEntityManager(command);
-    const useSoftDelete = command?.soft !== false;
-
-    if (useSoftDelete) {
-      entity.deletedAt = new Date();
-      await em.flush();
-      return;
-    }
-
-    await em.remove(entity).flush();
+    return {
+      em,
+      repository:
+        em === this.em
+          ? this.repository
+          : (em.getRepository(
+              this.repository.getEntityName(),
+            ) as unknown as EntityRepository<E>),
+    };
   }
 
   async create(
     data: Partial<E>,
     options?: CreateCommand & CommandOptions<TContext>,
   ): Promise<E> {
-    const em = this.getEntityManager(options);
-    const repository = this.getRepository(options);
+    const { em, repository } = this.getContext(options);
     const entity = repository.create(data as E);
 
     await em.persist(entity).flush();
-    await this.populateRelations(entity, options?.populate, options);
 
-    return this.serializeEntity(entity, options?.plain);
+    if (options?.populate) {
+      const populate = OptionsBuilder.buildPopulate(options.populate);
+
+      if (populate) {
+        await em.populate(entity, populate as never);
+      }
+    }
+
+    return options?.plain
+      ? ((entity as E & { toJSON(): unknown }).toJSON() as E)
+      : entity;
   }
 
   async insertMany(
     data: Partial<E>[],
-    options?: BulkCommand & CommandOptions<TContext>,
+    options?: CommandOptions<TContext>,
   ): Promise<{ n: number }> {
-    const em = this.getEntityManager(options);
-    const repository = this.getRepository(options);
+    const { em, repository } = this.getContext(options);
     const entities = data.map((item) => repository.create(item as E));
 
     await em.persist(entities).flush();
@@ -195,7 +98,7 @@ export abstract class MikroOrmBaseRepository<
     id: string,
     options?: FindQuery<E> & QueryOptions<TContext>,
   ): Promise<E | null> {
-    const repository = this.getRepository(options);
+    const { repository } = this.getContext(options);
     const filter = FilterBuilder.build(
       { [PRIMARY_KEY_FIELD]: id } as QueryCondition<E>,
       { withDeleted: options?.withDeleted },
@@ -212,7 +115,7 @@ export abstract class MikroOrmBaseRepository<
     condition: QueryCondition<E>,
     options?: FindQuery<E> & QueryOptions<TContext>,
   ): Promise<E | null> {
-    const repository = this.getRepository(options);
+    const { repository } = this.getContext(options);
     const filter = FilterBuilder.build(condition, {
       withDeleted: options?.withDeleted,
     });
@@ -228,7 +131,7 @@ export abstract class MikroOrmBaseRepository<
     condition: QueryCondition<E>,
     options?: FindQuery<E> & QueryOptions<TContext>,
   ): Promise<E[]> {
-    const repository = this.getRepository(options);
+    const { repository } = this.getContext(options);
     const filter = FilterBuilder.build(condition, {
       withDeleted: options?.withDeleted,
     });
@@ -242,7 +145,7 @@ export abstract class MikroOrmBaseRepository<
     options: FindQuery<E> &
       QueryOptions<TContext> & { page: number; limit: number },
   ): Promise<PaginationResult<E>> {
-    const repository = this.getRepository(options);
+    const { repository } = this.getContext(options);
     const { page, limit } = options;
     const offset = (page - 1) * limit;
     const filter = FilterBuilder.build(condition, {
@@ -270,12 +173,54 @@ export abstract class MikroOrmBaseRepository<
     data: UpdateData<E>,
     options?: UpdateCommand & CommandOptions<TContext>,
   ): Promise<E | null> {
-    const entity = await this.getById(id, options);
+    const { em, repository } = this.getContext(options);
+    let entity = await this.getById(id, options);
+
     if (!entity) {
-      return null;
+      if (!options?.upsert) {
+        return null;
+      }
+
+      entity = repository.create({ _id: id } as Partial<E> as E);
+      UpdateHelper.apply(entity, data);
+      await em.persist(entity).flush();
+
+      if (options?.populate) {
+        const populate = OptionsBuilder.buildPopulate(options.populate);
+
+        if (populate) {
+          await em.populate(entity, populate as never);
+        }
+      }
+
+      return options?.plain
+        ? ((entity as E & { toJSON(): unknown }).toJSON() as E)
+        : entity;
     }
 
-    return this.updateEntity(entity, data, options);
+    const previousState =
+      options?.new === false
+        ? ((entity as E & { toJSON(): unknown }).toJSON() as E)
+        : null;
+
+    UpdateHelper.apply(entity, data);
+    await em.flush();
+
+    if (options?.populate) {
+      const populate = OptionsBuilder.buildPopulate(options.populate);
+
+      if (populate) {
+        await em.populate(entity, populate as never);
+      }
+    }
+
+    if (previousState) {
+      return options?.plain ? previousState : repository.create(previousState);
+    }
+
+    return options?.plain
+      ? ((entity as E & { toJSON(): unknown }).toJSON() as E)
+      : entity;
   }
 
   async updateOne(
@@ -283,20 +228,96 @@ export abstract class MikroOrmBaseRepository<
     data: UpdateData<E>,
     options?: UpdateCommand & CommandOptions<TContext>,
   ): Promise<E | null> {
-    const entity = await this.getOne(condition, options);
+    const { em, repository } = this.getContext(options);
+    let entity = await this.getOne(condition, options);
+
     if (!entity) {
-      return null;
+      if (!options?.upsert) {
+        return null;
+      }
+
+      const createData: Partial<E> = {};
+
+      for (const [fieldName, value] of Object.entries(condition)) {
+        if (
+          fieldName === '$and' ||
+          fieldName === '$or' ||
+          fieldName === '$not'
+        ) {
+          throw new Error(
+            'Upsert only supports direct equality conditions in updateOne.',
+          );
+        }
+
+        if (
+          typeof value === 'object' &&
+          value !== null &&
+          !Array.isArray(value) &&
+          !(value instanceof Date)
+        ) {
+          if ('$eq' in value) {
+            createData[fieldName as keyof E] = value.$eq as E[keyof E];
+            continue;
+          }
+
+          if (Object.keys(value).some((key) => key.startsWith('$'))) {
+            throw new Error(
+              'Upsert only supports direct equality conditions in updateOne.',
+            );
+          }
+        }
+
+        createData[fieldName as keyof E] = value as E[keyof E];
+      }
+
+      entity = repository.create(createData as E);
+      UpdateHelper.apply(entity, data);
+      await em.persist(entity).flush();
+
+      if (options?.populate) {
+        const populate = OptionsBuilder.buildPopulate(options.populate);
+
+        if (populate) {
+          await em.populate(entity, populate as never);
+        }
+      }
+
+      return options?.plain
+        ? ((entity as E & { toJSON(): unknown }).toJSON() as E)
+        : entity;
     }
 
-    return this.updateEntity(entity, data, options);
+    const previousState =
+      options?.new === false
+        ? ((entity as E & { toJSON(): unknown }).toJSON() as E)
+        : null;
+
+    UpdateHelper.apply(entity, data);
+    await em.flush();
+
+    if (options?.populate) {
+      const populate = OptionsBuilder.buildPopulate(options.populate);
+
+      if (populate) {
+        await em.populate(entity, populate as never);
+      }
+    }
+
+    if (previousState) {
+      return options?.plain ? previousState : repository.create(previousState);
+    }
+
+    return options?.plain
+      ? ((entity as E & { toJSON(): unknown }).toJSON() as E)
+      : entity;
   }
 
   async updateMany(
     condition: QueryCondition<E>,
     data: UpdateData<E>,
-    options?: BulkCommand & CommandOptions<TContext>,
+    options?: UpdateCommand & CommandOptions<TContext>,
   ): Promise<BulkWriteResult> {
-    const em = this.getEntityManager(options);
+    const { em } = this.getContext(options);
     const entities = await this.getMany(condition, options);
 
     entities.forEach((entity) => {
@@ -312,33 +333,51 @@ export abstract class MikroOrmBaseRepository<
     id: string,
     options?: DeleteCommand & CommandOptions<TContext>,
   ): Promise<E | null> {
+    const { em } = this.getContext(options);
     const entity = await this.getById(id, options);
     if (!entity) {
       return null;
     }
 
-    await this.deleteEntity(entity, options);
-    return this.serializeEntity(entity, options?.plain);
+    if (options?.soft !== false) {
+      entity.deletedAt = new Date();
+      await em.flush();
+    } else {
+      await em.remove(entity).flush();
+    }
+
+    return options?.plain
+      ? ((entity as E & { toJSON(): unknown }).toJSON() as E)
+      : entity;
   }
 
   async deleteOne(
     condition: QueryCondition<E>,
     options?: DeleteCommand & CommandOptions<TContext>,
   ): Promise<E | null> {
+    const { em } = this.getContext(options);
     const entity = await this.getOne(condition, options);
     if (!entity) {
       return null;
     }
 
-    await this.deleteEntity(entity, options);
-    return this.serializeEntity(entity, options?.plain);
+    if (options?.soft !== false) {
+      entity.deletedAt = new Date();
+      await em.flush();
+    } else {
+      await em.remove(entity).flush();
+    }
+
+    return options?.plain
+      ? ((entity as E & { toJSON(): unknown }).toJSON() as E)
+      : entity;
   }
 
   async deleteMany(
     condition: QueryCondition<E>,
     options?: DeleteCommand & CommandOptions<TContext>,
   ): Promise<BulkDeleteResult> {
-    const em = this.getEntityManager(options);
+    const { em } = this.getContext(options);
     const entities = await this.getMany(condition, options);
     const useSoftDelete = options?.soft !== false;
 
@@ -361,7 +400,7 @@ export abstract class MikroOrmBaseRepository<
     condition?: QueryCondition<E>,
     options?: QueryOptions<TContext>,
   ): Promise<number> {
-    const repository = this.getRepository(options);
+    const { repository } = this.getContext(options);
     const filter = FilterBuilder.build(condition ?? ({} as QueryCondition<E>), {
       withDeleted: options?.withDeleted,
     });
@@ -373,9 +412,12 @@ export abstract class MikroOrmBaseRepository<
     condition: QueryCondition<E>,
     options?: QueryOptions<TContext>,
   ): Promise<boolean> {
-    const repository = this.getRepository(options);
+    const { em, repository } = this.getContext(options);
+    const isMongoDriver = em
+      .getDriver()
+      .constructor.name.includes(MONGO_DRIVER_NAME_TOKEN);
 
-    if (this.isMongoDriver(options)) {
+    if (isMongoDriver) {
       const entity = (await repository.findOne(
         condition as FilterQuery<E>,
         {
@@ -387,7 +429,12 @@ export abstract class MikroOrmBaseRepository<
       return entity !== null;
     }
 
-    const qb = this.createSqlQueryBuilder(options)
+    const qb = (
+      em as unknown as {
+        createQueryBuilder(entityName: string): SqlQueryBuilder;
+      }
+    )
+      .createQueryBuilder(this.repository.getEntityName())
       .select('1')
       .where(condition)
       .limit(1);
@@ -406,12 +453,21 @@ export abstract class MikroOrmBaseRepository<
     condition?: QueryCondition<E>,
     options?: QueryOptions<TContext>,
   ): Promise<E[K][]> {
+    const { em } = this.getContext(options);
+    const isMongoDriver = em
+      .getDriver()
+      .constructor.name.includes(MONGO_DRIVER_NAME_TOKEN);
     const fieldName = String(field);
 
-    if (!this.isMongoDriver(options)) {
-      const rows = await this.createSqlQueryBuilder<Record<string, E[K]>>(
-        options,
+    if (!isMongoDriver) {
+      const rows = await (
+        em as unknown as {
+          createQueryBuilder(
+            entityName: string,
+          ): SqlQueryBuilder<Record<string, E[K]>>;
+        }
       )
+        .createQueryBuilder(this.repository.getEntityName())
         .select(fieldName, true)
         .where(condition ?? {})
         .execute();
@@ -420,7 +476,7 @@ export abstract class MikroOrmBaseRepository<
     }
 
     const collection = (
-      this.getEntityManager(options).getDriver() as unknown as {
+      em.getDriver() as unknown as {
         getCollection(entityName: string): {
           distinct(
             distinctField: string,
@@ -428,7 +484,7 @@ export abstract class MikroOrmBaseRepository<
           ): Promise<E[K][]>;
         };
       }
-    ).getCollection(this.entityName);
+    ).getCollection(this.repository.getEntityName());
 
     return collection.distinct(
       fieldName,
@@ -440,8 +496,7 @@ export abstract class MikroOrmBaseRepository<
     id: string,
     options?: CommandOptions<TContext>,
   ): Promise<E | null> {
-    const repository = this.getRepository(options);
-    const em = this.getEntityManager(options);
+    const { em, repository } = this.getContext(options);
     const entity = (await repository.findOne(
       { [PRIMARY_KEY_FIELD]: id } as FilterQuery<E>,
       { filters: false } as never,
@@ -454,6 +509,8 @@ export abstract class MikroOrmBaseRepository<
     entity.deletedAt = null;
     await em.flush();
 
-    return this.serializeEntity(entity, options?.plain);
+    return options?.plain
+      ? ((entity as E & { toJSON(): unknown }).toJSON() as E)
+      : entity;
   }
 }

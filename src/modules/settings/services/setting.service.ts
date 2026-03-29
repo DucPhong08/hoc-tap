@@ -1,5 +1,5 @@
 import { EntityManager } from '@mikro-orm/core';
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, Optional } from '@nestjs/common';
 import { plainToClass } from 'class-transformer';
 import { validate } from 'class-validator';
 import { BaseCrudService } from '../../../infra/services/base-crud.service';
@@ -20,8 +20,9 @@ export class SettingService extends BaseCrudService<
 > {
   constructor(
     private readonly settingRepository: SettingRepository,
+    @Optional()
     @InjectTransaction()
-    transaction: BaseTransaction<EntityManager>,
+    transaction?: BaseTransaction<EntityManager>,
   ) {
     super(settingRepository, {
       transaction,

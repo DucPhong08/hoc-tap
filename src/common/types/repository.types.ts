@@ -106,12 +106,6 @@ export interface DeleteCommand {
   soft?: boolean;
 }
 
-export interface BulkCommand {
-  ordered?: boolean;
-  upsert?: boolean;
-  new?: boolean;
-}
-
 // ============================================================================
 // Result Types
 // ============================================================================

@@ -17,53 +17,53 @@ export class UserEntity extends BaseEntity {
   @ApiProperty()
   @IsEmail()
   @MaxLength(150)
-  @Property({ type: 'varchar', length: 150, unique: true })
+  @Property({})
   email!: string;
 
   @ApiProperty()
   @IsString()
   @MaxLength(150)
-  @Property({ type: 'varchar', length: 150 })
+  @Property({})
   firstName!: string;
 
   @ApiProperty()
   @IsString()
   @MaxLength(150)
-  @Property({ type: 'varchar', length: 150 })
+  @Property({})
   lastName!: string;
 
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
-  @Property({ type: 'text', nullable: true })
+  @Property({ nullable: true })
   password?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
   @IsBoolean()
-  @Property({ type: 'boolean', default: true })
-  isActive: boolean = true;
+  @Property({ default: true })
+  isActive: boolean;
 
   @ApiPropertyOptional()
   @IsOptional()
   @IsArray()
-  @Property({ type: 'json', default: ['user'] })
-  roles: string[] = ['user'];
+  @Property({ default: ['user'] })
+  roles: string[];
 
   @ApiProperty()
   @IsEnum(AuthProvider)
-  @Property({ type: 'varchar', default: AuthProvider.LOCAL })
-  provider: AuthProvider = AuthProvider.LOCAL;
+  @Property({ default: AuthProvider.LOCAL })
+  provider: AuthProvider;
 
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
-  @Property({ type: 'varchar', nullable: true })
+  @Property({ nullable: true })
   providerId?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
-  @Property({ type: 'varchar', nullable: true })
+  @Property({ nullable: true })
   avatar?: string;
 }

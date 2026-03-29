@@ -1,14 +1,8 @@
-export type TransactionOption<T = unknown> = {
-  isolationLevel?:
-    | 'READ_UNCOMMITTED'
-    | 'READ_COMMITTED'
-    | 'REPEATABLE_READ'
-    | 'SERIALIZABLE';
-  transaction?: T;
-};
+import type { TransactionOptions } from '@mikro-orm/core';
 
 export interface BaseTransaction<T = unknown> {
-  startTransaction(options?: TransactionOption<T>): Promise<T>;
-  commitTransaction(transaction: T): Promise<T>;
-  abortTransaction(transaction: T): Promise<T>;
+  execute<TResult>(
+    callback: (transaction: T) => Promise<TResult>,
+    options?: TransactionOptions,
+  ): Promise<TResult>;
 }

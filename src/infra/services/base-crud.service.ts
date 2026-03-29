@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import type { TransactionOptions } from '@mikro-orm/core';
 import type {
   QueryCondition,
   PaginationResult,
@@ -7,7 +8,6 @@ import type {
   CreateCommand,
   UpdateCommand,
   DeleteCommand,
-  BulkCommand,
   QueryOptions,
   CommandOptions,
 } from '../../common/interfaces/repository.interface';
@@ -47,7 +47,7 @@ export abstract class BaseCrudService<
 
   async insertMany(
     list: Partial<E>[],
-    options?: BulkCommand & CommandOptions<TContext>,
+    options?: CommandOptions<TContext>,
   ): Promise<{ n: number }> {
     return this.executeWithTransaction(options, async (txOptions) => {
       return this.repository.insertMany(list, txOptions);
@@ -141,7 +141,7 @@ export abstract class BaseCrudService<
   async updateMany(
     condition: QueryCondition<E>,
     update: UpdateData<E>,
-    options?: BulkCommand & CommandOptions<TContext>,
+    options?: UpdateCommand & CommandOptions<TContext>,
   ): Promise<{ affected: number }> {
     return this.executeWithTransaction(options, async (txOptions) => {
       return this.repository.updateMany(condition, update, txOptions);
@@ -151,7 +151,7 @@ export abstract class BaseCrudService<
   async updateManyByIds(
     ids: string[],
     update: UpdateData<E>,
-    options?: BulkCommand & CommandOptions<TContext>,
+    options?: UpdateCommand & CommandOptions<TContext>,
   ): Promise<{ affected: number }> {
     return this.updateMany(
       { _id: { $in: ids } } as QueryCondition<E>,
@@ -220,38 +220,27 @@ export abstract class BaseCrudService<
     return this.repository.exists(condition, options);
   }
 
-  protected async executeWithTransaction<T>(
-    options: CommandOptions<TContext> | undefined,
-    callback: (txOptions: CommandOptions<TContext>) => Promise<T>,
-  ): Promise<T> {
-    const hasExternalTransaction = Boolean(options?.transaction);
-    const txOptions = { ...(options ?? {}) };
+  protected async executeWithTransaction<
+    TResult,
+    TOptions extends { transaction?: TContext },
+  >(
+    options: TOptions | undefined,
+    callback: (txOptions: TOptions) => Promise<TResult>,
+    transactionOptions?: TransactionOptions,
+  ): Promise<TResult> {
+    const txOptions = { ...(options ?? {}) } as TOptions;
 
-    if (!hasExternalTransaction && this.transaction) {
-      txOptions.transaction = await this.transaction.startTransaction();
+    if (txOptions.transaction || !this.transaction) {
+      return callback(txOptions);
     }
 
-    try {
-      const result = await callback(txOptions);
-
-      if (
-        !hasExternalTransaction &&
-        this.transaction &&
-        txOptions.transaction
-      ) {
-        await this.transaction.commitTransaction(txOptions.transaction);
-      }
-
-      return result;
-    } catch (error) {
-      if (
-        !hasExternalTransaction &&
-        this.transaction &&
-        txOptions.transaction
-      ) {
-        await this.transaction.abortTransaction(txOptions.transaction);
-      }
-      throw error;
-    }
+    return this.transaction.execute(
+      async (transaction) =>
+        callback({
+          ...txOptions,
+          transaction,
+        } as TOptions),
+      transactionOptions,
+    );
   }
 }

@@ -1,5 +1,5 @@
 import { EntityManager } from '@mikro-orm/core';
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, Optional } from '@nestjs/common';
 import { BaseCrudService } from '../../../infra/services/base-crud.service';
 import { UserEntity } from '../entities/user.entity';
 import { UserPolicy } from '../policies/user.policy';
@@ -19,8 +19,9 @@ import { InjectTransaction } from '../../../infra/transaction/transaction.provid
 export class UserService extends BaseCrudService<UserEntity, EntityManager> {
   constructor(
     private readonly userRepository: UserRepository,
+    @Optional()
     @InjectTransaction()
-    transaction: BaseTransaction<EntityManager>,
+    transaction?: BaseTransaction<EntityManager>,
   ) {
     super(userRepository, { transaction });
   }
@@ -51,24 +52,24 @@ export class UserService extends BaseCrudService<UserEntity, EntityManager> {
     options?: UpdateCommand & CommandOptions<EntityManager>,
   ): Promise<UserEntity> {
     return this.executeWithTransaction(options, async (txOptions) => {
-      if (data.email) {
-        const existingUser = await this.getById(id, txOptions);
+      const existingUser = await this.getByIdOrNull(id, txOptions);
 
-        if (data.email !== existingUser.email) {
+      if (data.email) {
+        if (existingUser && data.email !== existingUser.email) {
           if (!UserPolicy.canUpdateEmail(existingUser)) {
             throw new BadRequestException(
               'Email chỉ có thể cập nhật một lần mỗi tuần',
             );
           }
+        }
 
-          const emailExists = await this.userRepository.findByEmail(
-            data.email,
-            txOptions,
-          );
+        const emailExists = await this.userRepository.findByEmail(
+          data.email,
+          txOptions,
+        );
 
-          if (emailExists) {
-            throw new BadRequestException('Email đã tồn tại');
-          }
+        if (emailExists && emailExists.id !== existingUser?.id) {
+          throw new BadRequestException('Email đã tồn tại');
         }
       }
 

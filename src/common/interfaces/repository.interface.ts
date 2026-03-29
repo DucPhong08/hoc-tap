@@ -5,7 +5,6 @@ import type {
   CreateCommand,
   UpdateCommand,
   DeleteCommand,
-  BulkCommand,
   PaginationResult,
   BulkWriteResult,
   BulkDeleteResult,
@@ -20,7 +19,6 @@ export type {
   CreateCommand,
   UpdateCommand,
   DeleteCommand,
-  BulkCommand,
   PaginationResult,
   BulkWriteResult,
   BulkDeleteResult,
@@ -37,7 +35,7 @@ export interface IBaseRepository<E extends BaseEntity, TContext = unknown> {
 
   insertMany(
     data: Partial<E>[],
-    options?: BulkCommand & CommandOptions<TContext>,
+    options?: CommandOptions<TContext>,
   ): Promise<{ n: number }>;
 
   getById(
@@ -76,7 +74,7 @@ export interface IBaseRepository<E extends BaseEntity, TContext = unknown> {
   updateMany(
     condition: QueryCondition<E>,
     data: UpdateData<E>,
-    options?: BulkCommand & CommandOptions<TContext>,
+    options?: UpdateCommand & CommandOptions<TContext>,
   ): Promise<BulkWriteResult>;
 
   deleteById(

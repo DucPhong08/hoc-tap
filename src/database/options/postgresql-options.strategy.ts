@@ -28,6 +28,8 @@ export class PostgreSqlOptionsStrategy implements DatabaseDriverOptionsStrategy 
       schema: settings.schemaName,
       debug: settings.debugEnabled,
       allowGlobalContext: true,
+      useBatchInserts: true,
+      useBatchUpdates: true,
       discovery: {
         disableDynamicFileAccess: true,
       },

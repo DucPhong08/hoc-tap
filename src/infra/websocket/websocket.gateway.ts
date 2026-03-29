@@ -11,13 +11,14 @@ import {
 import { Server, Socket } from 'socket.io';
 import { Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { ConfigService } from '@nestjs/config';
 import { JwtPayload } from '../../modules/auth/strategies/jwt.strategy';
 
 interface AuthenticatedSocket extends Socket {
   userId?: string;
   user?: JwtPayload;
 }
+
+const USER_ROOM_PREFIX = 'user:';
 
 @WebSocketGateway({
   cors: {
@@ -33,29 +34,75 @@ export class WebsocketGateway
   server: Server;
 
   private readonly logger = new Logger(WebsocketGateway.name);
-  private connectedClients = new Map<string, AuthenticatedSocket>();
-  private userSockets = new Map<string, Set<string>>();
+  private readonly connectedClients = new Map<string, AuthenticatedSocket>();
+  private readonly userSockets = new Map<string, Set<string>>();
 
-  constructor(
-    private readonly jwtService: JwtService,
-    private readonly configService: ConfigService,
-  ) {}
+  constructor(private readonly jwtService: JwtService) {}
 
-  afterInit() {
+  afterInit(): void {
     this.logger.log('Khởi tạo WebSocket Gateway thành công');
   }
 
   private extractToken(client: AuthenticatedSocket): string | null {
+    const authorizationHeader = client.handshake.headers.authorization;
+    const bearerToken = Array.isArray(authorizationHeader)
+      ? authorizationHeader[0]
+      : authorizationHeader;
+
     return (
-      client.handshake.auth?.token ||
-      client.handshake.headers?.authorization?.replace('Bearer ', '') ||
+      client.handshake.auth?.token ??
+      bearerToken?.replace(/^Bearer\s+/i, '') ??
       null
     );
   }
 
+  private getUserRoom(userId: string): string {
+    return `${USER_ROOM_PREFIX}${userId}`;
+  }
+
+  private registerClient(client: AuthenticatedSocket): void {
+    const userId = client.userId;
+
+    if (!userId) {
+      return;
+    }
+
+    this.connectedClients.set(client.id, client);
+
+    const sockets = this.userSockets.get(userId) ?? new Set<string>();
+    sockets.add(client.id);
+    this.userSockets.set(userId, sockets);
+  }
+
+  private unregisterClient(client: AuthenticatedSocket): void {
+    this.connectedClients.delete(client.id);
+
+    if (!client.userId) {
+      return;
+    }
+
+    const sockets = this.userSockets.get(client.userId);
+    if (!sockets) {
+      return;
+    }
+
+    sockets.delete(client.id);
+
+    if (sockets.size === 0) {
+      this.userSockets.delete(client.userId);
+    }
+  }
+
+  private logConnectionStats(
+    userId: string | undefined,
+    socketId: string,
+  ): void {
+    this.logger.log(`User ${userId} đã kết nối (socket: ${socketId})`);
+    this.logger.log(`Tổng số clients: ${this.connectedClients.size}`);
+  }
+
   async handleConnection(client: AuthenticatedSocket) {
     try {
-      // Lấy token từ handshake
       const token = this.extractToken(client);
 
       if (!token) {
@@ -69,24 +116,10 @@ export class WebsocketGateway
       client.userId = payload.sub;
       client.user = payload;
 
-      // Lưu kết nối
-      this.connectedClients.set(client.id, client);
+      this.registerClient(client);
+      void client.join(this.getUserRoom(client.userId));
+      this.logConnectionStats(client.userId, client.id);
 
-      // Theo dõi sockets của user
-      if (!this.userSockets.has(client.userId)) {
-        this.userSockets.set(client.userId, new Set());
-      }
-      this.userSockets.get(client.userId)!.add(client.id);
-
-      // Tham gia room cá nhân của user
-      void client.join(`user:${client.userId}`);
-
-      this.logger.log(
-        `User ${client.userId} đã kết nối (socket: ${client.id})`,
-      );
-      this.logger.log(`Tổng số clients: ${this.connectedClients.size}`);
-
-      // Thông báo cho user
       client.emit('connected', {
         userId: client.userId,
         socketId: client.id,
@@ -104,17 +137,7 @@ export class WebsocketGateway
 
   handleDisconnect(client: AuthenticatedSocket) {
     const userId = client.userId;
-
-    // Xóa khỏi danh sách clients đang kết nối
-    this.connectedClients.delete(client.id);
-
-    // Xóa khỏi sockets của user
-    if (userId && this.userSockets.has(userId)) {
-      this.userSockets.get(userId)?.delete(client.id);
-      if (this.userSockets.get(userId)?.size === 0) {
-        this.userSockets.delete(userId);
-      }
-    }
+    this.unregisterClient(client);
 
     this.logger.log(`User ${userId} đã ngắt kết nối (socket: ${client.id})`);
     this.logger.log(`Tổng số clients: ${this.connectedClients.size}`);
@@ -163,7 +186,7 @@ export class WebsocketGateway
 
   // Gửi tới user cụ thể (tất cả sockets của họ)
   sendToUser(userId: string, event: string, data: unknown): void {
-    this.server.to(`user:${userId}`).emit(event, data);
+    this.server.to(this.getUserRoom(userId)).emit(event, data);
   }
 
   // Gửi tới socket cụ thể
@@ -181,7 +204,7 @@ export class WebsocketGateway
 
   // Lấy số lượng sockets của user
   getUserSocketCount(userId: string): number {
-    return this.userSockets.get(userId)?.size || 0;
+    return this.userSockets.get(userId)?.size ?? 0;
   }
 
   // Lấy danh sách IDs của users đang online
