@@ -15,7 +15,6 @@ import { AuditLogsModule } from './modules/audit-logs/audit-logs.module';
 import { SettingsModule } from './modules/settings/settings.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
-import { TransactionModule } from './infra/transaction/transaction.module';
 import { MikroOrmDatabaseModule } from './database/mikro-orm.module';
 import { CacheModule } from './infra/cache/cache.module';
 import { MonitoringModule } from './infra/monitoring/monitoring.module';
@@ -31,7 +30,6 @@ import { RequestLoggingMiddleware } from './common/middleware/request-logging.mi
       ignoreEnvFile: false,
     }),
     MikroOrmDatabaseModule,
-    TransactionModule,
     CacheModule,
     MonitoringModule,
     WebsocketModule,

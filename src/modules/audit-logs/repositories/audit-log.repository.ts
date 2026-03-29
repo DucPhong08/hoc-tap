@@ -6,7 +6,10 @@ import { DB_CONTEXTS } from 'src/database/database.constants';
 import { AuditLogEntity } from '../entities/audit-log.entity';
 
 @Injectable()
-export class AuditLogRepository extends MikroOrmBaseRepository<AuditLogEntity> {
+export class AuditLogRepository extends MikroOrmBaseRepository<
+  AuditLogEntity,
+  EntityManager
+> {
   constructor(
     @InjectEntityManager(DB_CONTEXTS.MAIN)
     em: EntityManager,

@@ -1,34 +1,10 @@
+import type { FilterQuery, FindOptions } from '@mikro-orm/core';
+
 // ============================================================================
 // Query Conditions & Operators
 // ============================================================================
 
-export type ComparisonOperator<T> = {
-  $eq?: T;
-  $ne?: T;
-  $gt?: T;
-  $gte?: T;
-  $lt?: T;
-  $lte?: T;
-  $in?: T[];
-  $nin?: T[];
-  $like?: string | RegExp;
-  $ilike?: string;
-  $regex?: string | RegExp;
-  $exists?: boolean;
-  $not?: ComparisonOperator<T>;
-};
-
-export type FieldCondition<T> = T | ComparisonOperator<T>;
-
-export type WhereCondition<E> = {
-  [P in keyof E]?: FieldCondition<E[P]>;
-} & {
-  $and?: WhereCondition<E>[];
-  $or?: WhereCondition<E>[];
-  $not?: WhereCondition<E>;
-};
-
-export type QueryCondition<E> = WhereCondition<E>;
+export type QueryCondition<E> = FilterQuery<E>;
 
 // ============================================================================
 // Update Operators
@@ -79,11 +55,11 @@ export interface CommandOptions<T = unknown> {
 // ============================================================================
 
 export interface FindQuery<E> {
-  select?: (keyof E)[];
+  select?: FindOptions<E>['fields'];
   populate?: PopulateInput;
-  sort?: Partial<Record<keyof E, 1 | -1>>;
-  limit?: number;
-  offset?: number;
+  sort?: FindOptions<E>['orderBy'];
+  limit?: FindOptions<E>['limit'];
+  offset?: FindOptions<E>['offset'];
   page?: number;
   withDeleted?: boolean;
 }
@@ -104,12 +80,6 @@ export interface UpdateCommand {
 
 export interface DeleteCommand {
   soft?: boolean;
-}
-
-export interface BulkCommand {
-  ordered?: boolean;
-  upsert?: boolean;
-  new?: boolean;
 }
 
 // ============================================================================

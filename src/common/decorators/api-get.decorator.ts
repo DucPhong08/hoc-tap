@@ -16,6 +16,18 @@ const ApiCondition = () =>
 export const ApiQueryOptions = (mode: QueryMode) => {
   const decorators = [
     ApiQuery({
+      name: 'select',
+      required: false,
+      type: String,
+      description: 'Fields to select (comma-separated)',
+    }),
+    ApiQuery({
+      name: 'populate',
+      required: false,
+      type: String,
+      description: 'Relations to populate (comma-separated)',
+    }),
+    ApiQuery({
       name: 'sort',
       required: false,
       type: String,

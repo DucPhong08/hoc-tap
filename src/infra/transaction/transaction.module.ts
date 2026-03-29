@@ -1,11 +1,10 @@
-import { Module, Global } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { MikroOrmTransactionService } from './mikro-orm-transaction.service';
 import {
   TransactionProvider,
   TRANSACTION_PROVIDER,
 } from './transaction.provider';
 
-@Global()
 @Module({
   providers: [
     MikroOrmTransactionService,

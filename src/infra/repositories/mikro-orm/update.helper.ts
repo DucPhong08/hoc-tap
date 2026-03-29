@@ -16,103 +16,64 @@ type MutableEntity = Record<string, unknown>;
 
 export class UpdateHelper {
   static apply<E extends object>(entity: E, data: UpdateData<E>): void {
-    if (!this.isObject(data)) {
-      this.assign(entity, data as Partial<E>);
-      return;
-    }
-
-    if (!this.hasOperatorPayload(data)) {
+    if (!this.isRecord(data) || !this.hasOperatorPayload(data)) {
       this.assign(entity, data);
       return;
     }
 
-    if (data.$set) {
-      this.assign(entity, data.$set);
+    const operatorData = data;
+    const entityRecord = entity as MutableEntity;
+
+    if (operatorData.$set) {
+      this.assign(entity, operatorData.$set);
     }
 
-    if (data.$inc) {
-      this.applyIncrements(entity, data.$inc);
-    }
+    if (operatorData.$inc) {
+      for (const [fieldName, value] of Object.entries(operatorData.$inc)) {
+        const currentValue = entityRecord[fieldName];
 
-    if (data.$unset) {
-      this.applyUnset(entity, data.$unset);
-    }
-
-    if (data.$push) {
-      this.applyPush(entity, data.$push);
-    }
-
-    if (data.$pull) {
-      this.applyPull(entity, data.$pull);
-    }
-  }
-
-  private static assign<E extends object>(entity: E, data: Partial<E>): void {
-    wrap(entity).assign(data as object);
-  }
-
-  private static applyIncrements<E extends object>(
-    entity: E,
-    increments: Partial<Record<keyof E, number>>,
-  ): void {
-    const entityRecord = this.toMutableEntity(entity);
-
-    for (const [fieldName, value] of Object.entries(increments)) {
-      const currentValue = entityRecord[fieldName];
-
-      if (typeof currentValue === 'number' && typeof value === 'number') {
-        entityRecord[fieldName] = currentValue + value;
+        if (typeof value === 'number') {
+          entityRecord[fieldName] =
+            typeof currentValue === 'number' ? currentValue + value : value;
+        }
       }
     }
-  }
 
-  private static applyUnset<E extends object>(
-    entity: E,
-    fields: Partial<Record<keyof E, boolean>>,
-  ): void {
-    const entityRecord = this.toMutableEntity(entity);
-
-    for (const fieldName of Object.keys(fields)) {
-      entityRecord[fieldName] = null;
-    }
-  }
-
-  private static applyPush<E extends object>(
-    entity: E,
-    values: Partial<Record<keyof E, unknown>>,
-  ): void {
-    const entityRecord = this.toMutableEntity(entity);
-
-    for (const [fieldName, value] of Object.entries(values)) {
-      const currentValue = entityRecord[fieldName];
-
-      if (Array.isArray(currentValue)) {
-        currentValue.push(value);
+    if (operatorData.$unset) {
+      for (const fieldName of Object.keys(operatorData.$unset)) {
+        entityRecord[fieldName] = null;
       }
     }
-  }
 
-  private static applyPull<E extends object>(
-    entity: E,
-    values: Partial<Record<keyof E, unknown>>,
-  ): void {
-    const entityRecord = this.toMutableEntity(entity);
+    if (operatorData.$push) {
+      for (const [fieldName, value] of Object.entries(operatorData.$push)) {
+        const currentValue = entityRecord[fieldName];
 
-    for (const [fieldName, value] of Object.entries(values)) {
-      const currentValue = entityRecord[fieldName];
+        if (Array.isArray(currentValue)) {
+          currentValue.push(value);
+        } else {
+          entityRecord[fieldName] = [value];
+        }
+      }
+    }
 
-      if (Array.isArray(currentValue)) {
-        const index = currentValue.indexOf(value);
+    if (operatorData.$pull) {
+      for (const [fieldName, value] of Object.entries(operatorData.$pull)) {
+        const currentValue = entityRecord[fieldName];
 
-        if (index > -1) {
-          currentValue.splice(index, 1);
+        if (Array.isArray(currentValue)) {
+          const index = currentValue.indexOf(value);
+
+          if (index > -1) {
+            currentValue.splice(index, 1);
+          }
         }
       }
     }
   }
 
-  private static toMutableEntity<E extends object>(entity: E): MutableEntity {
-    return entity as MutableEntity;
+  private static assign<E extends object>(entity: E, data: Partial<E>): void {
+    wrap(entity).assign(data as object);
   }
 
   private static hasOperatorPayload<E extends object>(
@@ -121,7 +82,7 @@ export class UpdateHelper {
     return UPDATE_OPERATOR_KEYS.some((operator) => operator in data);
   }
 
-  private static isObject(value: unknown): value is Record<string, unknown> {
-    return typeof value === 'object' && value !== null;
+  private static isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
   }
 }
