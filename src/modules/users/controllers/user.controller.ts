@@ -1,5 +1,5 @@
 import { Controller, Get, Param } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiTags } from '@nestjs/swagger';
 import { createCrudController } from '../../../infra/controllers/base-crud.controller';
 import { UserEntity } from '../entities/user.entity';
 import { UserService } from '../services/user.service';
@@ -36,8 +36,6 @@ export class UserController extends UserCrudController {
   }
 
   @Get('email/:email')
-  @ApiOperation({ summary: 'Tìm người dùng theo email' })
-  @ApiResponse({ status: 200, type: UserEntity })
   async findByEmail(@Param('email') email: string): Promise<UserEntity | null> {
     return this.userService.findByEmail(email);
   }

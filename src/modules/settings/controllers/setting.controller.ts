@@ -1,5 +1,5 @@
 import { Controller, Get, Param, Body, Put } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiTags } from '@nestjs/swagger';
 import { SettingEntity } from '../entities/setting.entity';
 import { SettingService } from '../services/setting.service';
 import { Authorization } from 'src/common/decorators/authorization.decorator';
@@ -11,8 +11,6 @@ export class SettingController {
   constructor(private readonly settingService: SettingService) {}
 
   @Get('key/:key')
-  @ApiOperation({ summary: 'Get setting by key' })
-  @ApiResponse({ status: 200, type: SettingEntity })
   async getByKey(@Param('key') key: string): Promise<SettingEntity | null> {
     const setting = await this.settingService.getSettingValue(key as any);
     if (!setting) return null;
@@ -20,8 +18,6 @@ export class SettingController {
   }
 
   @Put('key/:key/value')
-  @ApiOperation({ summary: 'Update setting value by key' })
-  @ApiResponse({ status: 200, type: SettingEntity })
   async updateValueByKey(
     @Param('key') key: string,
     @Body('value') value: any,
