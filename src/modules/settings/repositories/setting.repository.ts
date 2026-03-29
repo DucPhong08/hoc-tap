@@ -4,9 +4,13 @@ import { EntityManager, EntityRepository } from '@mikro-orm/core';
 import { MikroOrmBaseRepository } from '../../../infra/repositories/mikro-orm-base.repository';
 import { DB_CONTEXTS } from 'src/database/database.constants';
 import { SettingEntity } from '../entities/setting.entity';
+import type { QueryOptions } from '../../../common/interfaces/repository.interface';
 
 @Injectable()
-export class SettingRepository extends MikroOrmBaseRepository<SettingEntity> {
+export class SettingRepository extends MikroOrmBaseRepository<
+  SettingEntity,
+  EntityManager
+> {
   constructor(
     @InjectEntityManager(DB_CONTEXTS.MAIN)
     em: EntityManager,
@@ -16,7 +20,10 @@ export class SettingRepository extends MikroOrmBaseRepository<SettingEntity> {
     super(em, repository);
   }
 
-  async findByKey(key: string): Promise<SettingEntity | null> {
-    return this.getOne({ key });
+  async findByKey(
+    key: string,
+    options?: QueryOptions<EntityManager>,
+  ): Promise<SettingEntity | null> {
+    return this.getOne({ key }, options);
   }
 }

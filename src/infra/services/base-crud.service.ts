@@ -225,7 +225,7 @@ export abstract class BaseCrudService<
     callback: (txOptions: CommandOptions<TContext>) => Promise<T>,
   ): Promise<T> {
     const hasExternalTransaction = Boolean(options?.transaction);
-    const txOptions = options || {};
+    const txOptions = { ...(options ?? {}) };
 
     if (!hasExternalTransaction && this.transaction) {
       txOptions.transaction = await this.transaction.startTransaction();

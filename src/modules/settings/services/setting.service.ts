@@ -1,9 +1,12 @@
+import { EntityManager } from '@mikro-orm/core';
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { plainToClass } from 'class-transformer';
 import { validate } from 'class-validator';
 import { BaseCrudService } from '../../../infra/services/base-crud.service';
 import { SettingEntity } from '../entities/setting.entity';
 import { SettingRepository } from '../repositories/setting.repository';
+import type { BaseTransaction } from '../../../infra/transaction/base-transaction.interface';
+import { InjectTransaction } from '../../../infra/transaction/transaction.provider';
 import {
   MAP_SETTING_ENTITY,
   SettingValue,
@@ -11,10 +14,17 @@ import {
 import { SettingKey } from '../enums/setting-key.enum';
 
 @Injectable()
-export class SettingService extends BaseCrudService<SettingEntity> {
-  constructor(private readonly settingRepository: SettingRepository) {
+export class SettingService extends BaseCrudService<
+  SettingEntity,
+  EntityManager
+> {
+  constructor(
+    private readonly settingRepository: SettingRepository,
+    @InjectTransaction()
+    transaction: BaseTransaction<EntityManager>,
+  ) {
     super(settingRepository, {
-      // notFoundMessage: 'Setting not found',
+      transaction,
     });
   }
 
@@ -50,16 +60,25 @@ export class SettingService extends BaseCrudService<SettingEntity> {
       }
     }
 
-    const existing = await this.settingRepository.findByKey(key);
+    return this.executeWithTransaction(undefined, async (txOptions) => {
+      const existing = await this.settingRepository.findByKey(key, txOptions);
 
-    if (existing) {
-      return super.updateById(existing.id, { value: value as any });
-    } else {
-      return super.create({
-        key,
-        value: value as any,
-      });
-    }
+      if (existing) {
+        return super.updateById(
+          existing.id,
+          { value: value as any },
+          txOptions,
+        );
+      }
+
+      return super.create(
+        {
+          key,
+          value: value as any,
+        },
+        txOptions,
+      );
+    });
   }
 
   async getSettingValues(keys: SettingKey[]): Promise<Record<string, any>> {
