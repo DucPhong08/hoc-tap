@@ -94,10 +94,11 @@
     "typescript-eslint": "^8.20.0"
   },
   "lint-staged": {
-    "*.{ts,tsx,js,jsx,json,md}": [
-      "npm run format",
-      "npm run lint"
-    ]
+    "*.{ts,tsx,js,jsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md}": "prettier --write"
   },
   "jest": {
     "moduleFileExtensions": [
