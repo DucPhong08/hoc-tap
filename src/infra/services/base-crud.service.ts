@@ -154,7 +154,7 @@ export abstract class BaseCrudService<
     options?: UpdateCommand & CommandOptions<TContext>,
   ): Promise<{ affected: number }> {
     return this.updateMany(
-      { _id: { $in: ids } } as QueryCondition<E>,
+      { _id: { $in: ids } } as unknown as QueryCondition<E>,
       update,
       options,
     );
@@ -203,7 +203,10 @@ export abstract class BaseCrudService<
     ids: string[],
     options?: DeleteCommand & CommandOptions<TContext>,
   ): Promise<{ deleted: number }> {
-    return this.deleteMany({ _id: { $in: ids } } as QueryCondition<E>, options);
+    return this.deleteMany(
+      { _id: { $in: ids } } as unknown as QueryCondition<E>,
+      options,
+    );
   }
 
   async count(

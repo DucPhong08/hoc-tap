@@ -436,7 +436,7 @@ export abstract class MikroOrmBaseRepository<
     )
       .createQueryBuilder(this.repository.getEntityName())
       .select('1')
-      .where(condition)
+      .where(condition as object)
       .limit(1);
 
     if (options?.withDeleted) {
@@ -469,7 +469,7 @@ export abstract class MikroOrmBaseRepository<
       )
         .createQueryBuilder(this.repository.getEntityName())
         .select(fieldName, true)
-        .where(condition ?? {})
+        .where((condition ?? {}) as object)
         .execute();
 
       return rows.map((row) => row[fieldName]);
