@@ -24,17 +24,7 @@ export type UpdateData<E> = Partial<E> | UpdateOperator<E>;
 // Populate (JOIN) Options
 // ============================================================================
 
-export type PopulateField = string;
-
-export type PopulateOptions = {
-  path: string;
-  select?: string[];
-  populate?: PopulateField[] | PopulateOptions[];
-  sort?: Record<string, 1 | -1>;
-  limit?: number;
-};
-
-export type PopulateInput = PopulateField[] | PopulateOptions[];
+export type PopulateInput = FindOptions<any>['populate'];
 
 // ============================================================================
 // Base Options for Queries and Commands
@@ -47,7 +37,6 @@ export interface QueryOptions<T = unknown> {
 
 export interface CommandOptions<T = unknown> {
   transaction?: T;
-  plain?: boolean;
 }
 
 // ============================================================================
@@ -75,7 +64,6 @@ export interface CreateCommand {
 export interface UpdateCommand {
   populate?: PopulateInput;
   upsert?: boolean;
-  new?: boolean;
 }
 
 export interface DeleteCommand {

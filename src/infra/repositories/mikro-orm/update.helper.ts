@@ -4,7 +4,7 @@ import type {
   UpdateOperator,
 } from '../../../common/types/repository.types';
 
-const UPDATE_OPERATOR_KEYS = [
+export const UPDATE_OPERATOR_KEYS = [
   '$set',
   '$inc',
   '$unset',
