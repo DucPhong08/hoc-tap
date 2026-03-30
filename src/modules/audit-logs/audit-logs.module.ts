@@ -1,4 +1,5 @@
 import { Global, Module } from '@nestjs/common';
+import { APP_INTERCEPTOR } from '@nestjs/core';
 import { MikroOrmModule } from '@mikro-orm/nestjs';
 import { ScheduleModule } from '@nestjs/schedule';
 import { AuditLogEntity } from './entities/audit-log.entity';
@@ -24,6 +25,10 @@ import { DB_CONTEXTS } from 'src/database/database.constants';
     AuditLogService,
     AuditCleanupService,
     AuditInterceptor,
+    {
+      provide: APP_INTERCEPTOR,
+      useExisting: AuditInterceptor,
+    },
   ],
   exports: [AuditLogService, AuditInterceptor],
 })

@@ -13,12 +13,8 @@ import type {
 } from '../../common/interfaces/repository.interface';
 import type { IBaseRepository } from '../../common/interfaces/repository.interface';
 import { BaseEntity } from '../../common/entity/base.entity';
-import type { BaseTransaction } from '../transaction/base-transaction.interface';
-
-export interface BaseCrudServiceConfig<TContext = unknown> {
-  notFoundMessage?: string;
-  transaction?: BaseTransaction<TContext>;
-}
+import type { BaseCrudServiceConfig } from './base-crud.constant';
+import { BaseTransaction } from '../transaction/base-transaction.interface';
 
 @Injectable()
 export abstract class BaseCrudService<

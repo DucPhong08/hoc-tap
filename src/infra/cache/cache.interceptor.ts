@@ -7,8 +7,14 @@ import {
 import { Reflector } from '@nestjs/core';
 import { Observable, of, tap } from 'rxjs';
 import { RedisCacheService } from './redis-cache.service';
-import { CACHE_KEY } from './cache.decorator';
-import { CacheOptions } from './cache.interface';
+import {
+  CACHE_EVICT_KEY,
+  CACHE_KEY,
+} from '../../common/decorators/cache.decorator';
+import type {
+  CacheEvictOptions,
+  CacheOptions,
+} from '../../common/types/cache.type';
 
 @Injectable()
 export class CacheInterceptor implements NestInterceptor {
@@ -25,33 +31,49 @@ export class CacheInterceptor implements NestInterceptor {
       CACHE_KEY,
       context.getHandler(),
     );
+    const evictOptions = this.reflector.get<CacheEvictOptions>(
+      CACHE_EVICT_KEY,
+      context.getHandler(),
+    );
 
-    if (!cacheOptions) {
+    if (!cacheOptions && !evictOptions) {
       return next.handle();
     }
 
     const request = context.switchToHttp().getRequest();
-    const cacheKey = this.generateCacheKey(request, cacheOptions);
+    const cacheKey = cacheOptions
+      ? this.generateCacheKey(request, cacheOptions)
+      : undefined;
 
-    // Try to get from cache
-    const cachedData = await this.cacheService.get(cacheKey);
-    if (cachedData) {
-      return of(cachedData);
+    if (cacheOptions && cacheKey) {
+      const cachedData = await this.cacheService.get(cacheKey);
+      if (cachedData !== null) {
+        return of(cachedData);
+      }
     }
 
-    // Execute and cache result
     return next.handle().pipe(
       tap((data) => {
         void (async () => {
-          if (cacheOptions.tags) {
-            await this.cacheService.setWithTags(
-              cacheKey,
-              data,
-              cacheOptions.tags,
-              cacheOptions.ttl,
-            );
-          } else {
-            await this.cacheService.set(cacheKey, data, cacheOptions.ttl);
+          if (cacheOptions && cacheKey) {
+            if (cacheOptions.tags) {
+              await this.cacheService.setWithTags(
+                cacheKey,
+                data,
+                cacheOptions.tags,
+                cacheOptions.ttl,
+              );
+            } else {
+              await this.cacheService.set(cacheKey, data, cacheOptions.ttl);
+            }
+          }
+
+          if (evictOptions?.key) {
+            await this.cacheService.del(evictOptions.key);
+          }
+
+          if (evictOptions?.tags?.length) {
+            await this.cacheService.delByTags(evictOptions.tags);
           }
         })();
       }),

@@ -1,11 +1,23 @@
 import { Type, NotFoundException } from '@nestjs/common';
 import { Authorize } from '../../../common/decorators/authorize.decorator';
+import { Auditable } from '../../../common/decorators/auditable.decorator';
+import { AuditAction } from '../../../modules/audit-logs/enums/audit-action.enum';
 import type {
   BaseRoute,
   CrudOptions,
   CrudRouteDefinition,
   RouteConfig,
 } from './types';
+
+const CRUD_AUDIT_ACTIONS: Partial<Record<BaseRoute, AuditAction>> = {
+  create: AuditAction.CREATE,
+  updateOne: AuditAction.UPDATE,
+  updateById: AuditAction.UPDATE,
+  updateByIds: AuditAction.UPDATE,
+  deleteOne: AuditAction.DELETE,
+  deleteById: AuditAction.DELETE,
+  deleteByIds: AuditAction.DELETE,
+};
 
 export const renameGeneratedClass = <T>(
   name: string,
@@ -81,6 +93,36 @@ export function applyCrudAuthorization(
     }
 
     Authorize(...routeConfig.roles)(
+      controllerClass.prototype,
+      handlerName,
+      handlerDescriptor,
+    );
+  });
+}
+
+export function applyCrudAudit(
+  controllerClass: Type<object>,
+  routeDefinitions: CrudRouteDefinition[],
+  routeConfigs: Record<BaseRoute, Required<RouteConfig>>,
+): void {
+  routeDefinitions.forEach(({ route, handlerName }) => {
+    const action = CRUD_AUDIT_ACTIONS[route];
+    const routeConfig = routeConfigs[route];
+
+    if (!action || !routeConfig.enabled) {
+      return;
+    }
+
+    const handlerDescriptor = Object.getOwnPropertyDescriptor(
+      controllerClass.prototype,
+      handlerName,
+    );
+
+    if (!handlerDescriptor) {
+      return;
+    }
+
+    Auditable({ action })(
       controllerClass.prototype,
       handlerName,
       handlerDescriptor,

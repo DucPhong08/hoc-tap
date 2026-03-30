@@ -8,3 +8,20 @@ export interface OAuthProfile {
   lastName: string;
   avatar?: string;
 }
+
+export interface AuthUserProfile {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  roles: string[];
+  provider: AuthProvider;
+  avatar?: string;
+  isActive: boolean;
+}
+
+export interface LoginResponse {
+  accessToken: string;
+  refreshToken: string;
+  user: AuthUserProfile;
+}

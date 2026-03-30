@@ -8,8 +8,13 @@ import {
   UseGuards,
   Req,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
-import { AuthService, LoginResponse } from '../services/auth.service';
+import {
+  ApiBearerAuth,
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+} from '@nestjs/swagger';
+import { AuthService } from '../services/auth.service';
 import { RegisterDto } from '../dto/register.dto';
 import { LoginDto } from '../dto/login.dto';
 import { RefreshTokenDto } from '../dto/refresh-token.dto';
@@ -17,6 +22,12 @@ import { Public } from '../../../common/decorators/public.decorator';
 import { GoogleAuthGuard } from '../../../common/guards/google-auth.guard';
 import { FacebookAuthGuard } from '../../../common/guards/facebook-auth.guard';
 import type { Request } from 'express';
+import { ReqUser } from '../../../common/decorators/request-user.decorator';
+import { UserEntity } from '../../users/entities/user.entity';
+import {
+  AuthUserProfile,
+  LoginResponse,
+} from '../interfaces/oauth-profile.interface';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -59,6 +70,15 @@ export class AuthController {
     return this.authService.refreshToken(refreshTokenDto.refreshToken);
   }
 
+  @Get('me')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get current authenticated user' })
+  @ApiResponse({ status: 200, description: 'Current user fetched' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async me(@ReqUser('userId') userId: string): Promise<AuthUserProfile> {
+    return this.authService.getCurrentUser(userId);
+  }
+
   @Public()
   @Get('google')
   @UseGuards(GoogleAuthGuard)
@@ -70,7 +90,7 @@ export class AuthController {
   @UseGuards(GoogleAuthGuard)
   @ApiOperation({ summary: 'Google OAuth callback' })
   async googleAuthCallback(@Req() req: Request): Promise<LoginResponse> {
-    return this.authService.generateTokens(req.user);
+    return this.authService.generateTokens(req.user as UserEntity);
   }
 
   @Public()
@@ -84,6 +104,6 @@ export class AuthController {
   @UseGuards(FacebookAuthGuard)
   @ApiOperation({ summary: 'Facebook OAuth callback' })
   async facebookAuthCallback(@Req() req: Request): Promise<LoginResponse> {
-    return this.authService.generateTokens(req.user);
+    return this.authService.generateTokens(req.user as UserEntity);
   }
 }

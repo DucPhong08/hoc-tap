@@ -1,8 +1,10 @@
 import { Controller, Get, Param, Body, Put } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import { Auditable } from '../../../common/decorators/auditable.decorator';
 import { SettingEntity } from '../entities/setting.entity';
 import { SettingService } from '../services/setting.service';
 import { Authorization } from 'src/common/decorators/authorization.decorator';
+import { AuditAction } from '../../audit-logs/enums/audit-action.enum';
 
 @ApiTags('settings')
 @Controller('settings')
@@ -18,6 +20,10 @@ export class SettingController {
   }
 
   @Put('key/:key/value')
+  @Auditable({
+    action: AuditAction.UPDATE,
+    description: 'Update setting value',
+  })
   async updateValueByKey(
     @Param('key') key: string,
     @Body('value') value: any,

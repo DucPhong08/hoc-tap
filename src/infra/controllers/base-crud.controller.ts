@@ -41,6 +41,7 @@ import type {
 import { BaseCrudService } from '../services/base-crud.service';
 import {
   applyCrudAuthorization,
+  applyCrudAudit,
   assertRouteEnabled,
   buildRouteConfigMap,
   createCrudDtoBundle,
@@ -288,6 +289,7 @@ export function createCrudController<E extends BaseEntity>(
     routeConfigs,
     options.defaultRoles,
   );
+  applyCrudAudit(GeneratedCrudController, CRUD_ROUTE_DEFINITIONS, routeConfigs);
 
   return GeneratedCrudController;
 }

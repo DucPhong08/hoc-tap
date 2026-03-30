@@ -6,20 +6,12 @@ import { UserService } from '../../users/services/user.service';
 import { UserEntity } from '../../users/entities/user.entity';
 import type { AuthConfig } from '../../../config/configuration.types';
 import { JwtPayload } from '../strategies/jwt.strategy';
-import { OAuthProfile } from '../interfaces/oauth-profile.interface';
+import {
+  AuthUserProfile,
+  LoginResponse,
+  OAuthProfile,
+} from '../interfaces/oauth-profile.interface';
 import { AuthProvider } from '../enums/auth-provider.enum';
-
-export interface LoginResponse {
-  accessToken: string;
-  refreshToken: string;
-  user: {
-    id: string;
-    email: string;
-    firstName: string;
-    lastName: string;
-    provider: AuthProvider;
-  };
-}
 
 @Injectable()
 export class AuthService {
@@ -87,7 +79,7 @@ export class AuthService {
       user = await this.userService.findByEmail(profile.email);
 
       if (user) {
-        user = await this.userService.updateById(user._id.toString(), {
+        user = await this.userService.updateById(user.id, {
           provider: profile.provider,
           providerId: profile.providerId,
           avatar: profile.avatar,
@@ -127,11 +119,21 @@ export class AuthService {
     }
   }
 
-  generateTokens(user: any): LoginResponse {
+  async getCurrentUser(userId: string): Promise<AuthUserProfile> {
+    const user = await this.userService.getByIdOrNull(userId);
+
+    if (!user) {
+      throw new UnauthorizedException('Không tìm thấy người dùng');
+    }
+
+    return this.toAuthUserProfile(user);
+  }
+
+  generateTokens(user: UserEntity): LoginResponse {
     const authConfig = this.configService.get<AuthConfig>('auth');
 
     const payload: JwtPayload = {
-      sub: user._id,
+      sub: user.id,
       email: user.email,
       roles: user.roles || ['user'],
     };
@@ -146,13 +148,20 @@ export class AuthService {
     return {
       accessToken,
       refreshToken,
-      user: {
-        id: user._id,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        provider: user.provider || AuthProvider.LOCAL,
-      },
+      user: this.toAuthUserProfile(user),
+    };
+  }
+
+  private toAuthUserProfile(user: UserEntity): AuthUserProfile {
+    return {
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      roles: user.roles || ['user'],
+      provider: user.provider || AuthProvider.LOCAL,
+      avatar: user.avatar,
+      isActive: user.isActive,
     };
   }
 }
