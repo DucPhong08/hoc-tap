@@ -34,11 +34,10 @@ export abstract class CachedBaseRepository<
   protected readonly defaultCacheTtl = DEFAULT_CACHE_TTL_SECONDS;
 
   constructor(
-    protected readonly em: EntityManager,
     protected readonly repository: EntityRepository<E>,
     protected readonly cacheService: RedisCacheService,
   ) {
-    super(em, repository);
+    super(repository);
   }
 
   private buildCacheKey(prefix: string, ...parts: CacheKeyPart[]): string {

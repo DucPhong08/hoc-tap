@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { EntityManager, EntityRepository } from '@mikro-orm/core';
-import { InjectEntityManager, InjectRepository } from '@mikro-orm/nestjs';
+import { InjectRepository } from '@mikro-orm/nestjs';
 import { MikroOrmBaseRepository } from '../../../infra/repositories/mikro-orm-base.repository';
 import { DB_CONTEXTS } from 'src/database/database.constants';
 import { UserEntity } from '../entities/user.entity';
@@ -12,12 +12,10 @@ export class UserRepository extends MikroOrmBaseRepository<
   EntityManager
 > {
   constructor(
-    @InjectEntityManager(DB_CONTEXTS.MAIN)
-    em: EntityManager,
     @InjectRepository(UserEntity, DB_CONTEXTS.MAIN)
     repository: EntityRepository<UserEntity>,
   ) {
-    super(em, repository);
+    super(repository);
   }
 
   async findByEmail(

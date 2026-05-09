@@ -6,25 +6,12 @@ import type {
 } from '../../common/interfaces/repository.interface';
 import { BaseEntity } from '../../common/entity/base.entity';
 import { UPDATE_OPERATOR_KEYS } from './mikro-orm/update.helper';
-
-const LOGICAL_OPERATOR_KEYS = new Set(['$and', '$or', '$not']);
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    !Array.isArray(value) &&
-    !(value instanceof Date)
-  );
-}
+import { isRecord } from './mikro-orm/utils';
 
 export function hasUpdateOperators<E extends object>(
   data: UpdateData<E>,
-): data is Record<string, unknown> {
-  return (
-    isRecord(data) &&
-    Array.from(UPDATE_OPERATOR_KEYS).some((operator) => operator in data)
-  );
+): boolean {
+  return isRecord(data) && UPDATE_OPERATOR_KEYS.some((op) => op in data);
 }
 
 export function buildUpsertPayload<E extends BaseEntity>(
@@ -32,46 +19,35 @@ export function buildUpsertPayload<E extends BaseEntity>(
   data: UpdateData<E>,
 ): Partial<E> {
   if (hasUpdateOperators(data)) {
-    throw new Error(
-      'Upsert only supports plain partial data. Use update operators without upsert.',
-    );
+    throw new Error('Upsert chỉ nhận plain data, không nhận update operators.');
   }
-
-  return Object.assign({}, seed, data as Partial<E>);
+  return { ...seed, ...(data as Partial<E>) };
 }
 
 export function extractUpsertSeed<E extends BaseEntity>(
   condition: QueryCondition<E>,
 ): Partial<E> {
   if (!isRecord(condition)) {
-    throw new Error(
-      'Upsert only supports object equality conditions in updateOne.',
-    );
+    throw new Error('Upsert chỉ hỗ trợ object condition trong updateOne.');
   }
 
   const seed: Partial<E> = {};
 
-  for (const [fieldName, value] of Object.entries(condition)) {
-    if (LOGICAL_OPERATOR_KEYS.has(fieldName)) {
-      throw new Error(
-        'Upsert only supports direct equality conditions in updateOne.',
-      );
+  for (const [field, value] of Object.entries(condition)) {
+    if (field.startsWith('$')) {
+      throw new Error('Upsert không hỗ trợ logical operators trong condition.');
     }
 
-    if (isRecord(value)) {
-      if ('$eq' in value) {
-        seed[fieldName as keyof E] = value.$eq as E[keyof E];
+    if (isRecord(value) && Object.keys(value).some((k) => k.startsWith('$'))) {
+      // Chỉ cho phép { $eq: x } — unwrap value ra
+      if ('$eq' in value && Object.keys(value).length === 1) {
+        seed[field as keyof E] = value.$eq as E[keyof E];
         continue;
       }
-
-      if (Object.keys(value).some((key) => key.startsWith('$'))) {
-        throw new Error(
-          'Upsert only supports direct equality conditions in updateOne.',
-        );
-      }
+      throw new Error('Upsert chỉ hỗ trợ equality condition trong updateOne.');
     }
 
-    seed[fieldName as keyof E] = value as E[keyof E];
+    seed[field as keyof E] = value as E[keyof E];
   }
 
   return seed;
@@ -80,35 +56,16 @@ export function extractUpsertSeed<E extends BaseEntity>(
 export function buildFindOptions<E extends BaseEntity>(
   query?: FindQuery<E>,
 ): FindOptions<E> {
-  if (!query) {
-    return {};
-  }
+  if (!query) return {};
 
-  const findOptions: Record<string, unknown> = {};
+  const options: Record<string, unknown> = {};
 
-  if (query.select?.length) {
-    findOptions.fields = query.select;
-  }
+  if (query.select?.length) options.fields = query.select;
+  if (query.populate) options.populate = query.populate;
+  if (query.sort) options.orderBy = query.sort;
+  if (query.limit !== undefined) options.limit = query.limit;
+  if (query.offset !== undefined) options.offset = query.offset;
+  if (query.withDeleted) options.filters = false;
 
-  if (query.populate) {
-    findOptions.populate = query.populate;
-  }
-
-  if (query.sort) {
-    findOptions.orderBy = query.sort;
-  }
-
-  if (query.limit !== undefined) {
-    findOptions.limit = query.limit;
-  }
-
-  if (query.offset !== undefined) {
-    findOptions.offset = query.offset;
-  }
-
-  if (query.withDeleted) {
-    findOptions.filters = false;
-  }
-
-  return findOptions as FindOptions<E>;
+  return options as FindOptions<E>;
 }

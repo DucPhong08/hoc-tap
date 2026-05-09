@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository, InjectEntityManager } from '@mikro-orm/nestjs';
+import { InjectRepository } from '@mikro-orm/nestjs';
 import { EntityManager, EntityRepository } from '@mikro-orm/core';
 import { MikroOrmBaseRepository } from '../../../infra/repositories/mikro-orm-base.repository';
 import { DB_CONTEXTS } from 'src/database/database.constants';
@@ -12,12 +12,10 @@ export class SettingRepository extends MikroOrmBaseRepository<
   EntityManager
 > {
   constructor(
-    @InjectEntityManager(DB_CONTEXTS.MAIN)
-    em: EntityManager,
     @InjectRepository(SettingEntity, DB_CONTEXTS.MAIN)
     repository: EntityRepository<SettingEntity>,
   ) {
-    super(em, repository);
+    super(repository);
   }
 
   async findByKey(

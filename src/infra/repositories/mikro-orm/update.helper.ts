@@ -1,8 +1,6 @@
 import { wrap } from '@mikro-orm/core';
-import type {
-  UpdateData,
-  UpdateOperator,
-} from '../../../common/types/repository.types';
+import type { UpdateData } from '../../../common/types/repository.types';
+import { isRecord } from './utils';
 
 export const UPDATE_OPERATOR_KEYS = [
   '$set',
@@ -14,75 +12,58 @@ export const UPDATE_OPERATOR_KEYS = [
 
 type MutableEntity = Record<string, unknown>;
 
-export class UpdateHelper {
-  static apply<E extends object>(entity: E, data: UpdateData<E>): void {
-    if (!this.isRecord(data) || !this.hasOperatorPayload(data)) {
-      this.assign(entity, data);
-      return;
-    }
+export function applyUpdate<E extends object>(
+  entity: E,
+  data: UpdateData<E>,
+): void {
+  if (!isRecord(data) || !UPDATE_OPERATOR_KEYS.some((op) => op in data)) {
+    wrap(entity).assign(data as object);
+    return;
+  }
 
-    const operatorData = data;
-    const entityRecord = entity as MutableEntity;
+  const record = entity as MutableEntity;
 
-    if (operatorData.$set) {
-      this.assign(entity, operatorData.$set);
-    }
+  for (const [op, payload] of Object.entries(data)) {
+    if (!isRecord(payload)) continue;
 
-    if (operatorData.$inc) {
-      for (const [fieldName, value] of Object.entries(operatorData.$inc)) {
-        const currentValue = entityRecord[fieldName];
+    switch (op) {
+      case '$set':
+        wrap(entity).assign(payload as object);
+        break;
 
-        if (typeof value === 'number') {
-          entityRecord[fieldName] =
-            typeof currentValue === 'number' ? currentValue + value : value;
+      case '$inc':
+        for (const [field, value] of Object.entries(payload)) {
+          if (typeof value !== 'number') continue;
+          const current = record[field];
+          record[field] = typeof current === 'number' ? current + value : value;
         }
-      }
-    }
+        break;
 
-    if (operatorData.$unset) {
-      for (const fieldName of Object.keys(operatorData.$unset)) {
-        entityRecord[fieldName] = null;
-      }
-    }
-
-    if (operatorData.$push) {
-      for (const [fieldName, value] of Object.entries(operatorData.$push)) {
-        const currentValue = entityRecord[fieldName];
-
-        if (Array.isArray(currentValue)) {
-          currentValue.push(value);
-        } else {
-          entityRecord[fieldName] = [value];
+      case '$unset':
+        for (const field of Object.keys(payload)) {
+          record[field] = null;
         }
-      }
-    }
+        break;
 
-    if (operatorData.$pull) {
-      for (const [fieldName, value] of Object.entries(operatorData.$pull)) {
-        const currentValue = entityRecord[fieldName];
-
-        if (Array.isArray(currentValue)) {
-          const index = currentValue.indexOf(value);
-
-          if (index > -1) {
-            currentValue.splice(index, 1);
+      case '$push':
+        for (const [field, value] of Object.entries(payload)) {
+          const current = record[field];
+          if (Array.isArray(current)) {
+            current.push(value);
+          } else {
+            record[field] = [value];
           }
         }
-      }
+        break;
+
+      case '$pull':
+        for (const [field, value] of Object.entries(payload)) {
+          const current = record[field];
+          if (!Array.isArray(current)) continue;
+          const index = current.indexOf(value);
+          if (index > -1) current.splice(index, 1);
+        }
+        break;
     }
-  }
-
-  private static assign<E extends object>(entity: E, data: Partial<E>): void {
-    wrap(entity).assign(data as object);
-  }
-
-  private static hasOperatorPayload<E extends object>(
-    data: Record<string, unknown>,
-  ): data is UpdateOperator<E> {
-    return UPDATE_OPERATOR_KEYS.some((operator) => operator in data);
-  }
-
-  private static isRecord(value: unknown): value is Record<string, unknown> {
-    return typeof value === 'object' && value !== null && !Array.isArray(value);
   }
 }
