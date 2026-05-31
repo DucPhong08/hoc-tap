@@ -2,8 +2,6 @@ import { BaseEntity } from '../entity/base.entity';
 import type {
   QueryCondition,
   FindQuery,
-  CreateCommand,
-  UpdateCommand,
   DeleteCommand,
   PaginationResult,
   BulkWriteResult,
@@ -11,13 +9,12 @@ import type {
   UpdateData,
   QueryOptions,
   CommandOptions,
+  BaseOptions,
 } from '../types/repository.types';
 
 export type {
   QueryCondition,
   FindQuery,
-  CreateCommand,
-  UpdateCommand,
   DeleteCommand,
   PaginationResult,
   BulkWriteResult,
@@ -25,56 +22,50 @@ export type {
   UpdateData,
   QueryOptions,
   CommandOptions,
+  BaseOptions,
 };
 
 export interface IBaseRepository<E extends BaseEntity, TContext = unknown> {
-  create(
-    data: Partial<E>,
-    options?: CreateCommand & CommandOptions<TContext>,
-  ): Promise<E>;
+  create(data: Partial<E>, options?: CommandOptions<TContext>): Promise<E>;
 
   insertMany(
     data: Partial<E>[],
     options?: CommandOptions<TContext>,
   ): Promise<{ n: number }>;
 
-  getById(
-    id: string,
-    options?: FindQuery<E> & QueryOptions<TContext>,
-  ): Promise<E | null>;
+  getById(id: string, query?: FindQuery<E, TContext>): Promise<E | null>;
 
   getOne(
     condition: QueryCondition<E>,
-    options?: FindQuery<E> & QueryOptions<TContext>,
+    query?: FindQuery<E, TContext>,
   ): Promise<E | null>;
 
   getMany(
     condition: QueryCondition<E>,
-    options?: FindQuery<E> & QueryOptions<TContext>,
+    query?: FindQuery<E, TContext>,
   ): Promise<E[]>;
 
   getPage(
     condition: QueryCondition<E>,
-    options: FindQuery<E> &
-      QueryOptions<TContext> & { page: number; limit: number },
+    query: FindQuery<E, TContext> & { page: number; limit: number },
   ): Promise<PaginationResult<E>>;
 
   updateById(
     id: string,
     data: UpdateData<E>,
-    options?: UpdateCommand & CommandOptions<TContext>,
+    options?: CommandOptions<TContext>,
   ): Promise<E | null>;
 
   updateOne(
     condition: QueryCondition<E>,
     data: UpdateData<E>,
-    options?: UpdateCommand & CommandOptions<TContext>,
+    options?: CommandOptions<TContext>,
   ): Promise<E | null>;
 
   updateMany(
     condition: QueryCondition<E>,
     data: UpdateData<E>,
-    options?: UpdateCommand & CommandOptions<TContext>,
+    options?: CommandOptions<TContext>,
   ): Promise<BulkWriteResult>;
 
   deleteById(
@@ -94,18 +85,18 @@ export interface IBaseRepository<E extends BaseEntity, TContext = unknown> {
 
   count(
     condition?: QueryCondition<E>,
-    options?: QueryOptions<TContext>,
+    query?: QueryOptions<TContext>,
   ): Promise<number>;
 
   exists(
     condition: QueryCondition<E>,
-    options?: QueryOptions<TContext>,
+    query?: QueryOptions<TContext>,
   ): Promise<boolean>;
 
   distinct<K extends keyof E>(
     field: K,
     condition?: QueryCondition<E>,
-    options?: QueryOptions<TContext>,
+    query?: QueryOptions<TContext>,
   ): Promise<E[K][]>;
 
   restore(id: string, options?: CommandOptions<TContext>): Promise<E | null>;

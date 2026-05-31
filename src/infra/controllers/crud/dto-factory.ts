@@ -43,7 +43,6 @@ export const createCrudDtoBundle = <E extends BaseEntity>(
     renameGeneratedClass(
       `Create${entityType.name}Dto`,
       OmitType(entityType, [
-        '_id',
         'id',
         'createdAt',
         'updatedAt',
@@ -57,7 +56,6 @@ export const createCrudDtoBundle = <E extends BaseEntity>(
       `Update${entityType.name}Dto`,
       PartialType(
         OmitType(entityType, [
-          '_id',
           'id',
           'createdAt',
           'updatedAt',

@@ -1,4 +1,9 @@
-import { Entity, PrimaryKey, Property } from '@mikro-orm/core';
+import {
+  Entity,
+  PrimaryKey,
+  Property,
+  SerializedPrimaryKey,
+} from '@mikro-orm/core';
 import { ObjectId } from '@mikro-orm/mongodb';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -7,9 +12,8 @@ export abstract class BaseEntity {
   @PrimaryKey({ type: 'uuid' })
   _id: string | ObjectId = uuidv4();
 
-  get id(): string {
-    return this._id instanceof ObjectId ? this._id.toHexString() : this._id;
-  }
+  @SerializedPrimaryKey()
+  id!: string;
 
   @Property({ onCreate: () => new Date(), nullable: true })
   createdAt?: Date;

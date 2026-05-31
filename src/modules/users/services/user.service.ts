@@ -5,8 +5,6 @@ import { UserEntity } from '../entities/user.entity';
 import { UserPolicy } from '../policies/user.policy';
 import { UserRepository } from '../repositories/user.repository';
 import type {
-  CreateCommand,
-  UpdateCommand,
   DeleteCommand,
   CommandOptions,
   QueryOptions,
@@ -28,7 +26,7 @@ export class UserService extends BaseCrudService<UserEntity, EntityManager> {
 
   async create(
     data: Partial<UserEntity>,
-    options?: CreateCommand & CommandOptions<EntityManager>,
+    options?: CommandOptions<EntityManager>,
   ): Promise<UserEntity> {
     return this.executeWithTransaction(options, async (txOptions) => {
       if (data.email) {
@@ -49,7 +47,7 @@ export class UserService extends BaseCrudService<UserEntity, EntityManager> {
   async updateById(
     id: string,
     data: Partial<UserEntity>,
-    options?: UpdateCommand & CommandOptions<EntityManager>,
+    options?: CommandOptions<EntityManager>,
   ): Promise<UserEntity> {
     return this.executeWithTransaction(options, async (txOptions) => {
       const existingUser = await this.getByIdOrNull(id, txOptions);

@@ -5,8 +5,6 @@ import type {
   PaginationResult,
   UpdateData,
   FindQuery,
-  CreateCommand,
-  UpdateCommand,
   DeleteCommand,
   QueryOptions,
   CommandOptions,
@@ -34,7 +32,7 @@ export abstract class BaseCrudService<
 
   async create(
     dto: Partial<E>,
-    options?: CreateCommand & CommandOptions<TContext>,
+    options?: CommandOptions<TContext>,
   ): Promise<E> {
     return this.executeWithTransaction(options, async (txOptions) => {
       return this.repository.create(dto, txOptions);
@@ -50,11 +48,8 @@ export abstract class BaseCrudService<
     });
   }
 
-  async getById(
-    id: string,
-    options?: FindQuery<E> & QueryOptions<TContext>,
-  ): Promise<E> {
-    const entity = await this.repository.getById(id, options);
+  async getById(id: string, query?: FindQuery<E, TContext>): Promise<E> {
+    const entity = await this.repository.getById(id, query);
 
     if (!entity) {
       throw new NotFoundException(`${this.notFoundMessage} với ID: ${id}`);
@@ -65,16 +60,16 @@ export abstract class BaseCrudService<
 
   async getByIdOrNull(
     id: string,
-    options?: FindQuery<E> & QueryOptions<TContext>,
+    query?: FindQuery<E, TContext>,
   ): Promise<E | null> {
-    return this.repository.getById(id, options);
+    return this.repository.getById(id, query);
   }
 
   async getOne(
     condition: QueryCondition<E>,
-    options?: FindQuery<E> & QueryOptions<TContext>,
+    query?: FindQuery<E, TContext>,
   ): Promise<E> {
-    const entity = await this.repository.getOne(condition, options);
+    const entity = await this.repository.getOne(condition, query);
 
     if (!entity) {
       throw new NotFoundException(this.notFoundMessage);
@@ -85,23 +80,22 @@ export abstract class BaseCrudService<
 
   async getMany(
     condition: QueryCondition<E>,
-    options?: FindQuery<E> & QueryOptions<TContext>,
+    query?: FindQuery<E, TContext>,
   ): Promise<E[]> {
-    return this.repository.getMany(condition, options);
+    return this.repository.getMany(condition, query);
   }
 
   async getPage(
     condition: QueryCondition<E>,
-    options: FindQuery<E> &
-      QueryOptions<TContext> & { page: number; limit: number },
+    query: FindQuery<E, TContext> & { page: number; limit: number },
   ): Promise<PaginationResult<E>> {
-    return this.repository.getPage(condition, options);
+    return this.repository.getPage(condition, query);
   }
 
   async updateById(
     id: string,
     update: UpdateData<E>,
-    options?: UpdateCommand & CommandOptions<TContext>,
+    options?: CommandOptions<TContext>,
   ): Promise<E> {
     return this.executeWithTransaction(options, async (txOptions) => {
       const entity = await this.repository.updateById(id, update, txOptions);
@@ -117,7 +111,7 @@ export abstract class BaseCrudService<
   async updateOne(
     condition: QueryCondition<E>,
     update: UpdateData<E>,
-    options?: UpdateCommand & CommandOptions<TContext>,
+    options?: CommandOptions<TContext>,
   ): Promise<E> {
     return this.executeWithTransaction(options, async (txOptions) => {
       const entity = await this.repository.updateOne(
@@ -137,7 +131,7 @@ export abstract class BaseCrudService<
   async updateMany(
     condition: QueryCondition<E>,
     update: UpdateData<E>,
-    options?: UpdateCommand & CommandOptions<TContext>,
+    options?: CommandOptions<TContext>,
   ): Promise<{ affected: number }> {
     return this.executeWithTransaction(options, async (txOptions) => {
       return this.repository.updateMany(condition, update, txOptions);
@@ -147,7 +141,7 @@ export abstract class BaseCrudService<
   async updateManyByIds(
     ids: string[],
     update: UpdateData<E>,
-    options?: UpdateCommand & CommandOptions<TContext>,
+    options?: CommandOptions<TContext>,
   ): Promise<{ affected: number }> {
     return this.updateMany(
       { _id: { $in: ids } } as unknown as QueryCondition<E>,
@@ -207,16 +201,16 @@ export abstract class BaseCrudService<
 
   async count(
     condition?: QueryCondition<E>,
-    options?: QueryOptions<TContext>,
+    query?: QueryOptions<TContext>,
   ): Promise<number> {
-    return this.repository.count(condition, options);
+    return this.repository.count(condition, query);
   }
 
   async exists(
     condition: QueryCondition<E>,
-    options?: QueryOptions<TContext>,
+    query?: QueryOptions<TContext>,
   ): Promise<boolean> {
-    return this.repository.exists(condition, options);
+    return this.repository.exists(condition, query);
   }
 
   protected async executeWithTransaction<

@@ -4,7 +4,7 @@ export interface ParsedQueryOptions {
   select?: string[];
   populate?: string[];
   sort?: Record<string, 1 | -1>;
-  withDeleted?: boolean;
+  softDelete?: boolean;
   page?: number;
   limit?: number;
   offset?: number;
@@ -29,8 +29,8 @@ export class QueryOptionsPipe implements PipeTransform<
       parsedQuery.sort = this.parseSortFields(value.sort);
     }
 
-    if (value.withDeleted !== undefined) {
-      parsedQuery.withDeleted = this.parseBooleanFlag(value.withDeleted);
+    if (value.softDelete !== undefined) {
+      parsedQuery.softDelete = this.parseBooleanFlag(value.softDelete);
     }
 
     if (value.page !== undefined) {
