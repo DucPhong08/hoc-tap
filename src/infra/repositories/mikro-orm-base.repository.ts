@@ -21,6 +21,7 @@ import type {
   QueryOptions,
   CommandOptions,
 } from '../../common/interfaces/repository.interface';
+import type { Paths } from '../../common/types/repository.types';
 import { buildFilter } from './mikro-orm/filter.builder';
 
 type RepositoryContextOptions<TContext extends EntityManager = EntityManager> =
@@ -95,7 +96,7 @@ export abstract class MikroOrmBaseRepository<
     const { em } = this.resolveContext(options);
 
     if (options?.populate) {
-      await em.populate<E, Paths<E>>(entity, options.populate);
+      await em.populate(entity, this.toPopulateHint(options.populate));
     }
 
     if (options?.refresh) {
@@ -103,6 +104,10 @@ export abstract class MikroOrmBaseRepository<
     }
 
     return entity;
+  }
+
+  private toPopulateHint(paths: Paths<E>[]): any {
+    return paths;
   }
 
   // ===========================================================================
