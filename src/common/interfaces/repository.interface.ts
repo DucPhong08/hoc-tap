@@ -26,11 +26,11 @@ export type {
 };
 
 export interface IBaseRepository<E extends BaseEntity, TContext = unknown> {
-  create(data: Partial<E>, options?: CommandOptions<TContext>): Promise<E>;
+  create(data: Partial<E>, options?: CommandOptions<TContext, E>): Promise<E>;
 
   insertMany(
     data: Partial<E>[],
-    options?: CommandOptions<TContext>,
+    options?: CommandOptions<TContext, E>,
   ): Promise<{ n: number }>;
 
   getById(id: string, query?: FindQuery<E, TContext>): Promise<E | null>;
@@ -53,34 +53,34 @@ export interface IBaseRepository<E extends BaseEntity, TContext = unknown> {
   updateById(
     id: string,
     data: UpdateData<E>,
-    options?: CommandOptions<TContext>,
+    options?: CommandOptions<TContext, E>,
   ): Promise<E | null>;
 
   updateOne(
     condition: QueryCondition<E>,
     data: UpdateData<E>,
-    options?: CommandOptions<TContext>,
+    options?: CommandOptions<TContext, E>,
   ): Promise<E | null>;
 
   updateMany(
     condition: QueryCondition<E>,
     data: UpdateData<E>,
-    options?: CommandOptions<TContext>,
+    options?: CommandOptions<TContext, E>,
   ): Promise<BulkWriteResult>;
 
   deleteById(
     id: string,
-    options?: DeleteCommand & CommandOptions<TContext>,
+    options?: DeleteCommand & CommandOptions<TContext, E>,
   ): Promise<E | null>;
 
   deleteOne(
     condition: QueryCondition<E>,
-    options?: DeleteCommand & CommandOptions<TContext>,
+    options?: DeleteCommand & CommandOptions<TContext, E>,
   ): Promise<E | null>;
 
   deleteMany(
     condition: QueryCondition<E>,
-    options?: DeleteCommand & CommandOptions<TContext>,
+    options?: DeleteCommand & CommandOptions<TContext, E>,
   ): Promise<BulkDeleteResult>;
 
   count(
@@ -99,5 +99,7 @@ export interface IBaseRepository<E extends BaseEntity, TContext = unknown> {
     query?: QueryOptions<TContext>,
   ): Promise<E[K][]>;
 
-  restore(id: string, options?: CommandOptions<TContext>): Promise<E | null>;
+  restore(id: string, options?: CommandOptions<TContext, E>): Promise<E | null>;
+
+  keys<K extends keyof E>(...names: K[]): K[];
 }

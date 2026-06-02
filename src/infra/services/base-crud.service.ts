@@ -32,7 +32,7 @@ export abstract class BaseCrudService<
 
   async create(
     dto: Partial<E>,
-    options?: CommandOptions<TContext>,
+    options?: CommandOptions<TContext, E>,
   ): Promise<E> {
     return this.executeWithTransaction(options, async (txOptions) => {
       return this.repository.create(dto, txOptions);
@@ -41,7 +41,7 @@ export abstract class BaseCrudService<
 
   async insertMany(
     list: Partial<E>[],
-    options?: CommandOptions<TContext>,
+    options?: CommandOptions<TContext, E>,
   ): Promise<{ n: number }> {
     return this.executeWithTransaction(options, async (txOptions) => {
       return this.repository.insertMany(list, txOptions);
@@ -95,7 +95,7 @@ export abstract class BaseCrudService<
   async updateById(
     id: string,
     update: UpdateData<E>,
-    options?: CommandOptions<TContext>,
+    options?: CommandOptions<TContext, E>,
   ): Promise<E> {
     return this.executeWithTransaction(options, async (txOptions) => {
       const entity = await this.repository.updateById(id, update, txOptions);
@@ -111,7 +111,7 @@ export abstract class BaseCrudService<
   async updateOne(
     condition: QueryCondition<E>,
     update: UpdateData<E>,
-    options?: CommandOptions<TContext>,
+    options?: CommandOptions<TContext, E>,
   ): Promise<E> {
     return this.executeWithTransaction(options, async (txOptions) => {
       const entity = await this.repository.updateOne(
@@ -131,7 +131,7 @@ export abstract class BaseCrudService<
   async updateMany(
     condition: QueryCondition<E>,
     update: UpdateData<E>,
-    options?: CommandOptions<TContext>,
+    options?: CommandOptions<TContext, E>,
   ): Promise<{ affected: number }> {
     return this.executeWithTransaction(options, async (txOptions) => {
       return this.repository.updateMany(condition, update, txOptions);
@@ -141,7 +141,7 @@ export abstract class BaseCrudService<
   async updateManyByIds(
     ids: string[],
     update: UpdateData<E>,
-    options?: CommandOptions<TContext>,
+    options?: CommandOptions<TContext, E>,
   ): Promise<{ affected: number }> {
     return this.updateMany(
       { _id: { $in: ids } } as unknown as QueryCondition<E>,
@@ -152,7 +152,7 @@ export abstract class BaseCrudService<
 
   async deleteById(
     id: string,
-    options?: DeleteCommand & CommandOptions<TContext>,
+    options?: DeleteCommand & CommandOptions<TContext, E>,
   ): Promise<E> {
     return this.executeWithTransaction(options, async (txOptions) => {
       const entity = await this.repository.deleteById(id, txOptions);
@@ -167,7 +167,7 @@ export abstract class BaseCrudService<
 
   async deleteOne(
     condition: QueryCondition<E>,
-    options?: DeleteCommand & CommandOptions<TContext>,
+    options?: DeleteCommand & CommandOptions<TContext, E>,
   ): Promise<E> {
     return this.executeWithTransaction(options, async (txOptions) => {
       const entity = await this.repository.deleteOne(condition, txOptions);
@@ -182,7 +182,7 @@ export abstract class BaseCrudService<
 
   async deleteMany(
     condition: QueryCondition<E>,
-    options?: DeleteCommand & CommandOptions<TContext>,
+    options?: DeleteCommand & CommandOptions<TContext, E>,
   ): Promise<{ deleted: number }> {
     return this.executeWithTransaction(options, async (txOptions) => {
       return this.repository.deleteMany(condition, txOptions);
@@ -191,7 +191,7 @@ export abstract class BaseCrudService<
 
   async deleteManyByIds(
     ids: string[],
-    options?: DeleteCommand & CommandOptions<TContext>,
+    options?: DeleteCommand & CommandOptions<TContext, E>,
   ): Promise<{ deleted: number }> {
     return this.deleteMany(
       { _id: { $in: ids } } as unknown as QueryCondition<E>,

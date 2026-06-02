@@ -89,13 +89,13 @@ export abstract class MikroOrmBaseRepository<
 
   private async populateEntity(
     entity: E | null,
-    options?: CommandOptions<TContext>,
+    options?: CommandOptions<TContext, E>,
   ): Promise<E | null> {
     if (!entity) return null;
     const { em } = this.resolveContext(options);
 
     if (options?.populate) {
-      await em.populate(entity, options.populate);
+      await em.populate<E, Paths<E>>(entity, options.populate);
     }
 
     if (options?.refresh) {
@@ -111,7 +111,7 @@ export abstract class MikroOrmBaseRepository<
 
   async create(
     data: Partial<E>,
-    options?: CommandOptions<TContext>,
+    options?: CommandOptions<TContext, E>,
   ): Promise<E> {
     const { em, repository } = this.resolveContext(options);
     const entity = repository.create(data as EntityData<E>, {
@@ -127,7 +127,7 @@ export abstract class MikroOrmBaseRepository<
 
   async insertMany(
     data: Partial<E>[],
-    options?: CommandOptions<TContext>,
+    options?: CommandOptions<TContext, E>,
   ): Promise<{ n: number }> {
     const { em, repository } = this.resolveContext(options);
     const entities = data.map((item) =>
@@ -220,7 +220,7 @@ export abstract class MikroOrmBaseRepository<
   async updateById(
     id: string,
     data: UpdateData<E>,
-    options?: CommandOptions<TContext>,
+    options?: CommandOptions<TContext, E>,
   ): Promise<E | null> {
     const { em } = this.resolveContext(options);
     const entity = await this.getById(id, options);
@@ -238,7 +238,7 @@ export abstract class MikroOrmBaseRepository<
   async updateOne(
     condition: QueryCondition<E>,
     data: UpdateData<E>,
-    options?: CommandOptions<TContext>,
+    options?: CommandOptions<TContext, E>,
   ): Promise<E | null> {
     const { em } = this.resolveContext(options);
     const entity = await this.getOne(condition, options);
@@ -256,7 +256,7 @@ export abstract class MikroOrmBaseRepository<
   async updateMany(
     condition: QueryCondition<E>,
     data: UpdateData<E>,
-    options?: CommandOptions<TContext>,
+    options?: CommandOptions<TContext, E>,
   ): Promise<BulkWriteResult> {
     const { repository } = this.resolveContext(options);
     const filter = buildFilter(condition, { softDelete: false });
@@ -275,7 +275,7 @@ export abstract class MikroOrmBaseRepository<
 
   async deleteById(
     id: string,
-    options?: DeleteCommand & CommandOptions<TContext>,
+    options?: DeleteCommand & CommandOptions<TContext, E>,
   ): Promise<E | null> {
     const { em } = this.resolveContext(options);
     const entity = await this.getById(id, options);
@@ -297,7 +297,7 @@ export abstract class MikroOrmBaseRepository<
 
   async deleteOne(
     condition: QueryCondition<E>,
-    options?: DeleteCommand & CommandOptions<TContext>,
+    options?: DeleteCommand & CommandOptions<TContext, E>,
   ): Promise<E | null> {
     const { em } = this.resolveContext(options);
     const entity = await this.getOne(condition, options);
@@ -319,7 +319,7 @@ export abstract class MikroOrmBaseRepository<
 
   async deleteMany(
     condition: QueryCondition<E>,
-    options?: DeleteCommand & CommandOptions<TContext>,
+    options?: DeleteCommand & CommandOptions<TContext, E>,
   ): Promise<BulkDeleteResult> {
     const { em } = this.resolveContext(options);
     const entities = await this.getMany(condition, options);
@@ -407,7 +407,7 @@ export abstract class MikroOrmBaseRepository<
 
   async restore(
     id: string,
-    options?: CommandOptions<TContext>,
+    options?: CommandOptions<TContext, E>,
   ): Promise<E | null> {
     const { em, repository } = this.resolveContext(options);
     const entity = await repository.findOne({
@@ -422,5 +422,9 @@ export abstract class MikroOrmBaseRepository<
     await em.flush();
 
     return entity;
+  }
+
+  keys<K extends keyof E>(...names: K[]): K[] {
+    return names;
   }
 }
