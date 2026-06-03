@@ -1,8 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { EntityManager, EntityRepository } from '@mikro-orm/core';
-import { InjectRepository } from '@mikro-orm/nestjs';
 import { MikroOrmBaseRepository } from '../../../infra/repositories/mikro-orm-base.repository';
-import { DB_CONTEXTS } from 'src/database/database.constants';
+import { InjectEntityRepository } from 'src/database/entity-registry.helper';
 import { UserEntity } from '../entities/user.entity';
 import type { QueryOptions } from '../../../common/interfaces/repository.interface';
 
@@ -12,7 +11,7 @@ export class UserRepository extends MikroOrmBaseRepository<
   EntityManager
 > {
   constructor(
-    @InjectRepository(UserEntity, DB_CONTEXTS.MAIN)
+    @InjectEntityRepository(UserEntity)
     repository: EntityRepository<UserEntity>,
   ) {
     super(repository);

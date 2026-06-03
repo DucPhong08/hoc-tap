@@ -1,8 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@mikro-orm/nestjs';
 import { EntityManager, EntityRepository } from '@mikro-orm/core';
 import { MikroOrmBaseRepository } from '../../../infra/repositories/mikro-orm-base.repository';
-import { DB_CONTEXTS } from 'src/database/database.constants';
+import { InjectEntityRepository } from 'src/database/entity-registry.helper';
 import { AuditLogEntity } from '../entities/audit-log.entity';
 
 @Injectable()
@@ -11,7 +10,7 @@ export class AuditLogRepository extends MikroOrmBaseRepository<
   EntityManager
 > {
   constructor(
-    @InjectRepository(AuditLogEntity, DB_CONTEXTS.MAIN)
+    @InjectEntityRepository(AuditLogEntity)
     repository: EntityRepository<AuditLogEntity>,
   ) {
     super(repository);
