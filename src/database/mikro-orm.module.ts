@@ -35,6 +35,10 @@ import { MainMikroOrmOptionsFactory } from './runtime/main-mikro-orm-options.fac
     MainMikroOrmOptionsFactory,
     MigrationService,
   ],
-  exports: [DatabaseContextConfigService, DatabaseOptionsFactory],
+  exports: [
+    DatabaseContextConfigService,
+    DatabaseOptionsFactory,
+    MikroOrmModule,
+  ],
 })
 export class MikroOrmDatabaseModule {}
