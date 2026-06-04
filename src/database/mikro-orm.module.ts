@@ -11,10 +11,12 @@ import { PostgreSqlOptionsStrategy } from './options/postgresql-options.strategy
 import { MongoDbOptionsStrategy } from './options/mongodb-options.strategy';
 import { DatabaseOptionsFactory } from './options/database-options.factory';
 import { MainMikroOrmOptionsFactory } from './runtime/main-mikro-orm-options.factory';
+import { LogsMikroOrmOptionsFactory } from './runtime/logs-mikro-orm-options.factory';
 
 @Global()
 @Module({
   imports: [
+    // ── MAIN database ─────────────────────────────────────────────────
     MikroOrmModule.forRootAsync({
       useClass: MainMikroOrmOptionsFactory,
       contextName: DB_CONTEXTS.MAIN,
@@ -22,6 +24,16 @@ import { MainMikroOrmOptionsFactory } from './runtime/main-mikro-orm-options.fac
     MikroOrmModule.forFeature({
       entities: getEntitiesByContext(DB_CONTEXTS.MAIN),
       contextName: DB_CONTEXTS.MAIN,
+    }),
+
+    // ── LOGS database ─────────────────────────────────────────────────
+    MikroOrmModule.forRootAsync({
+      useClass: LogsMikroOrmOptionsFactory,
+      contextName: DB_CONTEXTS.LOGS,
+    }),
+    MikroOrmModule.forFeature({
+      entities: getEntitiesByContext(DB_CONTEXTS.LOGS),
+      contextName: DB_CONTEXTS.LOGS,
     }),
   ],
   providers: [
@@ -33,6 +45,7 @@ import { MainMikroOrmOptionsFactory } from './runtime/main-mikro-orm-options.fac
     MongoDbOptionsStrategy,
     DatabaseOptionsFactory,
     MainMikroOrmOptionsFactory,
+    LogsMikroOrmOptionsFactory,
     MigrationService,
   ],
   exports: [

@@ -8,15 +8,19 @@ import { DatabaseContextConfigService } from './runtime/database-context-config.
 export class MigrationService implements OnModuleInit {
   constructor(
     @InjectMikroORM(DB_CONTEXTS.MAIN)
-    private readonly orm: MikroORM,
+    private readonly mainOrm: MikroORM,
+    @InjectMikroORM(DB_CONTEXTS.LOGS)
+    private readonly logsOrm: MikroORM,
     private readonly contextConfigService: DatabaseContextConfigService,
   ) {}
 
   async onModuleInit() {
-    const databaseContext = this.contextConfigService.getContext(
-      DB_CONTEXTS.MAIN,
-    );
-    const { settings } = databaseContext;
+    await this.migrateContext(DB_CONTEXTS.MAIN, this.mainOrm);
+    await this.migrateContext(DB_CONTEXTS.LOGS, this.logsOrm);
+  }
+
+  private async migrateContext(contextName: string, orm: MikroORM) {
+    const { settings } = this.contextConfigService.getContext(contextName);
 
     if (
       settings.driver !== 'postgresql' ||
@@ -27,32 +31,16 @@ export class MigrationService implements OnModuleInit {
     }
 
     try {
-      await this.runPendingMigrations();
+      const migrator = orm.migrator;
+      const pendingMigrations = await migrator.getPendingMigrations();
+
+      if (pendingMigrations.length > 0) {
+        await migrator.up();
+      }
     } catch {
       // Ignore migration extension/runtime warnings in development startup flow.
     }
 
-    await this.syncSchema();
-  }
-
-  private async runPendingMigrations() {
-    const migrator = this.orm.migrator;
-    const pendingMigrations = await migrator.getPendingMigrations();
-
-    if (pendingMigrations.length === 0) {
-      return;
-    }
-
-    await migrator.up();
-  }
-
-  private async syncSchema() {
-    const pendingSchemaDiff = await this.orm.schema.getUpdateSchemaSQL();
-
-    if (!pendingSchemaDiff.trim()) {
-      return;
-    }
-
-    await this.orm.schema.updateSchema();
+    await orm.schema.updateSchema();
   }
 }
