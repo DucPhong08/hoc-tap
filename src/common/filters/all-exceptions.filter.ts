@@ -32,12 +32,12 @@ export class AllExceptionsFilter implements ExceptionFilter {
       }
     }
 
-    // Tự động dịch lỗi nếu có I18nContext
+    // Tự động dịch lỗi nếu co I18nContext
     const i18n = I18nContext.current();
     if (i18n) {
       const translateKey = (key: string): string => {
         const fullKey = `error-message.${key}`;
-        const translated = i18n.t(fullKey) as string;
+        const translated = i18n.t(fullKey);
         return translated !== fullKey ? translated : key;
       };
 
