@@ -33,11 +33,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     const user = await this.userService.getByIdOrNull(null, payload.sub);
 
     if (!user) {
-      throw ApiError.unauthorized('error-user-not-found');
+      throw ApiError.Unauthorized('error-user-not-found');
     }
 
     if (!user.isActive) {
-      throw ApiError.unauthorized('error-user-disabled');
+      throw ApiError.Unauthorized('error-user-disabled');
     }
 
     return user;

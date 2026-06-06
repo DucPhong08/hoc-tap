@@ -37,7 +37,7 @@ export class UserService extends BaseCrudService<User, EntityManager> {
         );
 
         if (existingUser) {
-          throw ApiError.badReq('error-user-exist');
+          throw ApiError.BadReq('error-user-exist');
         }
       }
 
@@ -57,7 +57,7 @@ export class UserService extends BaseCrudService<User, EntityManager> {
       if (data.email) {
         if (existingUser && data.email !== existingUser.email) {
           if (!UserPolicy.canUpdateEmail(existingUser)) {
-            throw ApiError.badReq('error-email-update-limit');
+            throw ApiError.BadReq('error-email-update-limit');
           }
         }
 
@@ -67,7 +67,7 @@ export class UserService extends BaseCrudService<User, EntityManager> {
         );
 
         if (emailExists && emailExists.id !== existingUser?.id) {
-          throw ApiError.badReq('error-user-exist');
+          throw ApiError.BadReq('error-user-exist');
         }
       }
 
@@ -84,7 +84,7 @@ export class UserService extends BaseCrudService<User, EntityManager> {
       const userEntity = await this.getById(user, id, txOptions);
 
       if (!UserPolicy.canDelete(userEntity)) {
-        throw ApiError.badReq('error-user-delete-limit');
+        throw ApiError.BadReq('error-user-delete-limit');
       }
 
       return super.deleteById(user, id, txOptions);

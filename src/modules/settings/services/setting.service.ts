@@ -57,7 +57,7 @@ export class SettingService extends BaseCrudService<Setting, EntityManager> {
 
       if (validateResult.length > 0) {
         console.error('Setting validation failed:', validateResult);
-        throw ApiError.badReq('error-setting-invalid');
+        throw ApiError.BadReq('error-setting-invalid');
       }
     }
 

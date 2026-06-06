@@ -52,21 +52,21 @@ export class AuthService {
     const user = await this.userService.findByEmail(email);
 
     if (!user || user.provider !== AuthProvider.LOCAL) {
-      throw ApiError.unauthorized('error-invalid-credentials');
+      throw ApiError.Unauthorized('error-invalid-credentials');
     }
 
     if (!user.password) {
-      throw ApiError.unauthorized('error-invalid-credentials');
+      throw ApiError.Unauthorized('error-invalid-credentials');
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (!isPasswordValid) {
-      throw ApiError.unauthorized('error-invalid-credentials');
+      throw ApiError.Unauthorized('error-invalid-credentials');
     }
 
     if (!user.isActive) {
-      throw ApiError.unauthorized('error-user-disabled');
+      throw ApiError.Unauthorized('error-user-disabled');
     }
 
     return this.generateTokens(user);
@@ -108,7 +108,7 @@ export class AuthService {
       const user = await this.userService.getByIdOrNull(null, payload.sub);
 
       if (!user) {
-        throw ApiError.unauthorized('error-user-not-found');
+        throw ApiError.Unauthorized('error-user-not-found');
       }
 
       return this.generateTokens(user);
@@ -116,7 +116,7 @@ export class AuthService {
       if (e.message === 'error-user-not-found') {
         throw e;
       }
-      throw ApiError.unauthorized('error-invalid-refresh-token');
+      throw ApiError.Unauthorized('error-invalid-refresh-token');
     }
   }
 
@@ -124,7 +124,7 @@ export class AuthService {
     const user = await this.userService.getByIdOrNull(null, userId);
 
     if (!user) {
-      throw ApiError.unauthorized('error-user-not-found');
+      throw ApiError.Unauthorized('error-user-not-found');
     }
 
     return this.toAuthUserProfile(user);
