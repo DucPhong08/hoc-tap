@@ -53,7 +53,7 @@ export class DatabaseErrorInterceptor implements NestInterceptor {
         if (matched) {
           const i18n = I18nContext.current();
           const message = i18n
-            ? i18n.t(`error-message.${matched.i18nKey}`)
+            ? (i18n.t(`error-message.${matched.i18nKey}`) as string)
             : matched.defaultMessage;
           return throwError(() => new matched.HttpException(message));
         }
