@@ -120,7 +120,7 @@ export class AuthService {
     }
   }
 
-  async getCurrentUser(userId: string): Promise<AuthUserProfile> {
+  async getUser(userId: string): Promise<AuthUserProfile> {
     const user = await this.userService.getByIdOrNull(null, userId);
 
     if (!user) {
