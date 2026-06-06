@@ -7,6 +7,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { Response } from 'express';
+import { I18nContext } from 'nestjs-i18n';
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
@@ -21,10 +22,24 @@ export class AllExceptionsFilter implements ExceptionFilter {
         ? exception.getStatus()
         : HttpStatus.INTERNAL_SERVER_ERROR;
 
-    const message =
-      exception instanceof HttpException
-        ? exception.message
-        : 'Internal server error';
+    let message: any = 'Internal server error';
+    if (exception instanceof HttpException) {
+      message = exception.message;
+    }
+
+    // Tự động dịch lỗi nếu có I18nContext
+    const i18n = I18nContext.current();
+    if (i18n) {
+      const translateKey = (key: string): string => {
+        const fullKey = `error-message.${key}`;
+        const translated = i18n.t(fullKey);
+        return translated !== fullKey ? translated : key;
+      };
+
+      if (typeof message === 'string') {
+        message = translateKey(message);
+      }
+    }
 
     this.logger.error('Unhandled Exception', {
       message,

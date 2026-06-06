@@ -23,7 +23,7 @@ import { GoogleAuthGuard } from '../../../common/guards/google-auth.guard';
 import { FacebookAuthGuard } from '../../../common/guards/facebook-auth.guard';
 import type { Request } from 'express';
 import { ReqUser } from '../../../common/decorators/request-user.decorator';
-import { UserEntity } from '../../users/entities/user.entity';
+import { User } from '../../users/entities/user.entity';
 import {
   AuthUserProfile,
   LoginResponse,
@@ -75,7 +75,7 @@ export class AuthController {
   @ApiOperation({ summary: 'Get current authenticated user' })
   @ApiResponse({ status: 200, description: 'Current user fetched' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async me(@ReqUser('userId') userId: string): Promise<AuthUserProfile> {
+  async me(@ReqUser('id') userId: string): Promise<AuthUserProfile> {
     return this.authService.getCurrentUser(userId);
   }
 
@@ -90,7 +90,7 @@ export class AuthController {
   @UseGuards(GoogleAuthGuard)
   @ApiOperation({ summary: 'Google OAuth callback' })
   async googleAuthCallback(@Req() req: Request): Promise<LoginResponse> {
-    return this.authService.generateTokens(req.user as UserEntity);
+    return this.authService.generateTokens(req.user as User);
   }
 
   @Public()
@@ -104,6 +104,6 @@ export class AuthController {
   @UseGuards(FacebookAuthGuard)
   @ApiOperation({ summary: 'Facebook OAuth callback' })
   async facebookAuthCallback(@Req() req: Request): Promise<LoginResponse> {
-    return this.authService.generateTokens(req.user as UserEntity);
+    return this.authService.generateTokens(req.user as User);
   }
 }

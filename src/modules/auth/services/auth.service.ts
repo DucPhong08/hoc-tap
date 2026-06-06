@@ -1,9 +1,10 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
+import { ApiError } from '../../../common/exceptions/api-error';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import { UserService } from '../../users/services/user.service';
-import { UserEntity } from '../../users/entities/user.entity';
+import { User } from '../../users/entities/user.entity';
 import type { AuthConfig } from '../../../config/configuration.types';
 import { JwtPayload } from '../strategies/jwt.strategy';
 import {
@@ -12,6 +13,8 @@ import {
   OAuthProfile,
 } from '../interfaces/oauth-profile.interface';
 import { AuthProvider } from '../enums/auth-provider.enum';
+import { Role } from '../../users/constant/constant';
+import type { StringValue } from 'ms';
 
 @Injectable()
 export class AuthService {
@@ -33,7 +36,7 @@ export class AuthService {
       authConfig?.bcryptRounds || 10,
     );
 
-    const user = await this.userService.create({
+    const user = await this.userService.create(null, {
       email,
       password: hashedPassword,
       firstName,
@@ -49,48 +52,43 @@ export class AuthService {
     const user = await this.userService.findByEmail(email);
 
     if (!user || user.provider !== AuthProvider.LOCAL) {
-      throw new UnauthorizedException('Thông tin đăng nhập không hợp lệ');
+      throw ApiError.unauthorized('error-invalid-credentials');
     }
 
     if (!user.password) {
-      throw new UnauthorizedException('Thông tin đăng nhập không hợp lệ');
+      throw ApiError.unauthorized('error-invalid-credentials');
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Thông tin đăng nhập không hợp lệ');
+      throw ApiError.unauthorized('error-invalid-credentials');
     }
 
     if (!user.isActive) {
-      throw new UnauthorizedException('Tài khoản đã bị vô hiệu hóa');
+      throw ApiError.unauthorized('error-user-disabled');
     }
 
     return this.generateTokens(user);
   }
 
-  async validateOAuthUser(profile: OAuthProfile): Promise<UserEntity> {
-    let user = await this.userService.findByProviderAccount(
-      profile.provider,
-      profile.providerId,
-    );
+  async validateOAuthUser(profile: OAuthProfile): Promise<User> {
+    let user;
 
     if (!user) {
       user = await this.userService.findByEmail(profile.email);
 
       if (user) {
-        user = await this.userService.updateById(user.id, {
+        user = await this.userService.updateById(null, user.id, {
           provider: profile.provider,
-          providerId: profile.providerId,
           avatar: profile.avatar,
         });
       } else {
-        user = await this.userService.create({
+        user = await this.userService.create(null, {
           email: profile.email,
           firstName: profile.firstName,
           lastName: profile.lastName,
           provider: profile.provider,
-          providerId: profile.providerId,
           avatar: profile.avatar,
           isActive: true,
         });
@@ -107,42 +105,45 @@ export class AuthService {
         secret: authConfig?.jwtRefreshSecret,
       });
 
-      const user = await this.userService.getByIdOrNull(payload.sub);
+      const user = await this.userService.getByIdOrNull(null, payload.sub);
 
       if (!user) {
-        throw new UnauthorizedException('Không tìm thấy người dùng');
+        throw ApiError.unauthorized('error-user-not-found');
       }
 
       return this.generateTokens(user);
-    } catch {
-      throw new UnauthorizedException('Refresh token không hợp lệ');
+    } catch (e) {
+      if (e.message === 'error-user-not-found') {
+        throw e;
+      }
+      throw ApiError.unauthorized('error-invalid-refresh-token');
     }
   }
 
   async getCurrentUser(userId: string): Promise<AuthUserProfile> {
-    const user = await this.userService.getByIdOrNull(userId);
+    const user = await this.userService.getByIdOrNull(null, userId);
 
     if (!user) {
-      throw new UnauthorizedException('Không tìm thấy người dùng');
+      throw ApiError.unauthorized('error-user-not-found');
     }
 
     return this.toAuthUserProfile(user);
   }
 
-  generateTokens(user: UserEntity): LoginResponse {
+  generateTokens(user: User): LoginResponse {
     const authConfig = this.configService.get<AuthConfig>('auth');
 
     const payload: JwtPayload = {
       sub: user.id,
       email: user.email,
-      roles: user.roles || ['user'],
+      roles: user.roles || [Role.USER],
     };
 
     const accessToken = this.jwtService.sign(payload);
 
     const refreshToken = this.jwtService.sign(payload, {
       secret: authConfig?.jwtRefreshSecret || 'default-refresh-secret',
-      expiresIn: (authConfig?.jwtRefreshExpiresIn || '7d') as any,
+      expiresIn: (authConfig?.jwtRefreshExpiresIn || '7d') as StringValue,
     });
 
     return {
@@ -152,13 +153,13 @@ export class AuthService {
     };
   }
 
-  private toAuthUserProfile(user: UserEntity): AuthUserProfile {
+  private toAuthUserProfile(user: User): AuthUserProfile {
     return {
       id: user.id,
       email: user.email,
       firstName: user.firstName,
       lastName: user.lastName,
-      roles: user.roles || ['user'],
+      roles: user.roles || [Role.USER],
       provider: user.provider || AuthProvider.LOCAL,
       avatar: user.avatar,
       isActive: user.isActive,

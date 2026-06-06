@@ -3,6 +3,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { WebsocketGateway } from './websocket.gateway';
 import type { AuthConfig } from '../../config/configuration.types';
+import type { StringValue } from 'ms';
 
 @Module({
   imports: [
@@ -14,7 +15,7 @@ import type { AuthConfig } from '../../config/configuration.types';
         return {
           secret: authConfig?.jwtSecret || 'default-secret',
           signOptions: {
-            expiresIn: (authConfig?.jwtExpiresIn || '1h') as any,
+            expiresIn: (authConfig?.jwtExpiresIn || '1h') as StringValue,
           },
         };
       },

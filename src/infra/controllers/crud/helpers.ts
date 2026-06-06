@@ -1,6 +1,7 @@
 import { Type, NotFoundException } from '@nestjs/common';
 import { Authorize } from '../../../common/decorators/authorize.decorator';
 import { Auditable } from '../../../common/decorators/auditable.decorator';
+import { Role } from '../../../modules/users/constant/constant';
 import { AuditAction } from '../../../modules/audit-logs/enums/audit-action.enum';
 import type {
   BaseRoute,
@@ -67,11 +68,11 @@ export const assertRouteEnabled = (config: RouteConfig): void => {
   }
 };
 
-export function applyCrudAuthorization(
+export function setupCrudAuthorization(
   controllerClass: Type<object>,
   routeDefinitions: CrudRouteDefinition[],
   routeConfigs: Record<BaseRoute, Required<RouteConfig>>,
-  defaultRoles: string[] = [],
+  defaultRoles: Role[] = [],
 ): void {
   const classDecorator =
     defaultRoles.length > 0 ? Authorize(...defaultRoles) : Authorize();
@@ -100,7 +101,7 @@ export function applyCrudAuthorization(
   });
 }
 
-export function applyCrudAudit(
+export function setupCrudAudit(
   controllerClass: Type<object>,
   routeDefinitions: CrudRouteDefinition[],
   routeConfigs: Record<BaseRoute, Required<RouteConfig>>,

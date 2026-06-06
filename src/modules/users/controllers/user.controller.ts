@@ -1,29 +1,30 @@
 import { Controller, Get, Param } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { createCrudController } from '../../../infra/controllers/base-crud.controller';
-import { UserEntity } from '../entities/user.entity';
+import { User } from '../entities/user.entity';
 import { UserService } from '../services/user.service';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { UpdateUserDto } from '../dto/update-user.dto';
+import { Role } from '../constant/constant';
 
 const UserCrudController = createCrudController(
-  UserEntity,
+  User,
   CreateUserDto,
   UpdateUserDto,
   {
-    defaultRoles: ['user', 'admin'],
+    defaultRoles: [Role.USER, Role.ADMIN],
     routes: {
-      create: { roles: ['admin'] },
+      create: { roles: [Role.ADMIN] },
       getMany: true,
       getPage: true,
       getById: true,
       getOne: true,
-      updateOne: { roles: ['admin'] },
-      updateById: { roles: ['admin', 'user'] },
-      updateByIds: { roles: ['admin'] },
-      deleteOne: { roles: ['admin'] },
-      deleteById: { roles: ['admin'] },
-      deleteByIds: { roles: ['admin'] },
+      updateOne: { roles: [Role.ADMIN] },
+      updateById: { roles: [Role.ADMIN, Role.USER] },
+      updateByIds: { roles: [Role.ADMIN] },
+      deleteOne: { roles: [Role.ADMIN] },
+      deleteById: { roles: [Role.ADMIN] },
+      deleteByIds: { roles: [Role.ADMIN] },
     },
   },
 );
@@ -36,7 +37,7 @@ export class UserController extends UserCrudController {
   }
 
   @Get('email/:email')
-  async findByEmail(@Param('email') email: string): Promise<UserEntity | null> {
+  async findByEmail(@Param('email') email: string): Promise<User | null> {
     return this.userService.findByEmail(email);
   }
 }

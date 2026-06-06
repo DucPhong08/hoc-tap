@@ -19,7 +19,7 @@ export class PostgreSqlOptionsStrategy implements DatabaseDriverOptionsStrategy 
 
     return {
       driver: PostgreSqlDriver,
-      entities: [...context.definition.entities],
+      entities: context.definition.entities,
       dbName: settings.databaseName,
       host: settings.host,
       port: settings.port,

@@ -1,13 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { AuditLogRepository } from '../repositories/audit-log.repository';
-import { AuditLogEntity } from '../entities/audit-log.entity';
+import { AuditLog } from '../entities/audit-log.entity';
 import type { LogActionData } from '../constants/audit-log.constant';
 
 @Injectable()
 export class AuditLogService {
   constructor(private readonly repository: AuditLogRepository) {}
 
-  async log(data: LogActionData): Promise<AuditLogEntity> {
+  async log(data: LogActionData): Promise<AuditLog> {
     return this.repository.create({
       action: data.action,
       entityType: data.entityType,
@@ -22,7 +22,7 @@ export class AuditLogService {
     });
   }
 
-  async logMany(dataArray: LogActionData[]): Promise<AuditLogEntity[]> {
+  async logMany(dataArray: LogActionData[]): Promise<AuditLog[]> {
     const entities = dataArray.map((data) => ({
       action: data.action,
       entityType: data.entityType,
@@ -36,25 +36,25 @@ export class AuditLogService {
       description: data.description,
     }));
 
-    const result: AuditLogEntity[] = [];
+    const result: AuditLog[] = [];
     for (const entity of entities) {
       result.push(await this.repository.create(entity));
     }
     return result;
   }
 
-  async getUserActions(userId: string, limit = 100): Promise<AuditLogEntity[]> {
+  async getUserActions(userId: string, limit = 100): Promise<AuditLog[]> {
     return this.repository.getUserActions(userId, limit);
   }
 
   async getEntityHistory(
     entityType: string,
     entityId: string,
-  ): Promise<AuditLogEntity[]> {
+  ): Promise<AuditLog[]> {
     return this.repository.getEntityHistory(entityType, entityId);
   }
 
-  async getRecentActions(limit = 50): Promise<AuditLogEntity[]> {
+  async getRecentActions(limit = 50): Promise<AuditLog[]> {
     return this.repository.getRecentActions(limit);
   }
 

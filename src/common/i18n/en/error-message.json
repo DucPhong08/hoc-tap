@@ -1,0 +1,19 @@
+{
+  "error-user-not-found": "User not found",
+  "error-password-wrong": "Password wrong",
+  "error-old-password-wrong": "Old password wrong",
+  "error-user-exist": "User existed",
+  "error-mimetype-invalid": "Mimetype invalid",
+  "error-network-restricted": "Network restricted",
+  "error-unauthorized": "Unauthorized",
+  "error-setting-invalid": "Setting value is invalid",
+  "error-user-disabled": "Account has been disabled",
+  "error-email-update-limit": "Email can only be updated once per week",
+  "error-user-delete-limit": "User can only be deleted after 30 days",
+  "error-invalid-credentials": "Invalid credentials",
+  "error-invalid-refresh-token": "Invalid refresh token",
+  "error-db-unique-violation": "Data record already exists in the system.",
+  "error-db-foreign-key-violation": "Data relation constraint violation (invalid foreign key).",
+  "error-db-not-null-violation": "Required fields cannot be empty.",
+  "error-db-not-found": "Requested record not found."
+}

@@ -1,4 +1,5 @@
 import { AuthProvider } from '../enums/auth-provider.enum';
+import { Role } from '../../users/constant/constant';
 
 export interface OAuthProfile {
   provider: AuthProvider;
@@ -14,7 +15,7 @@ export interface AuthUserProfile {
   email: string;
   firstName: string;
   lastName: string;
-  roles: string[];
+  roles: Role[];
   provider: AuthProvider;
   avatar?: string;
   isActive: boolean;

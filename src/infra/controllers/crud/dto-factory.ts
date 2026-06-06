@@ -28,6 +28,8 @@ export interface CrudDtoBundle {
   };
 }
 
+const BASE_OMIT_FIELDS = ['id', 'createdAt', 'updatedAt', 'deletedAt'] as const;
+
 export const createCrudDtoBundle = <E extends BaseEntity>(
   entityType: Type<E>,
   createDto?: Type<unknown>,
@@ -42,26 +44,14 @@ export const createCrudDtoBundle = <E extends BaseEntity>(
     createDto ||
     renameGeneratedClass(
       `Create${entityType.name}Dto`,
-      OmitType(entityType, [
-        'id',
-        'createdAt',
-        'updatedAt',
-        'deletedAt',
-      ] as const),
+      OmitType(entityType, BASE_OMIT_FIELDS),
     );
 
   const UpdateDto =
     updateDto ||
     renameGeneratedClass(
       `Update${entityType.name}Dto`,
-      PartialType(
-        OmitType(entityType, [
-          'id',
-          'createdAt',
-          'updatedAt',
-          'deletedAt',
-        ] as const),
-      ),
+      PartialType(OmitType(entityType, BASE_OMIT_FIELDS)),
     );
 
   class UpdateManyByIdsDto {

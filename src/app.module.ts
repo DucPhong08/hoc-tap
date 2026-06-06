@@ -6,6 +6,13 @@ import {
 } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
+import {
+  I18nModule,
+  AcceptLanguageResolver,
+  QueryResolver,
+  HeaderResolver,
+} from 'nestjs-i18n';
+import * as path from 'path';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import configuration from './config/configuration';
@@ -29,12 +36,24 @@ import { RequestLoggingMiddleware } from './common/middleware/request-logging.mi
       load: [configuration],
       ignoreEnvFile: false,
     }),
+    I18nModule.forRoot({
+      fallbackLanguage: 'vi',
+      loaderOptions: {
+        path: path.join(__dirname, '/common/i18n/'),
+        watch: true,
+      },
+      resolvers: [
+        new QueryResolver(['lang', 'l']),
+        new HeaderResolver(['x-custom-lang']),
+        AcceptLanguageResolver,
+      ],
+    }),
     MikroOrmDatabaseModule,
     CacheModule,
     MonitoringModule,
     WebsocketModule,
     CronModule,
-    AuthModule.forRoot(),
+    AuthModule,
     UsersModule,
     SettingsModule,
     AuditLogsModule,

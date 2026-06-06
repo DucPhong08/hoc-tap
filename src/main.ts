@@ -5,6 +5,8 @@ import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
+import { DatabaseErrorInterceptor } from './common/interceptors/database-error.interceptor';
+import { TimeoutInterceptor } from './common/interceptors/timeout.interceptor';
 import type { HostConfig } from './config/configuration.types';
 
 const API_PREFIX = 'api';
@@ -39,6 +41,8 @@ export async function bootstrap() {
   app.useGlobalFilters(new AllExceptionsFilter());
 
   app.useGlobalInterceptors(
+    new DatabaseErrorInterceptor(),
+    new TimeoutInterceptor(),
     new TransformInterceptor(), // Transform response first
   );
 

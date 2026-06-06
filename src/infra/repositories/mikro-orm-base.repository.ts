@@ -5,7 +5,7 @@ import {
   type EntityData,
   type QBFilterQuery,
 } from '@mikro-orm/core';
-import type { MongoEntityRepository } from '@mikro-orm/mongodb';
+import { MongoDriver, type MongoEntityRepository } from '@mikro-orm/mongodb';
 import type { Filter as MongoFilter } from 'mongodb';
 import type { SqlEntityRepository } from '@mikro-orm/postgresql';
 import { BaseEntity } from '../../common/entity/base.entity';
@@ -385,7 +385,7 @@ export abstract class MikroOrmBaseRepository<
     query?: QueryOptions<TContext>,
   ): Promise<E[K][]> {
     const { em, repository } = this.resolveContext(query);
-    const isMongoDriver = em.getDriver().constructor.name.includes('Mongo');
+    const isMongoDriver = em.getDriver() instanceof MongoDriver;
     const fieldName = String(field);
     const filter = buildFilter(condition, {
       softDelete: query?.softDelete,

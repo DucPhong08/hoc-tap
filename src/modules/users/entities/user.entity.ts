@@ -1,4 +1,5 @@
-import { Entity, Property } from '@mikro-orm/core';
+import { Entity, Property, BeforeCreate, BeforeUpdate } from '@mikro-orm/core';
+import * as bcrypt from 'bcrypt';
 import {
   IsEmail,
   IsString,
@@ -11,9 +12,10 @@ import {
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { BaseEntity } from '../../../common/entity/base.entity';
 import { AuthProvider } from '../../auth/enums/auth-provider.enum';
+import { Role } from '../constant/constant';
 
 @Entity({ tableName: 'users' })
-export class UserEntity extends BaseEntity {
+export class User extends BaseEntity {
   @ApiProperty()
   @IsEmail()
   @MaxLength(150)
@@ -47,8 +49,8 @@ export class UserEntity extends BaseEntity {
   @ApiPropertyOptional()
   @IsOptional()
   @IsArray()
-  @Property({ default: ['user'] })
-  roles: string[];
+  @Property({ default: [Role.USER] })
+  roles: Role[];
 
   @ApiProperty()
   @IsEnum(AuthProvider)
@@ -59,11 +61,36 @@ export class UserEntity extends BaseEntity {
   @IsOptional()
   @IsString()
   @Property({ nullable: true })
-  providerId?: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  @Property({ nullable: true })
   avatar?: string;
+
+  @BeforeCreate()
+  @BeforeUpdate()
+  normalizeEmail(): void {
+    if (this.email) {
+      this.email = this.email.toLowerCase().trim();
+    }
+  }
+
+  @BeforeCreate()
+  async hashPassword(): Promise<void> {
+    if (
+      this.password &&
+      !this.password.startsWith('$2b$') &&
+      !this.password.startsWith('$2a$')
+    ) {
+      this.password = await bcrypt.hash(this.password, 10);
+    }
+  }
+
+  @BeforeUpdate()
+  async hashPasswordUpdate(args: any): Promise<void> {
+    if (this.password && args.changeSet?.payload.password) {
+      if (
+        !this.password.startsWith('$2b$') &&
+        !this.password.startsWith('$2a$')
+      ) {
+        this.password = await bcrypt.hash(this.password, 10);
+      }
+    }
+  }
 }

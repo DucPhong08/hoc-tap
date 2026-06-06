@@ -5,7 +5,7 @@ import { BaseEntity } from '../../../common/entity/base.entity';
 @Entity({ tableName: 'audit_logs' })
 @Index({ properties: ['userId', 'createdAt'] })
 @Index({ properties: ['action', 'createdAt'] })
-export class AuditLogEntity extends BaseEntity {
+export class AuditLog extends BaseEntity {
   @IsString()
   @Property({})
   action!: string;

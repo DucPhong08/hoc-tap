@@ -1,20 +1,19 @@
 import { Controller, Get, Query, Param, Delete } from '@nestjs/common';
 import { ApiTags, ApiQuery } from '@nestjs/swagger';
 import { AuditLogService } from '../services/audit-log.service';
-import { AuditLogEntity } from '../entities/audit-log.entity';
+import { AuditLog } from '../entities/audit-log.entity';
 import { Roles } from '../../../common/decorators/roles.decorator';
+import { Role } from '../../users/constant/constant';
 
 @ApiTags('audit-logs')
 @Controller('audit-logs')
-@Roles('admin')
+@Roles(Role.ADMIN)
 export class AuditLogController {
   constructor(private readonly auditLogService: AuditLogService) {}
 
   @Get('recent')
   @ApiQuery({ name: 'limit', required: false, type: Number })
-  async getRecentLogs(
-    @Query('limit') limit?: number,
-  ): Promise<AuditLogEntity[]> {
+  async getRecentLogs(@Query('limit') limit?: number): Promise<AuditLog[]> {
     return this.auditLogService.getRecentActions(limit || 50);
   }
 
@@ -23,7 +22,7 @@ export class AuditLogController {
   async getUserLogs(
     @Param('userId') userId: string,
     @Query('limit') limit?: number,
-  ): Promise<AuditLogEntity[]> {
+  ): Promise<AuditLog[]> {
     return this.auditLogService.getUserActions(userId, limit);
   }
 
@@ -31,7 +30,7 @@ export class AuditLogController {
   async getEntityHistory(
     @Param('entityType') entityType: string,
     @Param('entityId') entityId: string,
-  ): Promise<AuditLogEntity[]> {
+  ): Promise<AuditLog[]> {
     return this.auditLogService.getEntityHistory(entityType, entityId);
   }
 
