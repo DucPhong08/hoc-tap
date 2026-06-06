@@ -37,7 +37,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
     if (i18n) {
       const translateKey = (key: string): string => {
         const fullKey = `error-message.${key}`;
-        const translated = i18n.t(fullKey);
+        const translated = String(i18n.t(fullKey));
         return translated !== fullKey ? translated : key;
       };
 
