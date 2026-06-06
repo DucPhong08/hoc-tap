@@ -56,6 +56,32 @@ module.exports = function (plop) {
         path: 'src/modules/{{kebabCase (pluralize name)}}/dto/update-{{kebabCase (singularize name)}}.dto.ts',
         templateFile: 'nest-templates/module/update-dto.ts.hbs',
       },
+      {
+        type: 'modify',
+        path: 'src/app.module.ts',
+        pattern: /(\/\/ PLOP: IMPORT_MODULE)/,
+        template:
+          "import { {{pascalCase (pluralize name)}}Module } from './modules/{{kebabCase (pluralize name)}}/{{kebabCase (pluralize name)}}.module';\n$1",
+      },
+      {
+        type: 'modify',
+        path: 'src/app.module.ts',
+        pattern: /(\/\/ PLOP: IMPORT_ARRAY)/,
+        template: '{{pascalCase (pluralize name)}}Module,\n    $1',
+      },
+      {
+        type: 'modify',
+        path: 'src/modules/mikro/entity-registry.ts',
+        pattern: /(\/\/ PLOP: IMPORT_ENTITY)/,
+        template:
+          "import { {{pascalCase (singularize name)}} } from '../{{kebabCase (pluralize name)}}/entities/{{kebabCase (singularize name)}}.entity';\n$1",
+      },
+      {
+        type: 'modify',
+        path: 'src/modules/mikro/entity-registry.ts',
+        pattern: /(\/\/ PLOP: ADD_MAIN_ENTITY)/,
+        template: '{{pascalCase (singularize name)}},\n    $1',
+      },
     ],
   });
 };
