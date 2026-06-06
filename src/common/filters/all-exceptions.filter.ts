@@ -24,7 +24,12 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
     let message: any = 'Internal server error';
     if (exception instanceof HttpException) {
-      message = exception.message;
+      const res = exception.getResponse();
+      if (typeof res === 'object' && res !== null && 'message' in res) {
+        message = (res as any).message;
+      } else {
+        message = exception.message;
+      }
     }
 
     // Tự động dịch lỗi nếu có I18nContext
@@ -38,13 +43,23 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
       if (typeof message === 'string') {
         message = translateKey(message);
+      } else if (Array.isArray(message)) {
+        message = message
+          .map((msg) => (typeof msg === 'string' ? translateKey(msg) : msg))
+          .join(', ');
       }
+    } else if (Array.isArray(message)) {
+      message = message.join(', ');
     }
 
-    this.logger.error('Unhandled Exception', {
-      message,
-      stack: exception instanceof Error ? exception.stack : undefined,
-    });
+    if (status >= 500) {
+      this.logger.error('Unhandled Exception', {
+        message,
+        stack: exception instanceof Error ? exception.stack : undefined,
+      });
+    } else {
+      this.logger.warn(`Client Error [${status}]: ${message}`);
+    }
 
     response.status(status).json({
       success: false,

@@ -15,5 +15,6 @@
   "error-db-unique-violation": "Data record already exists in the system.",
   "error-db-foreign-key-violation": "Data relation constraint violation (invalid foreign key).",
   "error-db-not-null-violation": "Required fields cannot be empty.",
-  "error-db-not-found": "Requested record not found."
+  "error-db-not-found": "Requested record not found.",
+  "error-request-timeout": "Request timeout."
 }

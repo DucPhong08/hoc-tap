@@ -15,5 +15,6 @@
   "error-db-unique-violation": "Bản ghi dữ liệu đã tồn tại trong hệ thống.",
   "error-db-foreign-key-violation": "Lỗi ràng buộc liên kết dữ liệu (khóa ngoại không hợp lệ).",
   "error-db-not-null-violation": "Thông tin bắt buộc không được để trống.",
-  "error-db-not-found": "Không tìm thấy bản ghi dữ liệu yêu cầu."
+  "error-db-not-found": "Không tìm thấy bản ghi dữ liệu yêu cầu.",
+  "error-request-timeout": "Yêu cầu xử lý quá thời gian quy định (Timeout)."
 }

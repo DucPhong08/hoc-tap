@@ -18,7 +18,7 @@ export class TimeoutInterceptor implements NestInterceptor {
           return throwError(
             () =>
               new RequestTimeoutException(
-                'Yêu cầu xử lý quá thời gian quy định (Timeout).',
+                'error-request-timeout',
               ),
           );
         }
