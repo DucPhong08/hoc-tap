@@ -17,7 +17,11 @@ export class AuditLogRepository extends MikroOrmBaseRepository<
   }
 
   async getUserActions(userId: string, limit = 100): Promise<AuditLog[]> {
-    return this.getMany({ userId }, { limit, sort: { createdAt: -1 } });
+    const result = await this.getPage(
+      { userId },
+      { limit, page: 1, sort: { createdAt: -1 } },
+    );
+    return result.data;
   }
 
   async getEntityHistory(
@@ -28,7 +32,11 @@ export class AuditLogRepository extends MikroOrmBaseRepository<
   }
 
   async getRecentActions(limit = 50): Promise<AuditLog[]> {
-    return this.getMany({}, { limit, sort: { createdAt: -1 } });
+    const result = await this.getPage(
+      {},
+      { limit, page: 1, sort: { createdAt: -1 } },
+    );
+    return result.data;
   }
 
   async deleteOlderThan(date: Date): Promise<number> {
