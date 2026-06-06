@@ -11,8 +11,7 @@ module.exports = function (plop) {
       {
         type: 'input',
         name: 'name',
-        message:
-          'Tên của resource là gì? (Ví dụ: product, order_item, user_profile)',
+        message: 'Tên của module là gì?',
       },
     ],
     actions: [
