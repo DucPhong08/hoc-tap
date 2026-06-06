@@ -7,10 +7,13 @@ import { CreateUserDto } from '../dto/create-user.dto';
 import { UpdateUserDto } from '../dto/update-user.dto';
 import { Role } from '../constant/constant';
 
+import { UserConditionDto } from '../dto/user-condition.dto';
+
 const UserCrudController = createCrudController(
   User,
   CreateUserDto,
   UpdateUserDto,
+  UserConditionDto,
   {
     defaultRoles: [Role.USER, Role.ADMIN],
     routes: {

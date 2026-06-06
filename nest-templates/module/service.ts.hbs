@@ -1,0 +1,19 @@
+import { Injectable, Optional } from '@nestjs/common';
+import { EntityManager } from '@mikro-orm/core';
+import { BaseCrudService } from '../../../infra/services/base-crud.service';
+import { {{pascalCase (singularize name)}} } from '../entities/{{kebabCase (singularize name)}}.entity';
+import { {{pascalCase (singularize name)}}Repository } from '../repositories/{{kebabCase (singularize name)}}.repository';
+import type { BaseTransaction } from '../../../infra/transaction/base-transaction.interface';
+import { InjectTransaction } from '../../../infra/transaction/transaction.provider';
+
+@Injectable()
+export class {{pascalCase (singularize name)}}Service extends BaseCrudService<{{pascalCase (singularize name)}}, EntityManager> {
+  constructor(
+    private readonly {{camelCase (singularize name)}}Repository: {{pascalCase (singularize name)}}Repository,
+    @Optional()
+    @InjectTransaction()
+    transaction?: BaseTransaction<EntityManager>,
+  ) {
+    super({{camelCase (singularize name)}}Repository, { transaction, notFoundMessage: 'Không tìm thấy {{kebabCase (singularize name)}}' });
+  }
+}

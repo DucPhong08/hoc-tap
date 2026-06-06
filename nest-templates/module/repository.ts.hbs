@@ -1,0 +1,15 @@
+import { Injectable } from '@nestjs/common';
+import { EntityManager, EntityRepository } from '@mikro-orm/postgresql';
+import { InjectRepository } from '@mikro-orm/nestjs';
+import { MikroOrmBaseRepository } from '../../../infra/repositories/mikro-orm-base.repository';
+import { {{pascalCase (singularize name)}} } from '../entities/{{kebabCase (singularize name)}}.entity';
+
+@Injectable()
+export class {{pascalCase (singularize name)}}Repository extends MikroOrmBaseRepository<{{pascalCase (singularize name)}}, EntityManager> {
+  constructor(
+    @InjectRepository({{pascalCase (singularize name)}})
+    repository: EntityRepository<{{pascalCase (singularize name)}}>,
+  ) {
+    super(repository);
+  }
+}

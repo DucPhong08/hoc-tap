@@ -74,6 +74,7 @@ export function createCrudController<E extends BaseEntity>(
   entityType: Type<E>,
   createDto?: Type<unknown>,
   updateDto?: Type<unknown>,
+  conditionDto?: Type<unknown>,
   options: CrudOptions = {},
 ): Type<object> {
   const routeConfigs = buildRouteConfigMap(options.routes);
@@ -81,11 +82,9 @@ export function createCrudController<E extends BaseEntity>(
     ConditionDto,
     CreateDto,
     UpdateDto,
-    UpdateOneDto,
     UpdateManyIdsDto,
-    DeleteOneDto,
     validationPipes,
-  } = createCrudDtoBundle(entityType, createDto, updateDto);
+  } = createCrudDtoBundle(entityType, createDto, updateDto, conditionDto);
 
   class CrudControllerHost {
     constructor(protected readonly service: BaseCrudService<E>) {}
@@ -192,14 +191,15 @@ export function createCrudController<E extends BaseEntity>(
       status: HTTP_STATUS.NOT_FOUND,
       description: HTTP_STATUS_MESSAGE[HTTP_STATUS.NOT_FOUND],
     })
-    @ApiBody({ type: UpdateOneDto })
-    @UsePipes(validationPipes.updateOne)
+    @ApiBody({ type: UpdateDto })
+    @UsePipes(validationPipes.update)
     async updateOneByCondition(
       @ReqUser() user: User | null,
-      @Body() body: { condition: QueryCondition<E>; update: UpdateData<E> },
+      @RequestCondition(ConditionDto) condition: QueryCondition<E>,
+      @Body() update: UpdateData<E>,
     ): Promise<E> {
       assertRouteEnabled(routeConfigs.updateOne);
-      return this.service.updateOne(user, body.condition, body.update);
+      return this.service.updateOne(user, condition, update);
     }
 
     @Put('many/ids')
@@ -243,14 +243,12 @@ export function createCrudController<E extends BaseEntity>(
       status: HTTP_STATUS.NOT_FOUND,
       description: HTTP_STATUS_MESSAGE[HTTP_STATUS.NOT_FOUND],
     })
-    @ApiBody({ type: DeleteOneDto })
-    @UsePipes(validationPipes.deleteOne)
     async deleteOneByCondition(
       @ReqUser() user: User | null,
-      @Body() body: { condition: QueryCondition<E> },
+      @RequestCondition(ConditionDto) condition: QueryCondition<E>,
     ): Promise<void> {
       assertRouteEnabled(routeConfigs.deleteOne);
-      await this.service.deleteOne(user, body.condition);
+      await this.service.deleteOne(user, condition);
     }
 
     @Delete('many/ids')
