@@ -15,38 +15,6 @@
   <img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License" />
 </p>
 
-## Mô tả
-
-Boilerplate NestJS với Clean Architecture, tích hợp sẵn:
-
-- ✅ **MikroORM** - ORM hiện đại với TypeScript
-- ✅ **Redis Cache** - Hệ thống cache với decorator `@Cacheable`
-- ✅ **JWT Authentication** - Xác thực với JWT + Refresh Token
-- ✅ **OAuth2** - Google & Facebook login
-- ✅ **Base Repository Pattern** - CRUD operations với query operators
-- ✅ **Transaction Support** - Database transactions
-- ✅ **Monitoring** - Health check endpoints
-
-## Cấu trúc thư mục
-
-```
-src/
-├── common/              # Shared utilities
-│   ├── cache/          # Redis cache system
-│   ├── monitoring/     # Health check
-│   ├── repositories/   # Base & cached repositories
-│   ├── guards/         # Auth guards
-│   ├── decorators/     # Custom decorators
-│   └── ...
-├── config/             # Configuration với validation
-├── infra/              # Infrastructure (ORM, migrations)
-├── modules/            # Feature modules
-│   ├── auth/          # Authentication
-│   ├── users/         # User management
-│   └── products/      # Product management
-└── main.ts            # API entry
-```
-
 ## Cài đặt
 
 ```bash
@@ -55,7 +23,7 @@ npm install
 
 ## Cấu hình
 
-Copy `.env.example` thành `.env` và cấu hình:
+Copy `.env.example` thành `.env` và cấu hình các biến môi trường cần thiết:
 
 ```bash
 cp .env.example .env
@@ -68,60 +36,20 @@ Xem chi tiết trong [SETUP_GUIDE.md](./SETUP_GUIDE.md)
 ```bash
 # Development
 npm run start:dev
-```
-
-## Tính năng chính
-
-### 1. Base Repository với Query Operators
-
-```typescript
-// Query operators: $eq, $ne, $in, $gt, $gte, $lt, $lte, $like, $ilike
-await userRepo.getMany(
-  { age: { $gte: 18 }, status: { $in: ['active', 'pending'] } },
-  { sort: { createdAt: -1 }, limit: 10 },
-);
-```
-
-### 2. Redis Cache với Decorator
-
-```typescript
-@Get()
-@Cacheable({ ttl: 300, tags: ['users'] })
-async getUsers() {
-  return this.userService.getMany();
-}
-```
-
-### 3. Authentication
-
-- JWT với Access Token + Refresh Token
-- OAuth2: Google & Facebook login
-- Role-based authorization
-
-### 4. Monitoring
-
-```bash
-GET /health          # Health check
-GET /health/metrics  # System metrics
-```
-
-## Scripts
-
-```bash
-# Development
-npm run start:dev
 
 # Build
 npm run build
 
 # Production
 npm run start:prod
+```
 
-# Lint
-npm run lint
+## Code Generator
 
-# Format
-npm run format
+Tự động sinh toàn bộ code cấu trúc cho một Module mới:
+
+```bash
+npm run gen
 ```
 
 ## Database Migrations
@@ -137,27 +65,7 @@ npm run migration:up
 npm run migration:down
 ```
 
-## Testing
-
-```bash
-# Unit tests
-npm run test
-
-# E2E tests
-npm run test:e2e
-
-# Test coverage
-npm run test:cov
-```
-
 ## Deployment
-
-### Single Server
-
-```bash
-npm run build
-NODE_ENV=production npm run start:prod
-```
 
 ### Docker
 
@@ -179,22 +87,3 @@ npm install -g pm2
 # Start API process
 pm2 start dist/main.js --name api
 ```
-
-## Tech Stack
-
-- **Framework**: NestJS 11
-- **ORM**: MikroORM 6.3
-- **Database**: PostgreSQL
-- **Cache**: Redis (optional)
-- **Authentication**: Passport JWT, Google OAuth, Facebook OAuth
-- **Validation**: class-validator, class-transformer
-- **Documentation**: Swagger/OpenAPI
-
-## Tài liệu
-
-- [NestJS Documentation](https://docs.nestjs.com)
-- [MikroORM Documentation](https://mikro-orm.io)
-
-## License
-
-[MIT licensed](LICENSE)

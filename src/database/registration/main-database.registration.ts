@@ -1,12 +1,10 @@
 import { DB_CONTEXTS } from '../database.constants';
-import { AuditLogEntity } from '../../modules/audit-logs/entities/audit-log.entity';
-import { SettingEntity } from '../../modules/settings/entities/setting.entity';
-import { UserEntity } from '../../modules/users/entities/user.entity';
+import { getEntitiesByContext } from '../entity-registry.helper';
 import { DatabaseContextDefinition } from '../types/database.types';
 
 export const MAIN_DATABASE_CONTEXT: DatabaseContextDefinition = {
   contextName: DB_CONTEXTS.MAIN,
-  entities: [UserEntity, SettingEntity, AuditLogEntity],
+  entities: getEntitiesByContext(DB_CONTEXTS.MAIN),
   defaultMigrationPath: 'mikro-base/migrations',
   defaultPoolMinSize: 2,
   defaultPoolMaxSize: 10,

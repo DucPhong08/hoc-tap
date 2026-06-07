@@ -1,3 +1,5 @@
+import { Role } from '../../../modules/users/constant/constant';
+
 export type BaseRoute =
   | 'create'
   | 'getMany'
@@ -26,11 +28,11 @@ export type CrudHandlerName =
 
 export interface RouteConfig {
   enabled?: boolean;
-  roles?: string[];
+  roles?: Role[];
 }
 
 export interface CrudOptions {
-  defaultRoles?: string[];
+  defaultRoles?: Role[];
   routes?: {
     [key in BaseRoute]?: boolean | RouteConfig;
   };

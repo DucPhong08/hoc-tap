@@ -27,7 +27,7 @@ import {
   RequestQuery,
 } from '../../common/decorators/query.decorator';
 import { ReqUser } from '../../common/decorators/request-user.decorator';
-import type { CurrentUserData } from '../../common/decorators/request-user.decorator';
+import { User } from '../../modules/users/entities/user.entity';
 import {
   ApiGet,
   ApiQueryOptions,
@@ -40,16 +40,19 @@ import type {
 } from '../../common/interfaces/repository.interface';
 import { BaseCrudService } from '../services/base-crud.service';
 import {
-  applyCrudAuthorization,
+  setupCrudAuthorization,
+  setupCrudAudit,
   assertRouteEnabled,
   buildRouteConfigMap,
-  createCrudDtoBundle,
   renameGeneratedClass,
-  type BaseRoute,
-  type CrudOptions,
-  type CrudRouteDefinition,
-  type RouteConfig,
-} from './crud';
+} from './crud/helpers';
+import { createCrudDtoBundle } from './crud/dto-factory';
+import type {
+  BaseRoute,
+  CrudOptions,
+  CrudRouteDefinition,
+  RouteConfig,
+} from './crud/types';
 
 export type { BaseRoute, CrudOptions, RouteConfig };
 
@@ -71,6 +74,7 @@ export function createCrudController<E extends BaseEntity>(
   entityType: Type<E>,
   createDto?: Type<unknown>,
   updateDto?: Type<unknown>,
+  conditionDto?: Type<unknown>,
   options: CrudOptions = {},
 ): Type<object> {
   const routeConfigs = buildRouteConfigMap(options.routes);
@@ -78,11 +82,9 @@ export function createCrudController<E extends BaseEntity>(
     ConditionDto,
     CreateDto,
     UpdateDto,
-    UpdateOneDto,
     UpdateManyIdsDto,
-    DeleteOneDto,
     validationPipes,
-  } = createCrudDtoBundle(entityType, createDto, updateDto);
+  } = createCrudDtoBundle(entityType, createDto, updateDto, conditionDto);
 
   class CrudControllerHost {
     constructor(protected readonly service: BaseCrudService<E>) {}
@@ -96,41 +98,46 @@ export function createCrudController<E extends BaseEntity>(
     @ApiBody({ type: CreateDto })
     @UsePipes(validationPipes.create)
     async createEntity(
-      @ReqUser() _currentUser: CurrentUserData,
+      @ReqUser() user: User | null,
       @Body() body: Partial<E>,
     ): Promise<E> {
-      this.assertRouteAvailable('create');
-      return this.service.create(body);
+      assertRouteEnabled(routeConfigs.create);
+      return this.service.create(user, body);
     }
 
     @ApiGet('many', entityType)
     async listEntities(
-      @ReqUser() _currentUser: CurrentUserData,
+      @ReqUser() user: User | null,
       @RequestCondition(ConditionDto) condition: QueryCondition<E>,
       @RequestQuery() query: ParsedQueryOptions,
     ): Promise<E[]> {
-      this.assertRouteAvailable('getMany');
-      return this.service.getMany(condition, this.parseFindQuery(query));
+      assertRouteEnabled(routeConfigs.getMany);
+      return this.service.getMany(user, condition, query as FindQuery<E>);
     }
 
     @ApiGet('page', entityType)
     async paginateEntities(
-      @ReqUser() _currentUser: CurrentUserData,
+      @ReqUser() user: User | null,
       @RequestCondition(ConditionDto) condition: QueryCondition<E>,
       @RequestQuery() query: ParsedQueryOptions,
     ): Promise<PaginatedResponseDto<E>> {
-      this.assertRouteAvailable('getPage');
-      return this.service.getPage(condition, this.parsePaginationQuery(query));
+      assertRouteEnabled(routeConfigs.getPage);
+      const { page = 1, limit = 10, ...findQuery } = query;
+      return this.service.getPage(user, condition, {
+        ...(findQuery as FindQuery<E>),
+        page,
+        limit,
+      });
     }
 
     @ApiGet('one', entityType)
     async findOneByCondition(
-      @ReqUser() _currentUser: CurrentUserData,
+      @ReqUser() user: User | null,
       @RequestCondition(ConditionDto) condition: QueryCondition<E>,
       @RequestQuery() query: ParsedQueryOptions,
     ): Promise<E> {
-      this.assertRouteAvailable('getOne');
-      return this.service.getOne(condition, this.parseFindQuery(query));
+      assertRouteEnabled(routeConfigs.getOne);
+      return this.service.getOne(user, condition, query as FindQuery<E>);
     }
 
     @Get(':id')
@@ -145,12 +152,12 @@ export function createCrudController<E extends BaseEntity>(
     })
     @ApiQueryOptions('one')
     async findEntityById(
-      @ReqUser() _currentUser: CurrentUserData,
+      @ReqUser() user: User | null,
       @Param('id') id: string,
       @RequestQuery() query: ParsedQueryOptions,
     ): Promise<E> {
-      this.assertRouteAvailable('getById');
-      return this.service.getById(id, this.parseFindQuery(query));
+      assertRouteEnabled(routeConfigs.getById);
+      return this.service.getById(user, id, query as FindQuery<E>);
     }
 
     @Put(':id')
@@ -166,12 +173,12 @@ export function createCrudController<E extends BaseEntity>(
     @ApiBody({ type: UpdateDto })
     @UsePipes(validationPipes.update)
     async updateEntityById(
-      @ReqUser() _currentUser: CurrentUserData,
+      @ReqUser() user: User | null,
       @Param('id') id: string,
       @Body() body: UpdateData<E>,
     ): Promise<E> {
-      this.assertRouteAvailable('updateById');
-      return this.service.updateById(id, body);
+      assertRouteEnabled(routeConfigs.updateById);
+      return this.service.updateById(user, id, body);
     }
 
     @Put('one')
@@ -184,14 +191,15 @@ export function createCrudController<E extends BaseEntity>(
       status: HTTP_STATUS.NOT_FOUND,
       description: HTTP_STATUS_MESSAGE[HTTP_STATUS.NOT_FOUND],
     })
-    @ApiBody({ type: UpdateOneDto })
-    @UsePipes(validationPipes.updateOne)
+    @ApiBody({ type: UpdateDto })
+    @UsePipes(validationPipes.update)
     async updateOneByCondition(
-      @ReqUser() _currentUser: CurrentUserData,
-      @Body() body: { condition: QueryCondition<E>; update: UpdateData<E> },
+      @ReqUser() user: User | null,
+      @RequestCondition(ConditionDto) condition: QueryCondition<E>,
+      @Body() update: UpdateData<E>,
     ): Promise<E> {
-      this.assertRouteAvailable('updateOne');
-      return this.service.updateOne(body.condition, body.update);
+      assertRouteEnabled(routeConfigs.updateOne);
+      return this.service.updateOne(user, condition, update);
     }
 
     @Put('many/ids')
@@ -200,11 +208,11 @@ export function createCrudController<E extends BaseEntity>(
     @ApiBody({ type: UpdateManyIdsDto })
     @UsePipes(validationPipes.updateManyByIds)
     async updateEntitiesByIds(
-      @ReqUser() _currentUser: CurrentUserData,
+      @ReqUser() user: User | null,
       @Body() body: { ids: string[]; update: UpdateData<E> },
     ): Promise<{ affected: number }> {
-      this.assertRouteAvailable('updateByIds');
-      return this.service.updateManyByIds(body.ids, body.update);
+      assertRouteEnabled(routeConfigs.updateByIds);
+      return this.service.updateManyByIds(user, body.ids, body.update);
     }
 
     @Delete(':id')
@@ -218,11 +226,11 @@ export function createCrudController<E extends BaseEntity>(
       description: HTTP_STATUS_MESSAGE[HTTP_STATUS.NOT_FOUND],
     })
     async deleteEntityById(
-      @ReqUser() _currentUser: CurrentUserData,
+      @ReqUser() user: User | null,
       @Param('id') id: string,
     ): Promise<void> {
-      this.assertRouteAvailable('deleteById');
-      await this.service.deleteById(id);
+      assertRouteEnabled(routeConfigs.deleteById);
+      await this.service.deleteById(user, id);
     }
 
     @Delete('one')
@@ -235,14 +243,12 @@ export function createCrudController<E extends BaseEntity>(
       status: HTTP_STATUS.NOT_FOUND,
       description: HTTP_STATUS_MESSAGE[HTTP_STATUS.NOT_FOUND],
     })
-    @ApiBody({ type: DeleteOneDto })
-    @UsePipes(validationPipes.deleteOne)
     async deleteOneByCondition(
-      @ReqUser() _currentUser: CurrentUserData,
-      @Body() body: { condition: QueryCondition<E> },
+      @ReqUser() user: User | null,
+      @RequestCondition(ConditionDto) condition: QueryCondition<E>,
     ): Promise<void> {
-      this.assertRouteAvailable('deleteOne');
-      await this.service.deleteOne(body.condition);
+      assertRouteEnabled(routeConfigs.deleteOne);
+      await this.service.deleteOne(user, condition);
     }
 
     @Delete('many/ids')
@@ -251,29 +257,11 @@ export function createCrudController<E extends BaseEntity>(
     @ApiBody({ type: DeleteManyByIdsDto })
     @UsePipes(validationPipes.deleteManyByIds)
     async deleteEntitiesByIds(
-      @ReqUser() _currentUser: CurrentUserData,
+      @ReqUser() user: User | null,
       @Body() body: DeleteManyByIdsDto,
     ): Promise<{ deleted: number }> {
-      this.assertRouteAvailable('deleteByIds');
-      return this.service.deleteManyByIds(body.ids);
-    }
-
-    private assertRouteAvailable(route: BaseRoute): void {
-      assertRouteEnabled(routeConfigs[route]);
-    }
-
-    private parseFindQuery(query: ParsedQueryOptions): FindQuery<E> {
-      return query as FindQuery<E>;
-    }
-
-    private parsePaginationQuery(
-      query: ParsedQueryOptions,
-    ): FindQuery<E> & { page: number; limit: number } {
-      return {
-        ...this.parseFindQuery(query),
-        page: query.page ?? 1,
-        limit: query.limit ?? 10,
-      };
+      assertRouteEnabled(routeConfigs.deleteByIds);
+      return this.service.deleteManyByIds(user, body.ids);
     }
   }
 
@@ -282,12 +270,13 @@ export function createCrudController<E extends BaseEntity>(
     CrudControllerHost,
   );
 
-  applyCrudAuthorization(
+  setupCrudAuthorization(
     GeneratedCrudController,
     CRUD_ROUTE_DEFINITIONS,
     routeConfigs,
     options.defaultRoles,
   );
+  setupCrudAudit(GeneratedCrudController, CRUD_ROUTE_DEFINITIONS, routeConfigs);
 
   return GeneratedCrudController;
 }

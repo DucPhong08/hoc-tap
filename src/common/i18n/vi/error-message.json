@@ -1,0 +1,20 @@
+{
+  "error-user-not-found": "Không tìm thấy người dùng",
+  "error-password-wrong": "Mật khẩu không chính xác",
+  "error-old-password-wrong": "Mật khẩu cũ không chính xác",
+  "error-user-exist": "Người dùng đã tồn tại",
+  "error-network-restricted": "Kết nối mạng bị giới hạn",
+  "error-unauthorized": "Xác thực không hợp lệ",
+  "error-forbidden": "Không có quyền truy cập",
+  "error-setting-invalid": "Giá trị cấu hình không hợp lệ",
+  "error-user-disabled": "Tài khoản đã bị vô hiệu hóa",
+  "error-email-update-limit": "Email chỉ có thể cập nhật một lần mỗi tuần",
+  "error-user-delete-limit": "Người dùng chỉ có thể xóa sau 30 ngày",
+  "error-invalid-credentials": "Thông tin đăng nhập không hợp lệ",
+  "error-invalid-refresh-token": "Refresh token không hợp lệ",
+  "error-db-unique-violation": "Bản ghi dữ liệu đã tồn tại trong hệ thống.",
+  "error-db-foreign-key-violation": "Lỗi ràng buộc liên kết dữ liệu (khóa ngoại không hợp lệ).",
+  "error-db-not-null-violation": "Thông tin bắt buộc không được để trống.",
+  "error-db-not-found": "Không tìm thấy bản ghi dữ liệu yêu cầu.",
+  "error-request-timeout": "Yêu cầu xử lý quá thời gian quy định (Timeout)."
+}

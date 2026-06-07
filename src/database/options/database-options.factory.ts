@@ -4,6 +4,9 @@ import { DatabaseConfigurationError } from '../errors/database-configuration.err
 import { DatabaseContextConfigService } from '../runtime/database-context-config.service';
 import { MongoDbOptionsStrategy } from './mongodb-options.strategy';
 import { PostgreSqlOptionsStrategy } from './postgresql-options.strategy';
+import { DatabaseContextRegistry } from '../registration/database-context.registry';
+import { DatabaseEnvironmentReader } from '../env/database-environment.reader';
+import { DatabaseEnvironmentValidator } from '../env/database-environment.validator';
 
 @Injectable()
 export class DatabaseOptionsFactory {
@@ -27,5 +30,22 @@ export class DatabaseOptionsFactory {
     }
 
     return strategy.buildOptions(context);
+  }
+
+  static createStandalone(contextName: string): Options {
+    const contextRegistry = new DatabaseContextRegistry();
+    const environmentReader = new DatabaseEnvironmentReader();
+    const environmentValidator = new DatabaseEnvironmentValidator();
+    const contextConfigService = new DatabaseContextConfigService(
+      contextRegistry,
+      environmentReader,
+      environmentValidator,
+    );
+    const factory = new DatabaseOptionsFactory(
+      contextConfigService,
+      new PostgreSqlOptionsStrategy(),
+      new MongoDbOptionsStrategy(),
+    );
+    return factory.create(contextName);
   }
 }

@@ -1,0 +1,10 @@
+import { Entity, Property } from '@mikro-orm/core';
+import { BaseEntity } from '../../../common/entity/base.entity';
+
+@Entity()
+export class {{pascalCase (singularize name)}} extends BaseEntity {
+  @Property()
+  name!: string;
+
+  // TODO: Add more properties here
+}

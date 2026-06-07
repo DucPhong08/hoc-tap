@@ -1,0 +1,4 @@
+import { PartialType } from '@nestjs/swagger';
+import { {{pascalCase (singularize name)}} } from '../entities/{{kebabCase (singularize name)}}.entity';
+
+export class {{pascalCase (singularize name)}}ConditionDto extends PartialType({{pascalCase (singularize name)}}) {}

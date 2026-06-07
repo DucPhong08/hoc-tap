@@ -1,0 +1,21 @@
+import { Controller } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
+import { BaseCrudControllerFactory } from '../../../infra/controllers/base-crud.controller';
+import { {{pascalCase (singularize name)}} } from '../entities/{{kebabCase (singularize name)}}.entity';
+import { {{pascalCase (singularize name)}}Service } from '../services/{{kebabCase (singularize name)}}.service';
+import { Create{{pascalCase (singularize name)}}Dto } from '../dto/create-{{kebabCase (singularize name)}}.dto';
+import { Update{{pascalCase (singularize name)}}Dto } from '../dto/update-{{kebabCase (singularize name)}}.dto';
+import { {{pascalCase (singularize name)}}ConditionDto } from '../dto/{{kebabCase (singularize name)}}-condition.dto';
+
+@ApiTags('{{kebabCase (pluralize name)}}')
+@Controller('{{kebabCase (pluralize name)}}')
+export class {{pascalCase (singularize name)}}Controller extends BaseCrudControllerFactory(
+  {{pascalCase (singularize name)}},
+  Create{{pascalCase (singularize name)}}Dto,
+  Update{{pascalCase (singularize name)}}Dto,
+  {{pascalCase (singularize name)}}ConditionDto,
+) {
+  constructor(private readonly {{camelCase (singularize name)}}Service: {{pascalCase (singularize name)}}Service) {
+    super({{camelCase (singularize name)}}Service);
+  }
+}

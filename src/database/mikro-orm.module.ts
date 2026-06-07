@@ -2,6 +2,7 @@ import { Global, Module } from '@nestjs/common';
 import { MikroOrmModule } from '@mikro-orm/nestjs';
 import { MigrationService } from './migration.service';
 import { DB_CONTEXTS } from 'src/database/database.constants';
+import { getEntitiesByContext } from './entity-registry.helper';
 import { DatabaseContextRegistry } from './registration/database-context.registry';
 import { DatabaseEnvironmentReader } from './env/database-environment.reader';
 import { DatabaseEnvironmentValidator } from './env/database-environment.validator';
@@ -10,13 +11,29 @@ import { PostgreSqlOptionsStrategy } from './options/postgresql-options.strategy
 import { MongoDbOptionsStrategy } from './options/mongodb-options.strategy';
 import { DatabaseOptionsFactory } from './options/database-options.factory';
 import { MainMikroOrmOptionsFactory } from './runtime/main-mikro-orm-options.factory';
+import { LogsMikroOrmOptionsFactory } from './runtime/logs-mikro-orm-options.factory';
 
 @Global()
 @Module({
   imports: [
+    // ── MAIN database ─────────────────────────────────────────────────
     MikroOrmModule.forRootAsync({
       useClass: MainMikroOrmOptionsFactory,
       contextName: DB_CONTEXTS.MAIN,
+    }),
+    MikroOrmModule.forFeature({
+      entities: getEntitiesByContext(DB_CONTEXTS.MAIN),
+      contextName: DB_CONTEXTS.MAIN,
+    }),
+
+    // ── LOGS database ─────────────────────────────────────────────────
+    MikroOrmModule.forRootAsync({
+      useClass: LogsMikroOrmOptionsFactory,
+      contextName: DB_CONTEXTS.LOGS,
+    }),
+    MikroOrmModule.forFeature({
+      entities: getEntitiesByContext(DB_CONTEXTS.LOGS),
+      contextName: DB_CONTEXTS.LOGS,
     }),
   ],
   providers: [
@@ -28,8 +45,13 @@ import { MainMikroOrmOptionsFactory } from './runtime/main-mikro-orm-options.fac
     MongoDbOptionsStrategy,
     DatabaseOptionsFactory,
     MainMikroOrmOptionsFactory,
+    LogsMikroOrmOptionsFactory,
     MigrationService,
   ],
-  exports: [DatabaseContextConfigService, DatabaseOptionsFactory],
+  exports: [
+    DatabaseContextConfigService,
+    DatabaseOptionsFactory,
+    MikroOrmModule,
+  ],
 })
 export class MikroOrmDatabaseModule {}

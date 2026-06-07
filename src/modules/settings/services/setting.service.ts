@@ -1,10 +1,12 @@
 import { EntityManager } from '@mikro-orm/core';
-import { Injectable, BadRequestException, Optional } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
+import { ApiError } from '../../../common/exceptions/api-error';
 import { plainToClass } from 'class-transformer';
 import { validate } from 'class-validator';
 import { BaseCrudService } from '../../../infra/services/base-crud.service';
-import { SettingEntity } from '../entities/setting.entity';
+import { Setting } from '../entities/setting.entity';
 import { SettingRepository } from '../repositories/setting.repository';
+import type { User } from '../../users/entities/user.entity';
 import type { BaseTransaction } from '../../../infra/transaction/base-transaction.interface';
 import { InjectTransaction } from '../../../infra/transaction/transaction.provider';
 import {
@@ -14,10 +16,7 @@ import {
 import { SettingKey } from '../enums/setting-key.enum';
 
 @Injectable()
-export class SettingService extends BaseCrudService<
-  SettingEntity,
-  EntityManager
-> {
+export class SettingService extends BaseCrudService<Setting, EntityManager> {
   constructor(
     private readonly settingRepository: SettingRepository,
     @Optional()
@@ -43,9 +42,10 @@ export class SettingService extends BaseCrudService<
    * Set giá trị setting với validation
    */
   async setSettingValue<T extends SettingKey>(
+    user: User | null,
     key: T,
     value: SettingValue<T>,
-  ): Promise<SettingEntity> {
+  ): Promise<Setting> {
     const ValueClass = MAP_SETTING_ENTITY[key];
 
     if (ValueClass) {
@@ -57,7 +57,7 @@ export class SettingService extends BaseCrudService<
 
       if (validateResult.length > 0) {
         console.error('Setting validation failed:', validateResult);
-        throw new BadRequestException('Setting value is invalid');
+        throw ApiError.BadReq('error-setting-invalid');
       }
     }
 
@@ -66,6 +66,7 @@ export class SettingService extends BaseCrudService<
 
       if (existing) {
         return super.updateById(
+          user,
           existing.id,
           { value: value as any },
           txOptions,
@@ -73,6 +74,7 @@ export class SettingService extends BaseCrudService<
       }
 
       return super.create(
+        user,
         {
           key,
           value: value as any,

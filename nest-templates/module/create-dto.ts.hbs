@@ -1,0 +1,9 @@
+import { OmitType } from '@nestjs/swagger';
+import { {{pascalCase (singularize name)}} } from '../entities/{{kebabCase (singularize name)}}.entity';
+
+export class Create{{pascalCase (singularize name)}}Dto extends OmitType({{pascalCase (singularize name)}}, [
+  'id',
+  '_id',
+  'createdAt',
+  'updatedAt',
+] as const) {}

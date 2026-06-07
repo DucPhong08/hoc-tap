@@ -19,7 +19,7 @@ export class MongoDbOptionsStrategy implements DatabaseDriverOptionsStrategy {
 
     return {
       driver: MongoDriver,
-      entities: [...context.definition.entities],
+      entities: context.definition.entities,
       dbName: settings.databaseName,
       clientUrl: settings.connectionUri,
       debug: settings.debugEnabled,

@@ -1,41 +1,46 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository, InjectEntityManager } from '@mikro-orm/nestjs';
 import { EntityManager, EntityRepository } from '@mikro-orm/core';
 import { MikroOrmBaseRepository } from '../../../infra/repositories/mikro-orm-base.repository';
-import { DB_CONTEXTS } from 'src/database/database.constants';
-import { AuditLogEntity } from '../entities/audit-log.entity';
+import { InjectEntityRepository } from 'src/database/entity-registry.helper';
+import { AuditLog } from '../entities/audit-log.entity';
 
 @Injectable()
 export class AuditLogRepository extends MikroOrmBaseRepository<
-  AuditLogEntity,
+  AuditLog,
   EntityManager
 > {
   constructor(
-    @InjectEntityManager(DB_CONTEXTS.MAIN)
-    em: EntityManager,
-    @InjectRepository(AuditLogEntity, DB_CONTEXTS.MAIN)
-    repository: EntityRepository<AuditLogEntity>,
+    @InjectEntityRepository(AuditLog)
+    repository: EntityRepository<AuditLog>,
   ) {
-    super(em, repository);
+    super(repository);
   }
 
-  async getUserActions(userId: string, limit = 100): Promise<AuditLogEntity[]> {
-    return this.getMany({ userId }, { limit, sort: { createdAt: -1 } });
+  async getUserActions(userId: string, limit = 100): Promise<AuditLog[]> {
+    const result = await this.getPage(
+      { userId },
+      { limit, page: 1, sort: { createdAt: -1 } },
+    );
+    return result.data;
   }
 
   async getEntityHistory(
     entityType: string,
     entityId: string,
-  ): Promise<AuditLogEntity[]> {
+  ): Promise<AuditLog[]> {
     return this.getMany({ entityType, entityId }, { sort: { createdAt: 1 } });
   }
 
-  async getRecentActions(limit = 50): Promise<AuditLogEntity[]> {
-    return this.getMany({}, { limit, sort: { createdAt: -1 } });
+  async getRecentActions(limit = 50): Promise<AuditLog[]> {
+    const result = await this.getPage(
+      {},
+      { limit, page: 1, sort: { createdAt: -1 } },
+    );
+    return result.data;
   }
 
   async deleteOlderThan(date: Date): Promise<number> {
-    const result = await this.em.nativeDelete(AuditLogEntity, {
+    const result = await this.em.nativeDelete(AuditLog, {
       createdAt: { $lt: date },
     });
     return result;
