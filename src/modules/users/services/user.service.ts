@@ -27,7 +27,7 @@ export class UserService extends BaseCrudService<User, EntityManager> {
   async create(
     user: User | null,
     data: Partial<User>,
-    query?: CommandOptions<EntityManager>,
+    query?: CommandOptions<EntityManager, User>,
   ): Promise<User> {
     return this.executeWithTransaction(query, async (txOptions) => {
       if (data.email) {
@@ -41,7 +41,9 @@ export class UserService extends BaseCrudService<User, EntityManager> {
         }
       }
 
-      return super.create(user, data, txOptions);
+      const userEntity = await super.create(user, data, txOptions);
+
+      return userEntity;
     });
   }
 
@@ -49,7 +51,7 @@ export class UserService extends BaseCrudService<User, EntityManager> {
     user: User | null,
     id: string,
     data: Partial<User>,
-    query?: CommandOptions<EntityManager>,
+    query?: CommandOptions<EntityManager, User>,
   ): Promise<User> {
     return this.executeWithTransaction(query, async (txOptions) => {
       const existingUser = await this.getByIdOrNull(user, id, txOptions);
@@ -78,7 +80,7 @@ export class UserService extends BaseCrudService<User, EntityManager> {
   async deleteById(
     user: User | null,
     id: string,
-    query?: DeleteCommand & CommandOptions<EntityManager>,
+    query?: DeleteCommand & CommandOptions<EntityManager, User>,
   ): Promise<User> {
     return this.executeWithTransaction(query, async (txOptions) => {
       const userEntity = await this.getById(user, id, txOptions);

@@ -3,7 +3,7 @@ import { OperatorType } from '../../enums/operator-type.enum';
 import type { Paths } from './util.types';
 
 export interface FilterRule<E = any> {
-  field: Paths<E> | (string & {});
+  field: Paths<E> | string[];
   operator: OperatorType;
   values?: any;
 }

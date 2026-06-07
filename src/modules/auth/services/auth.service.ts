@@ -136,7 +136,7 @@ export class AuthService {
     const payload: JwtPayload = {
       sub: user.id,
       email: user.email,
-      roles: user.roles || [Role.USER],
+      roles: (user.roles as Role[]) || [Role.USER],
     };
 
     const accessToken = this.jwtService.sign(payload);
@@ -159,7 +159,7 @@ export class AuthService {
       email: user.email,
       firstName: user.firstName,
       lastName: user.lastName,
-      roles: user.roles || [Role.USER],
+      roles: (user.roles as Role[]) || [Role.USER],
       provider: user.provider || AuthProvider.LOCAL,
       avatar: user.avatar,
       isActive: user.isActive,

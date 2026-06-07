@@ -1,4 +1,10 @@
-import { Entity, Property, BeforeCreate, BeforeUpdate } from '@mikro-orm/core';
+import {
+  Entity,
+  Property,
+  BeforeCreate,
+  BeforeUpdate,
+  ManyToOne,
+} from '@mikro-orm/core';
 import * as bcrypt from 'bcrypt';
 import {
   IsEmail,
@@ -6,13 +12,12 @@ import {
   MaxLength,
   IsOptional,
   IsBoolean,
-  IsArray,
   IsEnum,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { BaseEntity } from '../../../common/entity/base.entity';
 import { AuthProvider } from '../../auth/enums/auth-provider.enum';
-import { Role } from '../constant/constant';
+import { Role as RoleEntity } from '../../roles/entities/role.entity';
 
 @Entity({ tableName: 'users' })
 export class User extends BaseEntity {
@@ -46,11 +51,19 @@ export class User extends BaseEntity {
   @Property({ default: true })
   isActive: boolean;
 
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsArray()
-  @Property({ default: [Role.USER] })
-  roles: Role[];
+  @ManyToOne({
+    entity: () => RoleEntity,
+    nullable: true,
+  })
+  role?: RoleEntity;
+
+  get roleCode(): string {
+    return this.role ? this.role.code : 'user';
+  }
+
+  get roles(): string[] {
+    return [this.roleCode];
+  }
 
   @ApiProperty()
   @IsEnum(AuthProvider)
@@ -83,8 +96,10 @@ export class User extends BaseEntity {
   }
 
   @BeforeUpdate()
-  async hashPasswordUpdate(args: any): Promise<void> {
-    if (this.password && args.changeSet?.payload.password) {
+  async hashPasswordUpdate(args: {
+    changeSet?: { payload: { password?: string } };
+  }): Promise<void> {
+    if (this.password && args.changeSet?.payload?.password) {
       if (
         !this.password.startsWith('$2b$') &&
         !this.password.startsWith('$2a$')

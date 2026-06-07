@@ -1,9 +1,15 @@
 import { Controller, Get } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
-import { Public } from 'src/common/decorators/public.decorator';
+import { Public } from '../../common/decorators/public.decorator';
+import { Authorization } from '../../common/decorators/authorization.decorator';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { Role } from '../../modules/users/constant/constant';
+import { ApiTags } from '@nestjs/swagger';
 
+@ApiTags('monitoring')
 @Controller('monitoring')
+@Authorization()
 export class MonitoringController {
   @Get('health')
   @Public()
@@ -18,7 +24,7 @@ export class MonitoringController {
   }
 
   @Get('worker-info')
-  @Public()
+  @Roles(Role.ADMIN)
   getWorkerInfo() {
     return {
       workerId: process.pid,
@@ -36,15 +42,15 @@ export class MonitoringController {
   }
 
   @Get('logs/recent')
-  @Public()
-  getRecentLogs() {
+  @Roles(Role.ADMIN)
+  async getRecentLogs() {
     try {
       const logPath = path.join('logs', 'app.log');
       if (!fs.existsSync(logPath)) {
         return { logs: [], message: 'No logs found' };
       }
 
-      const content = fs.readFileSync(logPath, 'utf-8');
+      const content = await fs.promises.readFile(logPath, 'utf-8');
       const lines = content.split('\n').filter((line) => line.trim());
       const recent = lines.slice(-50); // Last 50 lines
 
@@ -59,15 +65,15 @@ export class MonitoringController {
   }
 
   @Get('logs/errors')
-  @Public()
-  getErrorLogs() {
+  @Roles(Role.ADMIN)
+  async getErrorLogs() {
     try {
       const logPath = path.join('logs', 'error.log');
       if (!fs.existsSync(logPath)) {
         return { logs: [], message: 'No error logs found' };
       }
 
-      const content = fs.readFileSync(logPath, 'utf-8');
+      const content = await fs.promises.readFile(logPath, 'utf-8');
       const lines = content.split('\n').filter((line) => line.trim());
       const recent = lines.slice(-20); // Last 20 errors
 
@@ -82,7 +88,7 @@ export class MonitoringController {
   }
 
   @Get('stats')
-  @Public()
+  @Roles(Role.ADMIN)
   getStats() {
     const memUsage = process.memoryUsage();
     const cpuUsage = process.cpuUsage();

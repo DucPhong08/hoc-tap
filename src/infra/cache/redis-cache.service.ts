@@ -1,4 +1,9 @@
-import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  OnModuleDestroy,
+  OnModuleInit,
+  Logger,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { CacheStrategy, CacheConfig } from './cache.interface';
 import type { RedisClientType } from './cache.constant';
@@ -9,6 +14,7 @@ export class RedisCacheService
 {
   // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
   private client: RedisClientType | null = null;
+  private readonly logger = new Logger(RedisCacheService.name);
   private config: CacheConfig;
   private tagPrefix = 'tag:';
   private isConnected = false;
@@ -34,7 +40,7 @@ export class RedisCacheService
       const redisConfig = this.config?.redis;
 
       if (!redisConfig) {
-        console.warn('Redis config not found, cache disabled');
+        this.logger.warn('Redis config not found, cache disabled');
         return;
       }
 
@@ -48,17 +54,20 @@ export class RedisCacheService
       });
 
       this.client.on('error', (err: Error) =>
-        console.error('Redis error:', err),
+        this.logger.error('Redis error', err.stack),
       );
       this.client.on('connect', () => {
-        console.log('Redis connected');
+        this.logger.log('Redis connected');
         this.isConnected = true;
       });
 
       await this.client.connect();
     } catch (error) {
-      console.error('Failed to initialize Redis:', error);
-      console.warn('Cache will be disabled');
+      this.logger.error(
+        'Failed to initialize Redis',
+        error instanceof Error ? error.stack : error,
+      );
+      this.logger.warn('Cache will be disabled');
       this.config.enabled = false;
     }
   }
@@ -74,7 +83,10 @@ export class RedisCacheService
       const data = await this.client.get(this.getKey(key));
       return data ? JSON.parse(data) : null;
     } catch (error) {
-      console.error('Cache get error:', error);
+      this.logger.error(
+        'Cache get error',
+        error instanceof Error ? error.stack : error,
+      );
       return null;
     }
   }
@@ -88,7 +100,10 @@ export class RedisCacheService
 
       await this.client.setEx(cacheKey, expiry, JSON.stringify(value));
     } catch (error) {
-      console.error('Cache set error:', error);
+      this.logger.error(
+        'Cache set error',
+        error instanceof Error ? error.stack : error,
+      );
     }
   }
 
@@ -111,7 +126,10 @@ export class RedisCacheService
         );
       }
     } catch (error) {
-      console.error('Cache setWithTags error:', error);
+      this.logger.error(
+        'Cache setWithTags error',
+        error instanceof Error ? error.stack : error,
+      );
     }
   }
 
@@ -121,7 +139,10 @@ export class RedisCacheService
     try {
       await this.client.del(this.getKey(key));
     } catch (error) {
-      console.error('Cache del error:', error);
+      this.logger.error(
+        'Cache del error',
+        error instanceof Error ? error.stack : error,
+      );
     }
   }
 
@@ -134,7 +155,10 @@ export class RedisCacheService
         await this.client.del(keys);
       }
     } catch (error) {
-      console.error('Cache delByPattern error:', error);
+      this.logger.error(
+        'Cache delByPattern error',
+        error instanceof Error ? error.stack : error,
+      );
     }
   }
 
@@ -152,7 +176,10 @@ export class RedisCacheService
         await this.client.del(tagKey);
       }
     } catch (error) {
-      console.error('Cache delByTags error:', error);
+      this.logger.error(
+        'Cache delByTags error',
+        error instanceof Error ? error.stack : error,
+      );
     }
   }
 
@@ -162,7 +189,10 @@ export class RedisCacheService
     try {
       await this.client.flushDb();
     } catch (error) {
-      console.error('Cache clear error:', error);
+      this.logger.error(
+        'Cache clear error',
+        error instanceof Error ? error.stack : error,
+      );
     }
   }
 
@@ -172,7 +202,10 @@ export class RedisCacheService
     try {
       return (await this.client.exists(this.getKey(key))) > 0;
     } catch (error) {
-      console.error('Cache has error:', error);
+      this.logger.error(
+        'Cache has error',
+        error instanceof Error ? error.stack : error,
+      );
       return false;
     }
   }
@@ -181,9 +214,12 @@ export class RedisCacheService
     if (this.client && this.isConnected) {
       try {
         await this.client.quit();
-        console.log('Redis disconnected');
+        this.logger.log('Redis disconnected');
       } catch (error) {
-        console.error('Error disconnecting Redis:', error);
+        this.logger.error(
+          'Error disconnecting Redis',
+          error instanceof Error ? error.stack : error,
+        );
       }
     }
   }

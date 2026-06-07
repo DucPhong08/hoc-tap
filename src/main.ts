@@ -15,18 +15,51 @@ const SWAGGER_DESCRIPTION = 'API Documentation';
 const SWAGGER_VERSION = '1.0';
 
 export async function bootstrap() {
+  const isProduction =
+    process.env.NODE_ENV === 'production' || process.env.MODE === 'production';
+  const loggerLevels = isProduction
+    ? ['error', 'warn']
+    : ['error', 'warn', 'log', 'debug', 'verbose'];
+
   const app = await NestFactory.create(AppModule, {
     bufferLogs: true,
-    logger: ['error', 'warn'],
+    logger: loggerLevels as any,
   });
 
   const configService = app.get(ConfigService);
+
+  // Fail-fast JWT validation in production
+  const mode = configService.get<string>('mode');
+  const authConfig = configService.get<any>('auth');
+  if (mode === 'production') {
+    const jwtSecret = authConfig?.jwtSecret;
+    const jwtRefreshSecret = authConfig?.jwtRefreshSecret;
+    if (
+      !jwtSecret ||
+      jwtSecret === 'your-secret-key' ||
+      jwtSecret === 'default-secret'
+    ) {
+      throw new Error(
+        'PRODUCTION SECURITY ERROR: jwtSecret must be configured with a unique, secure value in production.',
+      );
+    }
+    if (!jwtRefreshSecret || jwtRefreshSecret === 'your-refresh-secret') {
+      throw new Error(
+        'PRODUCTION SECURITY ERROR: jwtRefreshSecret must be configured with a unique, secure value in production.',
+      );
+    }
+  }
 
   // App config
   app.setGlobalPrefix(API_PREFIX);
 
   // CORS
-  app.enableCors({});
+  const allowedOrigins =
+    configService.get<string[]>('cors.allowedOrigins') || [];
+  app.enableCors({
+    origin: allowedOrigins,
+    credentials: true,
+  });
 
   // Validation
   app.useGlobalPipes(

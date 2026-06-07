@@ -39,7 +39,6 @@ export function parseFields(
   return prefix ? fields.map((f) => `${prefix}.${f}`) : fields;
 }
 
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unused-vars */
 export function parsePopulation(
   population?: any[],
   prefix = '',
@@ -54,29 +53,31 @@ export function parsePopulation(
     if (typeof item === 'string') {
       populateOptions.push(item);
     } else if (item && typeof item === 'object') {
-      const field = item.path || item.field;
-      if (!field) continue;
+      const {
+        path,
+        filters,
+        sort,
+        limit,
+        select,
+        population: nestedPop,
+      } = item;
+      if (!path) continue;
 
-      const currentPrefix = prefix ? `${prefix}.${field}` : field;
+      const currentPrefix = prefix ? `${prefix}.${path}` : path;
+      const option: any = { field: path };
 
-      const option: any = { field };
-      const rawFilters = item.filters || item.where;
-      if (rawFilters) {
-        if (Array.isArray(rawFilters)) {
-          option.where = parseFilterRules(rawFilters);
-        } else {
-          option.where = rawFilters;
-        }
+      if (filters) {
+        option.where = Array.isArray(filters)
+          ? parseFilterRules(filters)
+          : filters;
       }
-      const rawSort = item.sort || item.orderBy;
-      if (rawSort) option.orderBy = Sort(rawSort);
-      if (item.limit) option.limit = item.limit;
+      if (sort) option.orderBy = Sort(sort);
+      if (limit) option.limit = limit;
 
-      if (item.select) {
-        extraFields.push(...parseFields(item.select, currentPrefix));
+      if (select) {
+        extraFields.push(...parseFields(select, currentPrefix));
       }
 
-      const nestedPop = item.population || item.populate;
       if (nestedPop && Array.isArray(nestedPop)) {
         const { populate: children, extraFields: childFields } =
           parsePopulation(nestedPop, currentPrefix);
@@ -95,36 +96,25 @@ export function parsePopulation(
 
 export function findOptions(query?: any): Record<string, any> {
   if (!query) return {};
-  const {
-    select,
-    fields,
-    populate,
-    population,
-    sort,
-    limit,
-    offset,
-    orderBy,
-    transaction,
-    softDelete,
-    page,
-    filters,
-    refresh,
-    ...rest
-  } = query;
+  const { select, population, sort, limit, offset } = query;
+  const rest = { ...query };
+  delete rest.select;
+  delete rest.population;
+  delete rest.sort;
+  delete rest.limit;
+  delete rest.offset;
+  delete rest.transaction;
+  delete rest.softDelete;
+  delete rest.refresh;
 
-  const rawSelect = select ?? fields ?? query.fields;
-  const rawPopulation = population ?? populate ?? query.populate;
-
-  const { populate: parsedPopulate, extraFields } =
-    parsePopulation(rawPopulation);
-  let parsedFields = parseFields(rawSelect);
+  const { populate: parsedPopulate, extraFields } = parsePopulation(population);
+  let parsedFields = parseFields(select);
 
   if (extraFields.length > 0) {
-    if (parsedFields.length === 0) {
-      parsedFields = extraFields;
-    } else {
-      parsedFields = [...parsedFields, ...extraFields];
-    }
+    parsedFields =
+      parsedFields.length === 0
+        ? extraFields
+        : [...parsedFields, ...extraFields];
   }
 
   const raw = {
@@ -146,7 +136,7 @@ export async function populateEntity<E extends BaseEntity>(
   options?: any,
 ): Promise<E | null> {
   if (entity) {
-    const rawPopulate = options?.population || options?.populate;
+    const rawPopulate = options?.population;
     if (rawPopulate) {
       const { populate } = parsePopulation(rawPopulate);
       if (populate.length > 0) {
@@ -160,4 +150,3 @@ export async function populateEntity<E extends BaseEntity>(
   }
   return entity;
 }
-/* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unused-vars */

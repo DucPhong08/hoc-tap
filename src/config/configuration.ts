@@ -21,6 +21,14 @@ export default function configuration(): ApplicationConfiguration {
       host: readStringValue(environment.HOST, '0.0.0.0'),
       port: readNumberValue(environment.PORT, 3000),
     },
+    cors: {
+      allowedOrigins: readStringValue(
+        environment.CORS_ALLOWED_ORIGINS,
+        'http://localhost:3000,http://localhost:3001',
+      )
+        .split(',')
+        .map((origin) => origin.trim()),
+    },
     auth: {
       jwtSecret: readStringValue(environment.JWT_SECRET, 'your-secret-key'),
       jwtExpiresIn: readStringValue(environment.JWT_EXPIRES_IN, '1d'),

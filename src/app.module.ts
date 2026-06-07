@@ -28,6 +28,7 @@ import { MonitoringModule } from './infra/monitoring/monitoring.module';
 import { WebsocketModule } from './infra/websocket/websocket.module';
 import { CronModule } from './infra/cron/cron.module';
 import { RequestLoggingMiddleware } from './common/middleware/request-logging.middleware';
+import { RolesModule } from './modules/roles/roles.module';
 // PLOP: IMPORT_MODULE
 
 @Module({
@@ -58,6 +59,7 @@ import { RequestLoggingMiddleware } from './common/middleware/request-logging.mi
     UsersModule,
     SettingsModule,
     AuditLogsModule,
+    RolesModule,
     // PLOP: IMPORT_ARRAY
   ],
   controllers: [AppController],

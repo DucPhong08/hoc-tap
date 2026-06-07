@@ -27,14 +27,23 @@ import {
   findOptions,
   populateEntity,
 } from './mikro-orm/helpers';
+import { RepositoryConfig } from 'src/common/types/repository.types';
+import { mergeMethodOptions } from './mikro-orm/populate-config';
 
 export abstract class MikroOrmBaseRepository<
   E extends BaseEntity,
   TContext extends EntityManager = EntityManager,
 > implements IBaseRepository<E, TContext> {
-  constructor(protected readonly repository: EntityRepository<E>) {}
+  constructor(
+    protected readonly repository: EntityRepository<E>,
+    protected readonly config?: RepositoryConfig<E>,
+  ) {}
 
   protected get em(): EntityManager {
+    return this.repository.getEntityManager();
+  }
+
+  getEntityManager(): EntityManager {
     return this.repository.getEntityManager();
   }
 
@@ -87,13 +96,18 @@ export abstract class MikroOrmBaseRepository<
   // ===========================================================================
 
   async getById(id: string, query?: FindQuery<E, TContext>): Promise<E | null> {
-    const { repository } = resolveContext(this.em, this.repository, query);
+    const mergedQuery = mergeMethodOptions(this.config, 'getById', query);
+    const { repository } = resolveContext(
+      this.em,
+      this.repository,
+      mergedQuery,
+    );
 
     return repository.findOne<string, string>(
       Filter({ id } as QueryCondition<E>, {
-        softDelete: query?.softDelete,
+        softDelete: mergedQuery?.softDelete,
       }),
-      findOptions(query),
+      findOptions(mergedQuery),
     ) as Promise<E | null>;
   }
 
@@ -101,13 +115,18 @@ export abstract class MikroOrmBaseRepository<
     condition: QueryCondition<E>,
     query?: FindQuery<E, TContext>,
   ): Promise<E | null> {
-    const { repository } = resolveContext(this.em, this.repository, query);
+    const mergedQuery = mergeMethodOptions(this.config, 'getOne', query);
+    const { repository } = resolveContext(
+      this.em,
+      this.repository,
+      mergedQuery,
+    );
 
     return repository.findOne<string, string>(
       Filter(condition, {
-        softDelete: query?.softDelete,
+        softDelete: mergedQuery?.softDelete,
       }),
-      findOptions(query),
+      findOptions(mergedQuery),
     ) as Promise<E | null>;
   }
 
@@ -115,13 +134,18 @@ export abstract class MikroOrmBaseRepository<
     condition: QueryCondition<E>,
     query?: FindQuery<E, TContext>,
   ): Promise<E[]> {
-    const { repository } = resolveContext(this.em, this.repository, query);
+    const mergedQuery = mergeMethodOptions(this.config, 'getMany', query);
+    const { repository } = resolveContext(
+      this.em,
+      this.repository,
+      mergedQuery,
+    );
 
     return repository.find<string, string>(
       Filter(condition, {
-        softDelete: query?.softDelete,
+        softDelete: mergedQuery?.softDelete,
       }),
-      findOptions(query),
+      findOptions(mergedQuery),
     ) as Promise<E[]>;
   }
 
@@ -129,13 +153,18 @@ export abstract class MikroOrmBaseRepository<
     condition: QueryCondition<E>,
     query: FindQuery<E, TContext> & { page: number; limit: number },
   ): Promise<PaginationResult<E>> {
-    const { repository } = resolveContext(this.em, this.repository, query);
-    const { page, limit } = query;
+    const mergedQuery = mergeMethodOptions(this.config, 'getPage', query);
+    const { repository } = resolveContext(
+      this.em,
+      this.repository,
+      mergedQuery,
+    );
+    const { page, limit } = mergedQuery;
     const offset = (page - 1) * limit;
     const filter = Filter(condition, {
-      softDelete: query.softDelete,
+      softDelete: mergedQuery.softDelete,
     });
-    const fOptions = findOptions(query);
+    const fOptions = findOptions(mergedQuery);
 
     fOptions.limit = limit;
     fOptions.offset = offset;
@@ -262,23 +291,19 @@ export abstract class MikroOrmBaseRepository<
     condition: QueryCondition<E>,
     options?: DeleteCommand & CommandOptions<TContext, E>,
   ): Promise<BulkDeleteResult> {
-    const { em } = resolveContext(this.em, this.repository, options);
-    const entities = await this.getMany(condition, options);
+    const { repository } = resolveContext(this.em, this.repository, options);
+    const filter = Filter(condition, { softDelete: false });
 
     if (options?.soft === false) {
-      await em.remove(entities).flush();
-      return { deleted: entities.length };
+      const deleted = await repository.nativeDelete(filter);
+      return { deleted };
     }
 
-    const deletedAt = new Date();
+    const deleted = await repository.nativeUpdate(filter, {
+      deletedAt: new Date(),
+    } as any);
 
-    entities.forEach((entity) => {
-      entity.deletedAt = deletedAt;
-    });
-
-    await em.flush();
-
-    return { deleted: entities.length };
+    return { deleted };
   }
 
   // ===========================================================================
@@ -309,7 +334,6 @@ export abstract class MikroOrmBaseRepository<
 
     const result = await repository.findOne(filter, {
       fields: ['id'] as any,
-      ...findOptions(query),
     });
 
     return result !== null;

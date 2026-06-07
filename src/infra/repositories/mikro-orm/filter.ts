@@ -13,7 +13,7 @@ export function parseFilterRules<E>(
 
   for (const rule of rules) {
     const { field, operator, values } = rule;
-    const f = String(field);
+    const f = Array.isArray(field) ? field.join('.') : String(field);
     let condition: any = undefined;
 
     switch (operator) {

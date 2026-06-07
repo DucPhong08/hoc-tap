@@ -14,6 +14,9 @@ export interface AuthConfig {
 export interface ApplicationConfiguration {
   mode: 'development' | 'production' | 'test';
   host: HostConfig;
+  cors: {
+    allowedOrigins: string[];
+  };
   auth: AuthConfig;
   cache: {
     enabled: boolean;

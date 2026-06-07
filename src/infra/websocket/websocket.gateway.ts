@@ -22,7 +22,25 @@ const USER_ROOM_PREFIX = 'user:';
 
 @WebSocketGateway({
   cors: {
-    origin: '*',
+    origin: (
+      requestOrigin: string | undefined,
+      callback: (err: Error | null, allow?: boolean) => void,
+    ) => {
+      const envOrigins = process.env.CORS_ALLOWED_ORIGINS;
+      const allowed = envOrigins
+        ? envOrigins.split(',').map((o) => o.trim())
+        : ['http://localhost:3000', 'http://localhost:3001'];
+
+      if (
+        !requestOrigin ||
+        allowed.includes(requestOrigin) ||
+        allowed.includes('*')
+      ) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     credentials: true,
   },
   namespace: '/',
