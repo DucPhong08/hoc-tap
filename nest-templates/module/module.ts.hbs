@@ -2,9 +2,13 @@ import { Module } from '@nestjs/common';
 import { {{pascalCase (singularize name)}}Repository } from './repositories/{{kebabCase (singularize name)}}.repository';
 import { {{pascalCase (singularize name)}}Service } from './services/{{kebabCase (singularize name)}}.service';
 import { {{pascalCase (singularize name)}}Controller } from './controllers/{{kebabCase (singularize name)}}.controller';
+import { registerEntities } from 'src/database/entity-registry.helper';
+import { {{pascalCase (singularize name)}} } from './entities/{{kebabCase (singularize name)}}.entity';
 
 @Module({
+  imports: [...registerEntities([{{pascalCase (singularize name)}}])],
   controllers: [{{pascalCase (singularize name)}}Controller],
   providers: [{{pascalCase (singularize name)}}Service, {{pascalCase (singularize name)}}Repository],
 })
 export class {{pascalCase (pluralize name)}}Module {}
+

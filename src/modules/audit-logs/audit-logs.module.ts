@@ -6,10 +6,12 @@ import { AuditLogService } from './services/audit-log.service';
 import { AuditCleanupService } from './services/audit-cleanup.service';
 import { AuditLogController } from './controllers/audit-log.controller';
 import { AuditInterceptor } from './interceptors/audit.interceptor';
+import { registerEntities } from 'src/database/entity-registry.helper';
+import { AuditLog } from './entities/audit-log.entity';
 
 @Global()
 @Module({
-  imports: [ScheduleModule.forRoot()],
+  imports: [ScheduleModule.forRoot(), ...registerEntities([AuditLog])],
   controllers: [AuditLogController],
   providers: [
     AuditLogRepository,
@@ -21,6 +23,6 @@ import { AuditInterceptor } from './interceptors/audit.interceptor';
       useExisting: AuditInterceptor,
     },
   ],
-  exports: [AuditLogService, AuditInterceptor],
+  exports: [AuditInterceptor],
 })
 export class AuditLogsModule {}

@@ -2,7 +2,6 @@ import { Global, Module } from '@nestjs/common';
 import { MikroOrmModule } from '@mikro-orm/nestjs';
 import { MigrationService } from './migration.service';
 import { DB_CONTEXTS } from 'src/database/database.constants';
-import { getEntitiesByContext } from './entity-registry.helper';
 import { DatabaseContextRegistry } from './registration/database-context.registry';
 import { DatabaseEnvironmentReader } from './env/database-environment.reader';
 import { DatabaseEnvironmentValidator } from './env/database-environment.validator';
@@ -21,18 +20,10 @@ import { LogsMikroOrmOptionsFactory } from './runtime/logs-mikro-orm-options.fac
       useClass: MainMikroOrmOptionsFactory,
       contextName: DB_CONTEXTS.MAIN,
     }),
-    MikroOrmModule.forFeature({
-      entities: getEntitiesByContext(DB_CONTEXTS.MAIN),
-      contextName: DB_CONTEXTS.MAIN,
-    }),
 
     // ── LOGS database ─────────────────────────────────────────────────
     MikroOrmModule.forRootAsync({
       useClass: LogsMikroOrmOptionsFactory,
-      contextName: DB_CONTEXTS.LOGS,
-    }),
-    MikroOrmModule.forFeature({
-      entities: getEntitiesByContext(DB_CONTEXTS.LOGS),
       contextName: DB_CONTEXTS.LOGS,
     }),
   ],
@@ -48,10 +39,6 @@ import { LogsMikroOrmOptionsFactory } from './runtime/logs-mikro-orm-options.fac
     LogsMikroOrmOptionsFactory,
     MigrationService,
   ],
-  exports: [
-    DatabaseContextConfigService,
-    DatabaseOptionsFactory,
-    MikroOrmModule,
-  ],
+  exports: [DatabaseContextConfigService, DatabaseOptionsFactory],
 })
 export class MikroOrmDatabaseModule {}
