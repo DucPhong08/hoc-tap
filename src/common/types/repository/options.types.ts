@@ -4,6 +4,7 @@ import type {
 } from '@mikro-orm/core';
 import type { Paths } from './util.types';
 import type { PopulationQuery } from './populate.types';
+import { FilterRule } from './filter.types';
 
 export interface BaseOptions<T = unknown> {
   transaction?: T;
@@ -22,7 +23,6 @@ export interface QueryOptions<T = unknown, E extends object = any>
       | 'connectionType'
       | 'indexHint'
     > {
-  /** true nếu muốn lấy cả các bản ghi đã bị xóa tạm  */
   softDelete?: boolean;
 }
 
@@ -38,9 +38,11 @@ export interface FindQuery<
   TContext = unknown,
 > extends QueryOptions<TContext, E> {
   select?: Partial<Record<Paths<E>, 1 | 0>> | Paths<E>[];
+  filters?: FilterRule<E>[];
   population?: PopulationQuery<E>[];
   sort?: Partial<Record<Paths<E>, 1 | -1>>;
-  /** Buộc nạp lại từ DB và làm mới dữ liệu trong bộ nhớ RAM của ORM */
+  limit?: number;
+  offset?: number;
   refresh?: boolean;
 }
 

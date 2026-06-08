@@ -7,14 +7,10 @@ export interface PopulationOptions<
   E extends object,
   P extends Paths<E> = Paths<E>,
 > {
-  /** Tên trường (relation) cần nạp (Mongoose style: path) */
   path: P;
-  /** Chọn các trường cần lấy (Mongoose style: select: { id: 1, name: 1 }) */
-  select?: Partial<Record<Paths<Target<E, P>>, 1 | 0>> | Paths<Target<E, P>>[];
-  /** Điều kiện lọc (filter) chỉ áp dụng cho relation này (Mongoose style: filters) */
+  select?: Partial<Record<Paths<Target<E, P>>, 1 | 0>>;
   filters?: FilterRule<Target<E, P>>[];
   sort?: Partial<Record<Paths<Target<E, P>>, 1 | -1>>;
-  /** Số lượng bản ghi tối đa lấy ra cho relation này */
   limit?: number;
   population?: PopulationQuery<Target<E, P>>[];
 }
