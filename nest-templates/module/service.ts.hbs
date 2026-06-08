@@ -3,6 +3,7 @@ import { BaseCrudService } from '../../../infra/services/base-crud.service';
 import { {{pascalCase (singularize name)}} } from '../entities/{{kebabCase (singularize name)}}.entity';
 import { {{pascalCase (singularize name)}}Repository } from '../repositories/{{kebabCase (singularize name)}}.repository';
 import type { BaseTransaction } from '../../../infra/transaction/base-transaction.interface';
+import { EntityManager } from '@mikro-orm/core';
 import { InjectTransaction } from '../../../infra/transaction/transaction.provider';
 
 @Injectable()

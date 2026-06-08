@@ -14,7 +14,7 @@ import type { BaseTransaction } from '../../../infra/transaction/base-transactio
 import { InjectTransaction } from '../../../infra/transaction/transaction.provider';
 
 @Injectable()
-export class UserService extends BaseCrudService<User, EntityManager> {
+export class UserService extends BaseCrudService<User> {
   constructor(
     private readonly userRepository: UserRepository,
     @Optional()

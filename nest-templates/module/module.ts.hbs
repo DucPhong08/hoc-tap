@@ -6,6 +6,5 @@ import { {{pascalCase (singularize name)}}Controller } from './controllers/{{keb
 @Module({
   controllers: [{{pascalCase (singularize name)}}Controller],
   providers: [{{pascalCase (singularize name)}}Service, {{pascalCase (singularize name)}}Repository],
-  exports: [{{pascalCase (singularize name)}}Service, {{pascalCase (singularize name)}}Repository],
 })
 export class {{pascalCase (pluralize name)}}Module {}
