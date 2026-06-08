@@ -1,18 +1,9 @@
-import {
-  Entity,
-  PrimaryKey,
-  Property,
-  SerializedPrimaryKey,
-} from '@mikro-orm/core';
-import { ObjectId } from '@mikro-orm/mongodb';
-import { v4 as uuidv4 } from 'uuid';
+import { Entity, Property } from '@mikro-orm/core';
+import { SmartPrimaryKey } from '../decorators/smart-primary-key.decorator';
 
 @Entity({ abstract: true })
 export abstract class BaseEntity {
-  @PrimaryKey({ type: 'uuid' })
-  _id: string | ObjectId = uuidv4();
-
-  @SerializedPrimaryKey()
+  @SmartPrimaryKey()
   id!: string;
 
   @Property({ onCreate: () => new Date(), nullable: true })
