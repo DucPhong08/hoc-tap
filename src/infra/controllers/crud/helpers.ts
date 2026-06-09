@@ -1,6 +1,7 @@
-import { Type, NotFoundException } from '@nestjs/common';
+import { Type } from '@nestjs/common';
 import { Authorize } from '../../../common/decorators/authorize.decorator';
 import { Auditable } from '../../../common/decorators/auditable.decorator';
+import { ApiError } from '../../../common/exceptions/api-error';
 import { AuditAction } from '../../../modules/audit-logs/enums/audit-action.enum';
 import type {
   BaseRoute,
@@ -19,55 +20,55 @@ const CRUD_AUDIT_ACTIONS: Partial<Record<BaseRoute, AuditAction>> = {
   deleteByIds: AuditAction.DELETE,
 };
 
-export const renameGeneratedClass = <T>(
-  name: string,
-  cls: Type<T>,
-): Type<T> => {
-  const renamedClass = class extends (cls as Type<object>) {};
-  Object.defineProperty(renamedClass, 'name', { value: name });
-  return renamedClass as Type<T>;
-};
-
-export const normalizeRouteConfig = (
+export const toConfig = (
   config: boolean | RouteConfig | undefined,
 ): Required<RouteConfig> => {
-  if (config === undefined || config === true) {
-    return { enabled: true, roles: [] };
+  if (typeof config === 'boolean') {
+    return { enabled: config, roles: [] };
   }
-
-  if (config === false) {
-    return { enabled: false, roles: [] };
-  }
-
   return {
-    enabled: config.enabled !== false,
-    roles: config.roles || [],
+    enabled: config?.enabled ?? true,
+    roles: config?.roles ?? [],
   };
 };
 
-export const buildRouteConfigMap = (
+export const getRouteConfigs = (
   routes: CrudOptions['routes'] | undefined,
 ): Record<BaseRoute, Required<RouteConfig>> => ({
-  create: normalizeRouteConfig(routes?.create),
-  getMany: normalizeRouteConfig(routes?.getMany),
-  getPage: normalizeRouteConfig(routes?.getPage),
-  getById: normalizeRouteConfig(routes?.getById),
-  getOne: normalizeRouteConfig(routes?.getOne),
-  updateOne: normalizeRouteConfig(routes?.updateOne),
-  updateById: normalizeRouteConfig(routes?.updateById),
-  updateByIds: normalizeRouteConfig(routes?.updateByIds),
-  deleteOne: normalizeRouteConfig(routes?.deleteOne),
-  deleteById: normalizeRouteConfig(routes?.deleteById),
-  deleteByIds: normalizeRouteConfig(routes?.deleteByIds),
+  create: toConfig(routes?.create),
+  getMany: toConfig(routes?.getMany),
+  getPage: toConfig(routes?.getPage),
+  getById: toConfig(routes?.getById),
+  getOne: toConfig(routes?.getOne),
+  updateOne: toConfig(routes?.updateOne),
+  updateById: toConfig(routes?.updateById),
+  updateByIds: toConfig(routes?.updateByIds),
+  deleteOne: toConfig(routes?.deleteOne),
+  deleteById: toConfig(routes?.deleteById),
+  deleteByIds: toConfig(routes?.deleteByIds),
 });
 
 export const assertRouteEnabled = (config: RouteConfig): void => {
   if (!config.enabled) {
-    throw new NotFoundException('Route not available');
+    throw ApiError.NotFound('error-route-not-available');
   }
 };
 
-export function setupCrudAuthorization(
+const decorate = (
+  targetClass: Type<object>,
+  handlerName: string,
+  decorator: MethodDecorator,
+): void => {
+  const descriptor = Object.getOwnPropertyDescriptor(
+    targetClass.prototype,
+    handlerName,
+  );
+  if (descriptor) {
+    decorator(targetClass.prototype as object, handlerName, descriptor);
+  }
+};
+
+export function setupAuthorization(
   controllerClass: Type<object>,
   routeDefinitions: CrudRouteDefinition[],
   routeConfigs: Record<BaseRoute, Required<RouteConfig>>,
@@ -79,28 +80,13 @@ export function setupCrudAuthorization(
 
   routeDefinitions.forEach(({ route, handlerName }) => {
     const routeConfig = routeConfigs[route];
-    if (!routeConfig.enabled) {
-      return;
+    if (routeConfig.enabled) {
+      decorate(controllerClass, handlerName, Authorize(...routeConfig.roles));
     }
-
-    const handlerDescriptor = Object.getOwnPropertyDescriptor(
-      controllerClass.prototype,
-      handlerName,
-    );
-
-    if (!handlerDescriptor) {
-      return;
-    }
-
-    Authorize(...routeConfig.roles)(
-      controllerClass.prototype,
-      handlerName,
-      handlerDescriptor,
-    );
   });
 }
 
-export function setupCrudAudit(
+export function setupAudit(
   controllerClass: Type<object>,
   routeDefinitions: CrudRouteDefinition[],
   routeConfigs: Record<BaseRoute, Required<RouteConfig>>,
@@ -109,23 +95,8 @@ export function setupCrudAudit(
     const action = CRUD_AUDIT_ACTIONS[route];
     const routeConfig = routeConfigs[route];
 
-    if (!action || !routeConfig.enabled) {
-      return;
+    if (action && routeConfig.enabled) {
+      decorate(controllerClass, handlerName, Auditable({ action }));
     }
-
-    const handlerDescriptor = Object.getOwnPropertyDescriptor(
-      controllerClass.prototype,
-      handlerName,
-    );
-
-    if (!handlerDescriptor) {
-      return;
-    }
-
-    Auditable({ action })(
-      controllerClass.prototype,
-      handlerName,
-      handlerDescriptor,
-    );
   });
 }

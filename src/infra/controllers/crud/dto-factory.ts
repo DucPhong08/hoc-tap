@@ -6,7 +6,11 @@ import { BaseEntity } from '../../../common/entity/base.entity';
 import type { UpdateData } from '../../../common/interfaces/repository.interface';
 import { DtoValidationPipe } from '../../../common/pipes';
 import { DeleteManyByIdsDto } from '../../../common/dto/delete-many-byIds.dto';
-import { renameGeneratedClass } from './helpers';
+const rename = <T>(name: string, cls: Type<T>): Type<T> => {
+  const renamed = class extends (cls as Type<object>) {};
+  Object.defineProperty(renamed, 'name', { value: name });
+  return renamed as Type<T>;
+};
 
 export interface CrudDtoBundle {
   ConditionDto: Type<unknown>;
@@ -31,21 +35,16 @@ export const createCrudDtoBundle = <E extends BaseEntity>(
 ): CrudDtoBundle => {
   const ConditionDto =
     conditionDto ||
-    renameGeneratedClass(
-      `${entityType.name}ConditionDto`,
-      PartialType(entityType),
-    );
-
+    rename(`${entityType.name}ConditionDto`, PartialType(entityType));
   const CreateDto =
     createDto ||
-    renameGeneratedClass(
+    rename(
       `Create${entityType.name}Dto`,
       OmitType(entityType, BASE_OMIT_FIELDS),
     );
-
   const UpdateDto =
     updateDto ||
-    renameGeneratedClass(
+    rename(
       `Update${entityType.name}Dto`,
       PartialType(OmitType(entityType, BASE_OMIT_FIELDS)),
     );
@@ -61,7 +60,7 @@ export const createCrudDtoBundle = <E extends BaseEntity>(
     update: UpdateData<E>;
   }
 
-  const UpdateManyIdsDto = renameGeneratedClass(
+  const UpdateManyIdsDto = rename(
     `UpdateMany${entityType.name}IdsDto`,
     UpdateManyByIdsDto,
   );
