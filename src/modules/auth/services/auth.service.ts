@@ -13,7 +13,7 @@ import {
   OAuthProfile,
 } from '../interfaces/oauth-profile.interface';
 import { AuthProvider } from '../enums/auth-provider.enum';
-import { Role } from '../../users/constant/constant';
+import { SystemRole } from '../../roles/enums/system-role.enum';
 import type { StringValue } from 'ms';
 
 @Injectable()
@@ -49,7 +49,7 @@ export class AuthService {
   }
 
   async login(email: string, password: string): Promise<LoginResponse> {
-    const user = await this.userService.findByEmail(email);
+    const [user] = await this.userService.getMany(null, { email });
 
     if (!user || user.provider !== AuthProvider.LOCAL) {
       throw ApiError.Unauthorized('error-invalid-credentials');
@@ -76,7 +76,10 @@ export class AuthService {
     let user;
 
     if (!user) {
-      user = await this.userService.findByEmail(profile.email);
+      const [existingUser] = await this.userService.getMany(null, {
+        email: profile.email,
+      });
+      user = existingUser;
 
       if (user) {
         user = await this.userService.updateById(null, user.id, {
@@ -136,7 +139,7 @@ export class AuthService {
     const payload: JwtPayload = {
       sub: user.id,
       email: user.email,
-      roles: (user.roles as Role[]) || [Role.USER],
+      roles: user.roles || [SystemRole.USER],
     };
 
     const accessToken = this.jwtService.sign(payload);
@@ -159,7 +162,7 @@ export class AuthService {
       email: user.email,
       firstName: user.firstName,
       lastName: user.lastName,
-      roles: (user.roles as Role[]) || [Role.USER],
+      roles: user.roles || [SystemRole.USER],
       provider: user.provider || AuthProvider.LOCAL,
       avatar: user.avatar,
       isActive: user.isActive,

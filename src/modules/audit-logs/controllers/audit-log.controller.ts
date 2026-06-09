@@ -3,11 +3,11 @@ import { ApiTags, ApiQuery } from '@nestjs/swagger';
 import { AuditLogService } from '../services/audit-log.service';
 import { AuditLog } from '../entities/audit-log.entity';
 import { Roles } from '../../../common/decorators/roles.decorator';
-import { Role } from '../../users/constant/constant';
+import { SystemRole } from '../../roles/enums/system-role.enum';
 
 @ApiTags('audit-logs')
 @Controller('audit-logs')
-@Roles(Role.ADMIN)
+@Roles(SystemRole.ADMIN)
 export class AuditLogController {
   constructor(private readonly auditLogService: AuditLogService) {}
 
@@ -39,7 +39,6 @@ export class AuditLogController {
     name: 'days',
     required: true,
     type: Number,
-    description: 'Delete logs older than N days',
   })
   async cleanupOldLogs(
     @Query('days') days: number,

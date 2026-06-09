@@ -6,53 +6,54 @@ import {
 import { BaseEntity } from '../../../common/entity/base.entity';
 import { Sort } from './sort';
 import { parseFilterRules } from './filter';
+import type { PopulationQuery } from '../../../common/types/repository/populate.types';
+import type {
+  FindQuery,
+  CommandOptions,
+} from '../../../common/types/repository/options.types';
 
-export function resolveContext<E extends BaseEntity>(
-  entityManager: EntityManager,
-  repository: EntityRepository<E>,
-  options?: { transaction?: EntityManager },
-): { em: EntityManager; repository: EntityRepository<E> } {
-  const transaction = options?.transaction;
-  return !transaction || transaction === entityManager
-    ? { em: entityManager, repository }
+export const resolveContext = <E extends BaseEntity>(
+  em: EntityManager,
+  repo: EntityRepository<E>,
+  opts?: { transaction?: EntityManager },
+): { em: EntityManager; repository: EntityRepository<E> } => {
+  const tx = opts?.transaction;
+  return !tx || tx === em
+    ? { em, repository: repo }
     : {
-        em: transaction,
-        repository: transaction.getRepository(
-          repository.getEntityName(),
+        em: tx,
+        repository: tx.getRepository(
+          repo.getEntityName(),
         ) as unknown as EntityRepository<E>,
       };
-}
+};
 
-export function parseFields(
-  select?: string[] | Record<string, 1 | 0>,
+export const parseFields = (
+  select?: string[] | Record<string, any>,
   prefix = '',
-): string[] {
+): string[] => {
   if (!select) return [];
-  let fields: string[] = [];
-  if (Array.isArray(select)) {
-    fields = select;
-  } else if (typeof select === 'object') {
-    fields = Object.entries(select as Record<string, unknown>)
-      .filter(([, v]) => v === 1 || v === '1' || v === true)
-      .map(([k]) => k);
-  }
+  const fields = Array.isArray(select)
+    ? select
+    : Object.entries(select)
+        .filter(([, v]) => v === 1 || v === '1' || v === true)
+        .map(([k]) => k);
   return prefix ? fields.map((f) => `${prefix}.${f}`) : fields;
-}
+};
 
 export function parsePopulation(
-  population?: any[],
+  population?: PopulationQuery<any>[],
   prefix = '',
-): { populate: any[]; extraFields: string[] } {
-  if (!population || !Array.isArray(population))
-    return { populate: [], extraFields: [] };
+): { populate: unknown[]; extraFields: string[] } {
+  if (!Array.isArray(population)) return { populate: [], extraFields: [] };
 
-  const populateOptions: any[] = [];
+  const populate: unknown[] = [];
   const extraFields: string[] = [];
 
   for (const item of population) {
     if (typeof item === 'string') {
-      populateOptions.push(item);
-    } else if (item && typeof item === 'object') {
+      populate.push(item);
+    } else if (item?.path) {
       const {
         path,
         filters,
@@ -61,61 +62,51 @@ export function parsePopulation(
         select,
         population: nestedPop,
       } = item;
-      if (!path) continue;
+      const currPrefix = prefix ? `${prefix}.${path}` : path;
+      const option: {
+        field: string;
+        where?: unknown;
+        orderBy?: unknown;
+        limit?: number;
+        children?: unknown[];
+      } = { field: path };
 
-      const currentPrefix = prefix ? `${prefix}.${path}` : path;
-      const option: any = { field: path };
-
-      if (filters) {
+      if (filters)
         option.where = Array.isArray(filters)
           ? parseFilterRules(filters)
           : filters;
-      }
       if (sort) option.orderBy = Sort(sort);
       if (limit) option.limit = limit;
+      if (select) extraFields.push(...parseFields(select, currPrefix));
 
-      if (select) {
-        extraFields.push(...parseFields(select, currentPrefix));
+      if (Array.isArray(nestedPop)) {
+        const child = parsePopulation(nestedPop, currPrefix);
+        if (child.populate.length > 0) option.children = child.populate;
+        extraFields.push(...child.extraFields);
       }
-
-      if (nestedPop && Array.isArray(nestedPop)) {
-        const { populate: children, extraFields: childFields } =
-          parsePopulation(nestedPop, currentPrefix);
-        if (children.length > 0) {
-          option.children = children;
-        }
-        extraFields.push(...childFields);
-      }
-
-      populateOptions.push(option);
+      populate.push(option);
     }
   }
-
-  return { populate: populateOptions, extraFields };
+  return { populate, extraFields };
 }
 
-export function findOptions(query?: any): Record<string, any> {
+export function findOptions(query?: FindQuery<any>): Record<string, any> {
   if (!query) return {};
   const { select, population, sort, limit, offset } = query;
   const rest = { ...query };
-  delete rest.select;
-  delete rest.population;
-  delete rest.sort;
-  delete rest.limit;
-  delete rest.offset;
-  delete rest.transaction;
-  delete rest.softDelete;
-  delete rest.refresh;
+  [
+    'select',
+    'population',
+    'sort',
+    'limit',
+    'offset',
+    'transaction',
+    'softDelete',
+    'refresh',
+  ].forEach((k) => delete rest[k]);
 
   const { populate: parsedPopulate, extraFields } = parsePopulation(population);
-  let parsedFields = parseFields(select);
-
-  if (extraFields.length > 0) {
-    parsedFields =
-      parsedFields.length === 0
-        ? extraFields
-        : [...parsedFields, ...extraFields];
-  }
+  const parsedFields = [...parseFields(select), ...extraFields];
 
   const raw = {
     fields: parsedFields.length > 0 ? parsedFields : undefined,
@@ -131,22 +122,16 @@ export function findOptions(query?: any): Record<string, any> {
 }
 
 export async function populateEntity<E extends BaseEntity>(
-  entityManager: EntityManager,
+  em: EntityManager,
   entity: E | null,
-  options?: any,
+  opts?: CommandOptions<EntityManager, E>,
 ): Promise<E | null> {
-  if (entity) {
-    const rawPopulate = options?.population;
-    if (rawPopulate) {
-      const { populate } = parsePopulation(rawPopulate);
-      if (populate.length > 0) {
-        await entityManager.populate(
-          entity,
-          populate as unknown as Populate<E>,
-        );
-      }
-    }
-    if (options?.refresh) await entityManager.refresh(entity);
+  if (!entity) return null;
+  if (opts?.population) {
+    const { populate } = parsePopulation(opts.population);
+    if (populate.length > 0)
+      await em.populate(entity, populate as unknown as Populate<E>);
   }
+  if (opts?.refresh) await em.refresh(entity);
   return entity;
 }

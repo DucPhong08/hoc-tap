@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { EntityManager, EntityRepository } from '@mikro-orm/core';
+import { EntityRepository } from '@mikro-orm/core';
 import { InjectEntityRepository } from 'src/database/entity-registry.helper';
 import { MikroOrmBaseRepository } from '../../../infra/repositories/mikro-orm-base.repository';
 import { {{pascalCase (singularize name)}} } from '../entities/{{kebabCase (singularize name)}}.entity';
@@ -9,14 +9,13 @@ const POPULATION: PopulationQuery<{{pascalCase (singularize name)}}>[] = [];
 
 @Injectable()
 export class {{pascalCase (singularize name)}}Repository extends MikroOrmBaseRepository<
-  {{pascalCase (singularize name)}},
-  EntityManager
+  {{pascalCase (singularize name)}}
 > {
   constructor(
     @InjectEntityRepository({{pascalCase (singularize name)}})
-    repository: EntityRepository<{{pascalCase (singularize name)}}>,
+    private readonly {{camelCase (singularize name)}}Repo: EntityRepository<{{pascalCase (singularize name)}}>,  
   ) {
-    super(repository, {
+    super({{camelCase (singularize name)}}Repo, {
       populate: {
         getById: POPULATION,
         getOne: POPULATION,

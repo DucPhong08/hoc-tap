@@ -44,23 +44,37 @@ export class AuditLogService {
   }
 
   async getUserActions(userId: string, limit = 100): Promise<AuditLog[]> {
-    return this.repository.getUserActions(userId, limit);
+    const result = await this.repository.getPage(
+      { userId },
+      { limit, page: 1, sort: { createdAt: -1 } },
+    );
+    return result.data;
   }
 
   async getEntityHistory(
     entityType: string,
     entityId: string,
   ): Promise<AuditLog[]> {
-    return this.repository.getEntityHistory(entityType, entityId);
+    return this.repository.getMany(
+      { entityType, entityId },
+      { sort: { createdAt: 1 } },
+    );
   }
 
   async getRecentActions(limit = 50): Promise<AuditLog[]> {
-    return this.repository.getRecentActions(limit);
+    const result = await this.repository.getPage(
+      {},
+      { limit, page: 1, sort: { createdAt: -1 } },
+    );
+    return result.data;
   }
 
   async cleanupOldLogs(olderThanDays: number): Promise<number> {
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - olderThanDays);
-    return this.repository.deleteOlderThan(cutoffDate);
+    const result = await this.repository.deleteMany({
+      createdAt: { $lt: cutoffDate },
+    });
+    return result.deleted;
   }
 }

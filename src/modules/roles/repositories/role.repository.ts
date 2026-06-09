@@ -9,9 +9,9 @@ const POPULATION = [];
 export class RoleRepository extends MikroOrmBaseRepository<Role> {
   constructor(
     @InjectEntityRepository(Role)
-    repository: EntityRepository<Role>,
+    private readonly roleRepo: EntityRepository<Role>,
   ) {
-    super(repository, {
+    super(roleRepo, {
       populate: {
         getById: POPULATION,
         getOne: POPULATION,

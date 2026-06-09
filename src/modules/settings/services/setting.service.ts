@@ -31,7 +31,7 @@ export class SettingService extends BaseCrudService<Setting, EntityManager> {
   async getSettingValue<T extends SettingKey>(
     key: T,
   ): Promise<SettingValue<T> | null> {
-    const setting = await this.settingRepository.findByKey(key);
+    const setting = await this.settingRepository.getOne({ key });
     if (!setting) {
       return null;
     }
@@ -62,7 +62,7 @@ export class SettingService extends BaseCrudService<Setting, EntityManager> {
     }
 
     return this.executeWithTransaction(undefined, async (txOptions) => {
-      const existing = await this.settingRepository.findByKey(key, txOptions);
+      const existing = await this.settingRepository.getOne({ key }, txOptions);
 
       if (existing) {
         return super.updateById(

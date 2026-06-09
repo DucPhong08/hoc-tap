@@ -40,11 +40,10 @@ import type {
 } from '../../common/interfaces/repository.interface';
 import { BaseCrudService } from '../services/base-crud.service';
 import {
-  setupCrudAuthorization,
-  setupCrudAudit,
+  setupAuthorization,
+  setupAudit,
   assertRouteEnabled,
-  buildRouteConfigMap,
-  renameGeneratedClass,
+  getRouteConfigs,
 } from './crud/helpers';
 import { createCrudDtoBundle } from './crud/dto-factory';
 import type {
@@ -53,6 +52,7 @@ import type {
   CrudRouteDefinition,
   RouteConfig,
 } from './crud/types';
+import { SystemRole } from 'src/modules/roles/enums/system-role.enum';
 
 export type { BaseRoute, CrudOptions, RouteConfig };
 
@@ -70,14 +70,14 @@ const CRUD_ROUTE_DEFINITIONS: CrudRouteDefinition[] = [
   { route: 'deleteByIds', handlerName: 'deleteEntitiesByIds' },
 ];
 
-export function createCrudController<E extends BaseEntity>(
+export function BaseCrudControllerFactory<E extends BaseEntity>(
   entityType: Type<E>,
   createDto?: Type<unknown>,
   updateDto?: Type<unknown>,
   conditionDto?: Type<unknown>,
   options: CrudOptions = {},
 ): Type<object> {
-  const routeConfigs = buildRouteConfigMap(options.routes);
+  const routeConfigs = getRouteConfigs(options.routes);
   const {
     ConditionDto,
     CreateDto,
@@ -90,7 +90,6 @@ export function createCrudController<E extends BaseEntity>(
     constructor(protected readonly service: BaseCrudService<E>) {}
 
     @Post()
-    @HttpCode(HTTP_STATUS.CREATED)
     @ApiCreatedResponse({
       description: HTTP_STATUS_MESSAGE[HTTP_STATUS.CREATED],
       type: entityType,
@@ -141,7 +140,6 @@ export function createCrudController<E extends BaseEntity>(
     }
 
     @Get(':id')
-    @HttpCode(HTTP_STATUS.OK)
     @ApiOkResponse({
       description: HTTP_STATUS_MESSAGE[HTTP_STATUS.OK],
       type: entityType,
@@ -161,7 +159,6 @@ export function createCrudController<E extends BaseEntity>(
     }
 
     @Put(':id')
-    @HttpCode(HTTP_STATUS.OK)
     @ApiOkResponse({
       description: HTTP_STATUS_MESSAGE[HTTP_STATUS.OK],
       type: entityType,
@@ -182,7 +179,6 @@ export function createCrudController<E extends BaseEntity>(
     }
 
     @Put('one')
-    @HttpCode(HTTP_STATUS.OK)
     @ApiOkResponse({
       description: HTTP_STATUS_MESSAGE[HTTP_STATUS.OK],
       type: entityType,
@@ -203,7 +199,6 @@ export function createCrudController<E extends BaseEntity>(
     }
 
     @Put('many/ids')
-    @HttpCode(HTTP_STATUS.OK)
     @ApiOkResponse({ description: HTTP_STATUS_MESSAGE[HTTP_STATUS.OK] })
     @ApiBody({ type: UpdateManyIdsDto })
     @UsePipes(validationPipes.updateManyByIds)
@@ -252,7 +247,6 @@ export function createCrudController<E extends BaseEntity>(
     }
 
     @Delete('many/ids')
-    @HttpCode(HTTP_STATUS.OK)
     @ApiOkResponse({ description: HTTP_STATUS_MESSAGE[HTTP_STATUS.OK] })
     @ApiBody({ type: DeleteManyByIdsDto })
     @UsePipes(validationPipes.deleteManyByIds)
@@ -265,20 +259,13 @@ export function createCrudController<E extends BaseEntity>(
     }
   }
 
-  const GeneratedCrudController = renameGeneratedClass(
-    `${entityType.name}CrudController`,
+  setupAuthorization(
     CrudControllerHost,
-  );
-
-  setupCrudAuthorization(
-    GeneratedCrudController,
     CRUD_ROUTE_DEFINITIONS,
     routeConfigs,
-    options.defaultRoles,
+    options?.defaultRoles ? options.defaultRoles : [SystemRole.ADMIN],
   );
-  setupCrudAudit(GeneratedCrudController, CRUD_ROUTE_DEFINITIONS, routeConfigs);
+  setupAudit(CrudControllerHost, CRUD_ROUTE_DEFINITIONS, routeConfigs);
 
-  return GeneratedCrudController;
+  return CrudControllerHost;
 }
-
-export const BaseCrudControllerFactory = createCrudController;
