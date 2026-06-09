@@ -8,16 +8,5 @@ export interface AuditableOptions {
   description?: string;
 }
 
-/**
- * @Auditable decorator for authenticated user mutations
- *
- * @example
- * ```typescript
- * @Auditable({
- *   action: AuditAction.UPDATE,
- * })
- * async updateUser(id: string, data: UpdateUserDto) { }
- * ```
- */
 export const Auditable = (options: AuditableOptions) =>
   SetMetadata(AUDITABLE_KEY, options);

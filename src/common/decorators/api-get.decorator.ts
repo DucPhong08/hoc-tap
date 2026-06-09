@@ -20,23 +20,17 @@ export const ApiQueryOptions = (mode: QueryMode) => {
       required: false,
       type: String,
     }),
-    // ApiQuery({
-    //   name: 'populate',
-    //   required: false,
-    //   type: String,
-    //   description: 'Relations to populate (comma-separated)',
-    // }),
     ApiQuery({
       name: 'sort',
       required: false,
       type: String,
       description: '1: tăng dần, -1: giảm dần',
     }),
-    ApiQuery({
-      name: 'softDelete',
-      required: false,
-      type: Boolean,
-    }),
+    // ApiQuery({
+    //   name: 'softDelete',
+    //   required: false,
+    //   type: Boolean,
+    // }),
   ];
 
   if (mode === 'many') {
