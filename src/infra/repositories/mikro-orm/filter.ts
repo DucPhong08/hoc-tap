@@ -70,6 +70,22 @@ export function parseFilterRules<E>(
   return { $and: andConditions };
 }
 
+/**
+ * Chuẩn hóa điều kiện truy vấn và tự động áp dụng bộ lọc Soft Delete (deletedAt: null).
+ * Hàm này đã được tối ưu hóa cấu trúc truy vấn (Query Flattening) để tối ưu hiệu năng DB:
+ *
+ * @example
+ * // 1. Điều kiện rỗng:
+ * Filter({}) -> { deletedAt: null }
+ *
+ * @example
+ * // 2. Điều kiện phẳng (phổ biến nhất):
+ * Filter({ id: '1' }) -> { id: '1', deletedAt: null }
+ *
+ * @example
+ * // 3. Điều kiện phức tạp (chứa $and/$or):
+ * Filter({ $or: [{ name: 'A' }, { age: 18 }] }) -> { $and: [{ $or: [...] }, { deletedAt: null }] }
+ */
 export function Filter<E extends BaseEntity>(
   condition: QueryCondition<E> = {},
   options?: { softDelete?: boolean },
@@ -86,7 +102,24 @@ export function Filter<E extends BaseEntity>(
 
   if (options?.softDelete) return parsedCondition;
 
+  const hasKeys = parsedCondition && Object.keys(parsedCondition).length > 0;
+  if (!hasKeys) {
+    return { deletedAt: null } as unknown as FilterQuery<E>;
+  }
+
+  if (
+    parsedCondition &&
+    typeof parsedCondition === 'object' &&
+    !('$and' in parsedCondition) &&
+    !('$or' in parsedCondition)
+  ) {
+    return {
+      ...parsedCondition,
+      deletedAt: null,
+    } as unknown as FilterQuery<E>;
+  }
+
   return {
-    $and: [parsedCondition, { deletedAt: { $eq: null } }],
-  } as FilterQuery<E>;
+    $and: [parsedCondition, { deletedAt: null }],
+  } as unknown as FilterQuery<E>;
 }

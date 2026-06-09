@@ -47,7 +47,7 @@ export interface IBaseRepository<E extends BaseEntity, TContext = unknown> {
 
   getPage(
     condition: QueryCondition<E>,
-    query: FindQuery<E, TContext> & { page: number; limit: number },
+    query?: FindQuery<E, TContext> & { page?: number; limit?: number },
   ): Promise<PaginationResult<E>>;
 
   updateById(

@@ -151,23 +151,31 @@ export abstract class MikroOrmBaseRepository<
 
   async getPage(
     condition: QueryCondition<E>,
-    query: FindQuery<E, TContext> & { page: number; limit: number },
+    query?: FindQuery<E, TContext> & { page?: number; limit?: number },
   ): Promise<PaginationResult<E>> {
-    const mergedQuery = mergeMethodOptions(this.config, 'getPage', query);
+    const mergedQuery = mergeMethodOptions(this.config, 'getPage', query) || {};
+    const page = mergedQuery.page ?? 1;
+    const limit = mergedQuery.limit ?? 10;
+    const sort = {
+      ...mergedQuery.sort,
+      createdAt: (mergedQuery.sort as any)?.createdAt ?? -1,
+    };
+
     const { repository } = resolveContext(
       this.em,
       this.repository,
       mergedQuery,
     );
-    const { page, limit } = mergedQuery;
     const offset = (page - 1) * limit;
     const filter = Filter(condition, {
       softDelete: mergedQuery.softDelete,
     });
-    const fOptions = findOptions(mergedQuery);
-
-    fOptions.limit = limit;
-    fOptions.offset = offset;
+    const fOptions = findOptions({
+      ...mergedQuery,
+      sort,
+      limit,
+      offset,
+    });
 
     const [data, total] = await repository.findAndCount<string, string>(
       filter,
@@ -260,8 +268,6 @@ export abstract class MikroOrmBaseRepository<
     entity.deletedAt = new Date();
     await em.flush();
 
-    await populateEntity(em, entity, options);
-
     return entity;
   }
 
@@ -281,8 +287,6 @@ export abstract class MikroOrmBaseRepository<
 
     entity.deletedAt = new Date();
     await em.flush();
-
-    await populateEntity(em, entity, options);
 
     return entity;
   }
@@ -327,16 +331,28 @@ export abstract class MikroOrmBaseRepository<
     condition: QueryCondition<E>,
     query?: QueryOptions<TContext>,
   ): Promise<boolean> {
-    const { repository } = resolveContext(this.em, this.repository, query);
+    const { em, repository } = resolveContext(this.em, this.repository, query);
     const filter = Filter(condition, {
       softDelete: query?.softDelete,
     });
 
-    const result = await repository.findOne(filter, {
-      fields: ['id'] as any,
-    });
+    const isMongoDriver = em.getDriver() instanceof MongoDriver;
 
-    return result !== null;
+    if (isMongoDriver) {
+      const result = await (repository as MongoEntityRepository<E>)
+        .getCollection()
+        .findOne(filter as MongoFilter<E>, { projection: { _id: 1 } });
+      return result !== null;
+    }
+
+    const row = await (repository as SqlEntityRepository<E>)
+      .createQueryBuilder()
+      .select('1')
+      .where(filter as QBFilterQuery<E>)
+      .limit(1)
+      .execute('get', false);
+
+    return row !== null;
   }
 
   async distinct<K extends keyof E>(
@@ -356,7 +372,7 @@ export abstract class MikroOrmBaseRepository<
         .createQueryBuilder()
         .select(fieldName, true)
         .where(filter as QBFilterQuery<E>)
-        .execute();
+        .execute('all', true);
 
       return rows.map((row) => row[fieldName] as E[K]);
     }

@@ -6,6 +6,7 @@ import { UserService } from '../services/user.service';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { UpdateUserDto } from '../dto/update-user.dto';
 import { UserConditionDto } from '../dto/user-condition.dto';
+import { SystemRole } from 'src/modules/roles/enums/system-role.enum';
 
 @ApiTags('users')
 @Controller('users')
@@ -14,7 +15,7 @@ export class UserController extends BaseCrudControllerFactory(
   CreateUserDto,
   UpdateUserDto,
   UserConditionDto,
-  {},
+  { defaultRoles: [SystemRole.USER] },
 ) {
   constructor(private readonly userService: UserService) {
     super(userService);
