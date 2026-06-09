@@ -8,7 +8,6 @@ import { UserRepository } from '../repositories/user.repository';
 import type {
   DeleteCommand,
   CommandOptions,
-  QueryOptions,
 } from '../../../common/interfaces/repository.interface';
 import type { BaseTransaction } from '../../../infra/transaction/base-transaction.interface';
 import { InjectTransaction } from '../../../infra/transaction/transaction.provider';
@@ -31,8 +30,8 @@ export class UserService extends BaseCrudService<User> {
   ): Promise<User> {
     return this.executeWithTransaction(query, async (txOptions) => {
       if (data.email) {
-        const existingUser = await this.userRepository.findByEmail(
-          data.email,
+        const existingUser = await this.userRepository.getOne(
+          { email: data.email },
           txOptions,
         );
 
@@ -63,8 +62,8 @@ export class UserService extends BaseCrudService<User> {
           }
         }
 
-        const emailExists = await this.userRepository.findByEmail(
-          data.email,
+        const emailExists = await this.userRepository.getOne(
+          { email: data.email },
           txOptions,
         );
 
@@ -91,12 +90,5 @@ export class UserService extends BaseCrudService<User> {
 
       return super.deleteById(user, id, txOptions);
     });
-  }
-
-  async findByEmail(
-    email: string,
-    query?: QueryOptions<EntityManager>,
-  ): Promise<User | null> {
-    return this.userRepository.findByEmail(email, query);
   }
 }

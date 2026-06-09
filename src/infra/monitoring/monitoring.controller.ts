@@ -4,7 +4,7 @@ import * as path from 'path';
 import { Public } from '../../common/decorators/public.decorator';
 import { Authorization } from '../../common/decorators/authorization.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
-import { Role } from '../../modules/users/constant/constant';
+import { SystemRole } from '../../modules/roles/enums/system-role.enum';
 import { ApiTags } from '@nestjs/swagger';
 
 @ApiTags('monitoring')
@@ -24,7 +24,7 @@ export class MonitoringController {
   }
 
   @Get('worker-info')
-  @Roles(Role.ADMIN)
+  @Roles(SystemRole.ADMIN)
   getWorkerInfo() {
     return {
       workerId: process.pid,
@@ -42,7 +42,7 @@ export class MonitoringController {
   }
 
   @Get('logs/recent')
-  @Roles(Role.ADMIN)
+  @Roles(SystemRole.ADMIN)
   async getRecentLogs() {
     try {
       const logPath = path.join('logs', 'app.log');
@@ -65,7 +65,7 @@ export class MonitoringController {
   }
 
   @Get('logs/errors')
-  @Roles(Role.ADMIN)
+  @Roles(SystemRole.ADMIN)
   async getErrorLogs() {
     try {
       const logPath = path.join('logs', 'error.log');
@@ -88,7 +88,7 @@ export class MonitoringController {
   }
 
   @Get('stats')
-  @Roles(Role.ADMIN)
+  @Roles(SystemRole.ADMIN)
   getStats() {
     const memUsage = process.memoryUsage();
     const cpuUsage = process.cpuUsage();

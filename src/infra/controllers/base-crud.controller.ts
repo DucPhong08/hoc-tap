@@ -53,6 +53,7 @@ import type {
   CrudRouteDefinition,
   RouteConfig,
 } from './crud/types';
+import { SystemRole } from 'src/modules/roles/enums/system-role.enum';
 
 export type { BaseRoute, CrudOptions, RouteConfig };
 
@@ -70,7 +71,7 @@ const CRUD_ROUTE_DEFINITIONS: CrudRouteDefinition[] = [
   { route: 'deleteByIds', handlerName: 'deleteEntitiesByIds' },
 ];
 
-export function createCrudController<E extends BaseEntity>(
+export function BaseCrudControllerFactory<E extends BaseEntity>(
   entityType: Type<E>,
   createDto?: Type<unknown>,
   updateDto?: Type<unknown>,
@@ -274,11 +275,11 @@ export function createCrudController<E extends BaseEntity>(
     GeneratedCrudController,
     CRUD_ROUTE_DEFINITIONS,
     routeConfigs,
-    options.defaultRoles,
+    options.defaultRoles !== undefined
+      ? options.defaultRoles
+      : [SystemRole.ADMIN],
   );
   setupCrudAudit(GeneratedCrudController, CRUD_ROUTE_DEFINITIONS, routeConfigs);
 
   return GeneratedCrudController;
 }
-
-export const BaseCrudControllerFactory = createCrudController;

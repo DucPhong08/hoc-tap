@@ -1,11 +1,9 @@
 import { applyDecorators } from '@nestjs/common';
 import { ApiBearerAuth } from '@nestjs/swagger';
 import { Roles } from './roles.decorator';
-import { Role } from '../../modules/users/constant/constant';
+import { SystemRole } from 'src/modules/roles/enums/system-role.enum';
 
-export function Authorize(...roles: Role[]) {
-  if (roles.length > 0) {
-    return applyDecorators(ApiBearerAuth(), Roles(...roles));
-  }
-  return applyDecorators(ApiBearerAuth());
+export function Authorize(...roles: string[]) {
+  const targetRoles = roles.length > 0 ? roles : [SystemRole.ADMIN];
+  return applyDecorators(ApiBearerAuth(), Roles(...targetRoles));
 }
