@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
 
 export interface ParsedQueryOptions {
   select?: string[];
-  populate?: string[];
+  population?: string[];
   sort?: Record<string, 1 | -1>;
   softDelete?: boolean;
   page?: number;
@@ -23,7 +23,7 @@ export class QueryOptionsPipe implements PipeTransform<
     const parsedQuery: ParsedQueryOptions = {};
 
     parsedQuery.select = this.parseCsvList(value.select);
-    parsedQuery.populate = this.parseCsvList(value.populate);
+    parsedQuery.population = this.parseCsvList(value.populate);
 
     if (value.sort && typeof value.sort === 'string') {
       parsedQuery.sort = this.parseSortFields(value.sort);
@@ -73,7 +73,11 @@ export class QueryOptionsPipe implements PipeTransform<
       }
 
       if (normalizedField.startsWith('-')) {
-        sortFields[normalizedField.slice(1)] = -1;
+        const fieldName = normalizedField.slice(1);
+        if (!fieldName) {
+          throw new BadRequestException('sort field cannot be empty');
+        }
+        sortFields[fieldName] = -1;
         return;
       }
 
@@ -84,9 +88,14 @@ export class QueryOptionsPipe implements PipeTransform<
   }
 
   private parsePositiveInteger(value: unknown, fieldName: string): number {
-    const parsedValue = Number.parseInt(String(value), 10);
+    const normalizedValue = String(value).trim();
+    const parsedValue = Number(normalizedValue);
 
-    if (Number.isNaN(parsedValue) || parsedValue < 1) {
+    if (
+      !/^[0-9]+$/.test(normalizedValue) ||
+      !Number.isSafeInteger(parsedValue) ||
+      parsedValue < 1
+    ) {
       throw new BadRequestException(`${fieldName} must be a positive integer`);
     }
 
@@ -94,9 +103,13 @@ export class QueryOptionsPipe implements PipeTransform<
   }
 
   private parseNonNegativeInteger(value: unknown, fieldName: string): number {
-    const parsedValue = Number.parseInt(String(value), 10);
+    const normalizedValue = String(value).trim();
+    const parsedValue = Number(normalizedValue);
 
-    if (Number.isNaN(parsedValue) || parsedValue < 0) {
+    if (
+      !/^[0-9]+$/.test(normalizedValue) ||
+      !Number.isSafeInteger(parsedValue)
+    ) {
       throw new BadRequestException(
         `${fieldName} must be a non-negative integer`,
       );
@@ -106,6 +119,8 @@ export class QueryOptionsPipe implements PipeTransform<
   }
 
   private parseBooleanFlag(value: unknown): boolean {
-    return value === 'true' || value === true;
+    if (value === 'true' || value === true) return true;
+    if (value === 'false' || value === false) return false;
+    throw new BadRequestException('softDelete must be a boolean');
   }
 }

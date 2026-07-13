@@ -23,7 +23,7 @@ export class ConditionQueryPipe<T = unknown> implements PipeTransform<
 
     const validationErrors = await validate(conditionInstance as object, {
       whitelist: true,
-      forbidNonWhitelisted: false,
+      forbidNonWhitelisted: true,
       skipMissingProperties: true,
     });
 
@@ -44,10 +44,24 @@ export class ConditionQueryPipe<T = unknown> implements PipeTransform<
   }
 
   private parseConditionValue(value: string): unknown {
+    let parsedValue: unknown;
+
     try {
-      return JSON.parse(value);
+      parsedValue = JSON.parse(value);
     } catch {
       throw new BadRequestException('Invalid JSON in condition parameter');
     }
+
+    if (
+      !parsedValue ||
+      typeof parsedValue !== 'object' ||
+      Array.isArray(parsedValue)
+    ) {
+      throw new BadRequestException(
+        'Condition parameter must be a JSON object',
+      );
+    }
+
+    return parsedValue;
   }
 }

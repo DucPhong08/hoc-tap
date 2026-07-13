@@ -80,7 +80,7 @@ export function setupAuthorization(
 
   routeDefinitions.forEach(({ route, handlerName }) => {
     const routeConfig = routeConfigs[route];
-    if (routeConfig.enabled) {
+    if (routeConfig.enabled && routeConfig.roles.length > 0) {
       decorate(controllerClass, handlerName, Authorize(...routeConfig.roles));
     }
   });

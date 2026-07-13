@@ -52,7 +52,7 @@ import type {
   CrudRouteDefinition,
   RouteConfig,
 } from './crud/types';
-import { SystemRole } from 'src/modules/roles/enums/system-role.enum';
+import { SystemRole } from '../../modules/roles/enums/system-role.enum';
 
 export type { BaseRoute, CrudOptions, RouteConfig };
 
@@ -158,26 +158,6 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
       return this.service.getById(user, id, query as FindQuery<E>);
     }
 
-    @Put(':id')
-    @ApiOkResponse({
-      description: HTTP_STATUS_MESSAGE[HTTP_STATUS.OK],
-      type: entityType,
-    })
-    @ApiResponse({
-      status: HTTP_STATUS.NOT_FOUND,
-      description: HTTP_STATUS_MESSAGE[HTTP_STATUS.NOT_FOUND],
-    })
-    @ApiBody({ type: UpdateDto })
-    @UsePipes(validationPipes.update)
-    async updateEntityById(
-      @ReqUser() user: User | null,
-      @Param('id') id: string,
-      @Body() body: UpdateData<E>,
-    ): Promise<E> {
-      assertRouteEnabled(routeConfigs.updateById);
-      return this.service.updateById(user, id, body);
-    }
-
     @Put('one')
     @ApiOkResponse({
       description: HTTP_STATUS_MESSAGE[HTTP_STATUS.OK],
@@ -198,6 +178,26 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
       return this.service.updateOne(user, condition, update);
     }
 
+    @Put(':id')
+    @ApiOkResponse({
+      description: HTTP_STATUS_MESSAGE[HTTP_STATUS.OK],
+      type: entityType,
+    })
+    @ApiResponse({
+      status: HTTP_STATUS.NOT_FOUND,
+      description: HTTP_STATUS_MESSAGE[HTTP_STATUS.NOT_FOUND],
+    })
+    @ApiBody({ type: UpdateDto })
+    @UsePipes(validationPipes.update)
+    async updateEntityById(
+      @ReqUser() user: User | null,
+      @Param('id') id: string,
+      @Body() body: UpdateData<E>,
+    ): Promise<E> {
+      assertRouteEnabled(routeConfigs.updateById);
+      return this.service.updateById(user, id, body);
+    }
+
     @Put('many/ids')
     @ApiOkResponse({ description: HTTP_STATUS_MESSAGE[HTTP_STATUS.OK] })
     @ApiBody({ type: UpdateManyIdsDto })
@@ -208,24 +208,6 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
     ): Promise<{ affected: number }> {
       assertRouteEnabled(routeConfigs.updateByIds);
       return this.service.updateManyByIds(user, body.ids, body.update);
-    }
-
-    @Delete(':id')
-    @HttpCode(HTTP_STATUS.NO_CONTENT)
-    @ApiResponse({
-      status: HTTP_STATUS.NO_CONTENT,
-      description: HTTP_STATUS_MESSAGE[HTTP_STATUS.NO_CONTENT],
-    })
-    @ApiResponse({
-      status: HTTP_STATUS.NOT_FOUND,
-      description: HTTP_STATUS_MESSAGE[HTTP_STATUS.NOT_FOUND],
-    })
-    async deleteEntityById(
-      @ReqUser() user: User | null,
-      @Param('id') id: string,
-    ): Promise<void> {
-      assertRouteEnabled(routeConfigs.deleteById);
-      await this.service.deleteById(user, id);
     }
 
     @Delete('one')
@@ -244,6 +226,24 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
     ): Promise<void> {
       assertRouteEnabled(routeConfigs.deleteOne);
       await this.service.deleteOne(user, condition);
+    }
+
+    @Delete(':id')
+    @HttpCode(HTTP_STATUS.NO_CONTENT)
+    @ApiResponse({
+      status: HTTP_STATUS.NO_CONTENT,
+      description: HTTP_STATUS_MESSAGE[HTTP_STATUS.NO_CONTENT],
+    })
+    @ApiResponse({
+      status: HTTP_STATUS.NOT_FOUND,
+      description: HTTP_STATUS_MESSAGE[HTTP_STATUS.NOT_FOUND],
+    })
+    async deleteEntityById(
+      @ReqUser() user: User | null,
+      @Param('id') id: string,
+    ): Promise<void> {
+      assertRouteEnabled(routeConfigs.deleteById);
+      await this.service.deleteById(user, id);
     }
 
     @Delete('many/ids')
