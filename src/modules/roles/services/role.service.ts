@@ -1,10 +1,10 @@
 import { Injectable, Optional } from '@nestjs/common';
 import { EntityManager } from '@mikro-orm/core';
-import { BaseCrudService } from '../../../infra/services/base-crud.service';
+import { BaseCrudService } from '@/infra/services/base-crud.service';
 import { Role } from '../entities/role.entity';
 import { RoleRepository } from '../repositories/role.repository';
-import type { BaseTransaction } from '../../../infra/transaction/base-transaction.interface';
-import { InjectTransaction } from '../../../infra/transaction/transaction.provider';
+import type { BaseTransaction } from '@/infra/transaction/base-transaction.interface';
+import { InjectTransaction } from '@/infra/transaction/transaction.provider';
 import { SystemRole } from '../enums/system-role.enum';
 
 export const DEFAULT_ROLES = [SystemRole.ADMIN, SystemRole.USER];

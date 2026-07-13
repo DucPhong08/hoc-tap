@@ -11,7 +11,7 @@ import {
 import { Server, Socket } from 'socket.io';
 import { Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { JwtPayload } from '../../modules/auth/strategies/jwt.strategy';
+import { JwtPayload } from '@/modules/auth/strategies/jwt.strategy';
 
 interface AuthenticatedSocket extends Socket {
   userId?: string;

@@ -1,10 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { ApiError } from '../../../common/exceptions/api-error';
+import { ApiError } from '@/common/exceptions/api-error';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
-import { UserService } from '../../users/services/user.service';
-import type { AuthConfig } from '../../../config/configuration.types';
+import { UserService } from '@/modules/users/services/user.service';
+import type { AuthConfig } from '@/config/configuration.types';
 
 export interface JwtPayload {
   sub: string;

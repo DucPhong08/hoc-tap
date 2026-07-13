@@ -1,4 +1,4 @@
-import { Role } from '../../modules/roles/entities/role.entity';
+import { Role } from '@/modules/roles/entities/role.entity';
 import { BaseCrudControllerFactory } from './base-crud.controller';
 
 describe('BaseCrudControllerFactory', () => {

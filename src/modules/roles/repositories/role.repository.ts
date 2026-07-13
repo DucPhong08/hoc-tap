@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { EntityRepository } from '@mikro-orm/core';
-import { InjectEntityRepository } from 'src/database/entity-registry.helper';
-import { MikroOrmBaseRepository } from '../../../infra/repositories/mikro-orm-base.repository';
+import { InjectEntityRepository } from '@/database/entity-registry.helper';
+import { MikroOrmBaseRepository } from '@/infra/repositories/mikro-orm-base.repository';
 import { Role } from '../entities/role.entity';
 
 const POPULATION = [];

@@ -6,7 +6,7 @@ import { AuditLogService } from './services/audit-log.service';
 import { AuditCleanupService } from './services/audit-cleanup.service';
 import { AuditLogController } from './controllers/audit-log.controller';
 import { AuditInterceptor } from './interceptors/audit.interceptor';
-import { registerEntities } from 'src/database/entity-registry.helper';
+import { registerEntities } from '@/database/entity-registry.helper';
 import { AuditLog } from './entities/audit-log.entity';
 
 @Global()

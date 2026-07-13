@@ -1,4 +1,4 @@
-import { DB_CONTEXTS } from 'src/database/database.constants';
+import { DB_CONTEXTS } from '@/database/database.constants';
 import { User } from '../users/entities/user.entity';
 import { Setting } from '../settings/entities/setting.entity';
 import { AuditLog } from '../audit-logs/entities/audit-log.entity';

@@ -2,8 +2,8 @@ import { Module } from '@nestjs/common';
 import { SettingController } from './controllers/setting.controller';
 import { SettingService } from './services/setting.service';
 import { SettingRepository } from './repositories/setting.repository';
-import { TransactionModule } from '../../infra/transaction/transaction.module';
-import { registerEntities } from 'src/database/entity-registry.helper';
+import { TransactionModule } from '@/infra/transaction/transaction.module';
+import { registerEntities } from '@/database/entity-registry.helper';
 import { Setting } from './entities/setting.entity';
 
 @Module({

@@ -1,7 +1,7 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { InjectMikroORM } from '@mikro-orm/nestjs';
 import { MikroORM } from '@mikro-orm/core';
-import { DB_CONTEXTS } from 'src/database/database.constants';
+import { DB_CONTEXTS } from '@/database/database.constants';
 import { DatabaseContextConfigService } from './runtime/database-context-config.service';
 
 @Injectable()

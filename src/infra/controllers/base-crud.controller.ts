@@ -15,29 +15,26 @@ import {
   ApiOkResponse,
   ApiResponse,
 } from '@nestjs/swagger';
-import { DeleteManyByIdsDto } from '../../common/dto/delete-many-byIds.dto';
-import { PaginatedResponseDto } from '../../common/dto/pagination.dto';
-import { BaseEntity } from '../../common/entity/base.entity';
+import { DeleteManyByIdsDto } from '@/common/dto/delete-many-byIds.dto';
+import { PaginatedResponseDto } from '@/common/dto/pagination.dto';
+import { BaseEntity } from '@/common/entity/base.entity';
 import {
   HTTP_STATUS,
   HTTP_STATUS_MESSAGE,
-} from '../../common/constants/http-status.constant';
+} from '@/common/constants/http-status.constant';
 import {
   RequestCondition,
   RequestQuery,
-} from '../../common/decorators/query.decorator';
-import { ReqUser } from '../../common/decorators/request-user.decorator';
-import { User } from '../../modules/users/entities/user.entity';
-import {
-  ApiGet,
-  ApiQueryOptions,
-} from '../../common/decorators/api-get.decorator';
-import type { ParsedQueryOptions } from '../../common/pipes';
+} from '@/common/decorators/query.decorator';
+import { ReqUser } from '@/common/decorators/request-user.decorator';
+import { User } from '@/modules/users/entities/user.entity';
+import { ApiGet, ApiQueryOptions } from '@/common/decorators/api-get.decorator';
+import type { ParsedQueryOptions } from '@/common/pipes';
 import type {
   FindQuery,
   QueryCondition,
   UpdateData,
-} from '../../common/interfaces/repository.interface';
+} from '@/common/interfaces/repository.interface';
 import { BaseCrudService } from '../services/base-crud.service';
 import {
   setupAuthorization,
@@ -52,7 +49,7 @@ import type {
   CrudRouteDefinition,
   RouteConfig,
 } from './crud/types';
-import { SystemRole } from '../../modules/roles/enums/system-role.enum';
+import { SystemRole } from '@/modules/roles/enums/system-role.enum';
 
 export type { BaseRoute, CrudOptions, RouteConfig };
 

@@ -1,6 +1,6 @@
 import { InjectRepository, MikroOrmModule } from '@mikro-orm/nestjs';
 import { type AnyEntity, type EntityClass } from '@mikro-orm/core';
-import { REGISTRY } from 'src/modules/mikro/entity-registry';
+import { REGISTRY } from '@/modules/mikro/entity-registry';
 import { DynamicModule } from '@nestjs/common';
 
 // =============================================================================

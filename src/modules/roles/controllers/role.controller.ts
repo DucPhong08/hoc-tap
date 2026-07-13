@@ -1,6 +1,6 @@
 import { Controller } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { BaseCrudControllerFactory } from '../../../infra/controllers/base-crud.controller';
+import { BaseCrudControllerFactory } from '@/infra/controllers/base-crud.controller';
 import { Role } from '../entities/role.entity';
 import { RoleService } from '../services/role.service';
 import { CreateRoleDto } from '../dto/create-role.dto';

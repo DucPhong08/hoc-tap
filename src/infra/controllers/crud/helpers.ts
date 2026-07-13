@@ -1,8 +1,8 @@
 import { Type } from '@nestjs/common';
-import { Authorize } from '../../../common/decorators/authorize.decorator';
-import { Auditable } from '../../../common/decorators/auditable.decorator';
-import { ApiError } from '../../../common/exceptions/api-error';
-import { AuditAction } from '../../../modules/audit-logs/enums/audit-action.enum';
+import { Authorize } from '@/common/decorators/authorize.decorator';
+import { Auditable } from '@/common/decorators/auditable.decorator';
+import { ApiError } from '@/common/exceptions/api-error';
+import { AuditAction } from '@/modules/audit-logs/enums/audit-action.enum';
 import type {
   BaseRoute,
   CrudOptions,

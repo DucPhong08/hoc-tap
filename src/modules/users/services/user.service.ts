@@ -1,16 +1,16 @@
 import { EntityManager } from '@mikro-orm/core';
 import { Injectable, Optional } from '@nestjs/common';
-import { ApiError } from '../../../common/exceptions/api-error';
-import { BaseCrudService } from '../../../infra/services/base-crud.service';
+import { ApiError } from '@/common/exceptions/api-error';
+import { BaseCrudService } from '@/infra/services/base-crud.service';
 import { User } from '../entities/user.entity';
 import { UserPolicy } from '../policies/user.policy';
 import { UserRepository } from '../repositories/user.repository';
 import type {
   DeleteCommand,
   CommandOptions,
-} from '../../../common/interfaces/repository.interface';
-import type { BaseTransaction } from '../../../infra/transaction/base-transaction.interface';
-import { InjectTransaction } from '../../../infra/transaction/transaction.provider';
+} from '@/common/interfaces/repository.interface';
+import type { BaseTransaction } from '@/infra/transaction/base-transaction.interface';
+import { InjectTransaction } from '@/infra/transaction/transaction.provider';
 
 @Injectable()
 export class UserService extends BaseCrudService<User> {

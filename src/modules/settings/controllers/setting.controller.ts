@@ -1,12 +1,12 @@
 import { Controller, Get, Param, Body, Put } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { Auditable } from '../../../common/decorators/auditable.decorator';
+import { Auditable } from '@/common/decorators/auditable.decorator';
 import { Setting } from '../entities/setting.entity';
 import { SettingService } from '../services/setting.service';
-import { Authorization } from 'src/common/decorators/authorization.decorator';
-import { AuditAction } from '../../audit-logs/enums/audit-action.enum';
-import { ReqUser } from '../../../common/decorators/request-user.decorator';
-import type { User } from '../../users/entities/user.entity';
+import { Authorization } from '@/common/decorators/authorization.decorator';
+import { AuditAction } from '@/modules/audit-logs/enums/audit-action.enum';
+import { ReqUser } from '@/common/decorators/request-user.decorator';
+import type { User } from '@/modules/users/entities/user.entity';
 
 @ApiTags('settings')
 @Controller('settings')

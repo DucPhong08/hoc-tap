@@ -11,7 +11,7 @@ import { AuditLogService } from '../services/audit-log.service';
 import {
   AUDITABLE_KEY,
   AuditableOptions,
-} from '../../../common/decorators/auditable.decorator';
+} from '@/common/decorators/auditable.decorator';
 
 @Injectable()
 export class AuditInterceptor implements NestInterceptor {

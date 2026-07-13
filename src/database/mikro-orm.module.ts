@@ -1,7 +1,7 @@
 import { Global, Module } from '@nestjs/common';
 import { MikroOrmModule } from '@mikro-orm/nestjs';
 import { MigrationService } from './migration.service';
-import { DB_CONTEXTS } from 'src/database/database.constants';
+import { DB_CONTEXTS } from '@/database/database.constants';
 import { DatabaseContextRegistry } from './registration/database-context.registry';
 import { DatabaseEnvironmentReader } from './env/database-environment.reader';
 import { DatabaseEnvironmentValidator } from './env/database-environment.validator';

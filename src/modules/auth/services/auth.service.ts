@@ -1,11 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import { ApiError } from '../../../common/exceptions/api-error';
+import { ApiError } from '@/common/exceptions/api-error';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
-import { UserService } from '../../users/services/user.service';
-import { User } from '../../users/entities/user.entity';
-import type { AuthConfig } from '../../../config/configuration.types';
+import { UserService } from '@/modules/users/services/user.service';
+import { User } from '@/modules/users/entities/user.entity';
+import type { AuthConfig } from '@/config/configuration.types';
 import { JwtPayload } from '../strategies/jwt.strategy';
 import {
   AuthUserProfile,
@@ -13,7 +13,7 @@ import {
   OAuthProfile,
 } from '../interfaces/oauth-profile.interface';
 import { AuthProvider } from '../enums/auth-provider.enum';
-import { SystemRole } from '../../roles/enums/system-role.enum';
+import { SystemRole } from '@/modules/roles/enums/system-role.enum';
 import type { StringValue } from 'ms';
 
 @Injectable()

@@ -1,6 +1,6 @@
 import { Entity, Property } from '@mikro-orm/core';
 import { IsOptional, IsString } from 'class-validator';
-import { BaseEntity } from '../../../common/entity/base.entity';
+import { BaseEntity } from '@/common/entity/base.entity';
 
 @Entity({ tableName: 'roles' })
 export class Role extends BaseEntity {

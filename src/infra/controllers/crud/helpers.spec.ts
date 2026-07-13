@@ -1,5 +1,5 @@
-import { SystemRole } from '../../../modules/roles/enums/system-role.enum';
-import { ROLES_KEY } from '../../../common/decorators/roles.decorator';
+import { SystemRole } from '@/modules/roles/enums/system-role.enum';
+import { ROLES_KEY } from '@/common/decorators/roles.decorator';
 import type { CrudRouteDefinition } from './types';
 import { getRouteConfigs, setupAuthorization } from './helpers';
 

@@ -8,12 +8,12 @@ import type {
   DeleteCommand,
   QueryOptions,
   CommandOptions,
-} from '../../common/interfaces/repository.interface';
-import type { IBaseRepository } from '../../common/interfaces/repository.interface';
-import { BaseEntity } from '../../common/entity/base.entity';
+} from '@/common/interfaces/repository.interface';
+import type { IBaseRepository } from '@/common/interfaces/repository.interface';
+import { BaseEntity } from '@/common/entity/base.entity';
 import type { BaseCrudServiceConfig } from './base-crud.constant';
 import { BaseTransaction } from '../transaction/base-transaction.interface';
-import type { User } from '../../modules/users/entities/user.entity';
+import type { User } from '@/modules/users/entities/user.entity';
 
 @Injectable()
 export abstract class BaseCrudService<

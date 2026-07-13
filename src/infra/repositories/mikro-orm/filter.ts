@@ -1,10 +1,10 @@
 import type { FilterQuery } from '@mikro-orm/core';
-import { BaseEntity } from '../../../common/entity/base.entity';
+import { BaseEntity } from '@/common/entity/base.entity';
 import type {
   QueryCondition,
   FilterRule,
-} from '../../../common/types/repository.types';
-import { OperatorType } from '../../../common/enums/operator-type.enum';
+} from '@/common/types/repository.types';
+import { OperatorType } from '@/common/enums/operator-type.enum';
 
 export function parseFilterRules<E>(
   rules: FilterRule<E>[],

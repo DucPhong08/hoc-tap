@@ -6,7 +6,7 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { GoogleStrategy } from './strategies/google.strategy';
 import { FacebookStrategy } from './strategies/facebook.strategy';
 import { UsersModule } from '../users/users.module';
-import type { AuthConfig } from '../../config/configuration.types';
+import type { AuthConfig } from '@/config/configuration.types';
 import type { StringValue } from 'ms';
 import { AuthService } from './services/auth.service';
 import { AuthController } from './controllers/auth.controller';

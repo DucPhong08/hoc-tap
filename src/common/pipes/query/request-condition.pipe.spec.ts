@@ -1,5 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
-import { RoleConditionDto } from '../../../modules/roles/dto/role-condition.dto';
+import { RoleConditionDto } from '@/modules/roles/dto/role-condition.dto';
 import { ConditionQueryPipe } from './request-condition.pipe';
 
 describe('ConditionQueryPipe', () => {

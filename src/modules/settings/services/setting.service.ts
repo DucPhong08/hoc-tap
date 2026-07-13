@@ -1,14 +1,14 @@
 import { EntityManager } from '@mikro-orm/core';
 import { Injectable, Optional } from '@nestjs/common';
-import { ApiError } from '../../../common/exceptions/api-error';
+import { ApiError } from '@/common/exceptions/api-error';
 import { plainToClass } from 'class-transformer';
 import { validate } from 'class-validator';
-import { BaseCrudService } from '../../../infra/services/base-crud.service';
+import { BaseCrudService } from '@/infra/services/base-crud.service';
 import { Setting } from '../entities/setting.entity';
 import { SettingRepository } from '../repositories/setting.repository';
-import type { User } from '../../users/entities/user.entity';
-import type { BaseTransaction } from '../../../infra/transaction/base-transaction.interface';
-import { InjectTransaction } from '../../../infra/transaction/transaction.provider';
+import type { User } from '@/modules/users/entities/user.entity';
+import type { BaseTransaction } from '@/infra/transaction/base-transaction.interface';
+import { InjectTransaction } from '@/infra/transaction/transaction.provider';
 import {
   MAP_SETTING_ENTITY,
   SettingValue,

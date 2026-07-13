@@ -2,8 +2,8 @@ import { Controller, Get, Query, Param, Delete } from '@nestjs/common';
 import { ApiTags, ApiQuery } from '@nestjs/swagger';
 import { AuditLogService } from '../services/audit-log.service';
 import { AuditLog } from '../entities/audit-log.entity';
-import { Roles } from '../../../common/decorators/roles.decorator';
-import { SystemRole } from '../../roles/enums/system-role.enum';
+import { Roles } from '@/common/decorators/roles.decorator';
+import { SystemRole } from '@/modules/roles/enums/system-role.enum';
 
 @ApiTags('audit-logs')
 @Controller('audit-logs')

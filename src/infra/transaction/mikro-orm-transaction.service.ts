@@ -3,7 +3,7 @@ import { EntityManager, MikroORM } from '@mikro-orm/core';
 import type { TransactionOptions } from '@mikro-orm/core';
 import { InjectMikroORM } from '@mikro-orm/nestjs';
 import { BaseTransaction } from './base-transaction.interface';
-import { DB_CONTEXTS } from '../../database/database.constants';
+import { DB_CONTEXTS } from '@/database/database.constants';
 
 @Injectable()
 export class MikroOrmTransactionService implements BaseTransaction<EntityManager> {

@@ -1,7 +1,7 @@
 import type {
   RepositoryConfig,
   RepositoryPopulateConfig,
-} from '../../../common/types/repository.types';
+} from '@/common/types/repository.types';
 
 export function mergeMethodOptions<
   E extends object,

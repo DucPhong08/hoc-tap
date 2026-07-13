@@ -3,14 +3,14 @@ import {
   EntityRepository,
   type Populate,
 } from '@mikro-orm/core';
-import { BaseEntity } from '../../../common/entity/base.entity';
+import { BaseEntity } from '@/common/entity/base.entity';
 import { Sort } from './sort';
 import { parseFilterRules } from './filter';
-import type { PopulationQuery } from '../../../common/types/repository/populate.types';
+import type { PopulationQuery } from '@/common/types/repository/populate.types';
 import type {
   FindQuery,
   CommandOptions,
-} from '../../../common/types/repository/options.types';
+} from '@/common/types/repository/options.types';
 
 export const resolveContext = <E extends BaseEntity>(
   em: EntityManager,

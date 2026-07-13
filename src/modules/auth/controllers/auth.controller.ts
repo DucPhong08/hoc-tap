@@ -4,12 +4,12 @@ import { AuthService } from '../services/auth.service';
 import { RegisterDto } from '../dto/register.dto';
 import { LoginDto } from '../dto/login.dto';
 import { RefreshTokenDto } from '../dto/refresh-token.dto';
-import { Public } from '../../../common/decorators/public.decorator';
-import { GoogleAuthGuard } from '../../../common/guards/google-auth.guard';
-import { FacebookAuthGuard } from '../../../common/guards/facebook-auth.guard';
+import { Public } from '@/common/decorators/public.decorator';
+import { GoogleAuthGuard } from '@/common/guards/google-auth.guard';
+import { FacebookAuthGuard } from '@/common/guards/facebook-auth.guard';
 import type { Request } from 'express';
-import { ReqUser } from '../../../common/decorators/request-user.decorator';
-import { User } from '../../users/entities/user.entity';
+import { ReqUser } from '@/common/decorators/request-user.decorator';
+import { User } from '@/modules/users/entities/user.entity';
 import {
   AuthUserProfile,
   LoginResponse,

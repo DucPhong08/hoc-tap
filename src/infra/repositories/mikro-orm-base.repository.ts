@@ -8,7 +8,7 @@ import {
 import { MongoDriver, type MongoEntityRepository } from '@mikro-orm/mongodb';
 import type { Filter as MongoFilter } from 'mongodb';
 import type { SqlEntityRepository } from '@mikro-orm/postgresql';
-import { BaseEntity } from '../../common/entity/base.entity';
+import { BaseEntity } from '@/common/entity/base.entity';
 import type {
   IBaseRepository,
   QueryCondition,
@@ -20,14 +20,14 @@ import type {
   UpdateData,
   QueryOptions,
   CommandOptions,
-} from '../../common/interfaces/repository.interface';
+} from '@/common/interfaces/repository.interface';
 import { Filter } from './mikro-orm/filter';
 import {
   resolveContext,
   findOptions,
   populateEntity,
 } from './mikro-orm/helpers';
-import { RepositoryConfig } from 'src/common/types/repository.types';
+import { RepositoryConfig } from '@/common/types/repository.types';
 import { mergeMethodOptions } from './mikro-orm/populate-config';
 
 export abstract class MikroOrmBaseRepository<

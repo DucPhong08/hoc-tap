@@ -15,9 +15,9 @@ import {
   IsEnum,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { BaseEntity } from '../../../common/entity/base.entity';
-import { AuthProvider } from '../../auth/enums/auth-provider.enum';
-import { Role as RoleEntity } from '../../roles/entities/role.entity';
+import { BaseEntity } from '@/common/entity/base.entity';
+import { AuthProvider } from '@/modules/auth/enums/auth-provider.enum';
+import { Role as RoleEntity } from '@/modules/roles/entities/role.entity';
 
 @Entity({ tableName: 'users' })
 export class User extends BaseEntity {
