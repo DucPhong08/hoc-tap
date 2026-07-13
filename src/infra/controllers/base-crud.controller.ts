@@ -28,7 +28,11 @@ import {
 } from '@/common/decorators/query.decorator';
 import { ReqUser } from '@/common/decorators/request-user.decorator';
 import { User } from '@/modules/users/entities/user.entity';
-import { ApiGet, ApiQueryOptions } from '@/common/decorators/api-get.decorator';
+import {
+  ApiCondition,
+  ApiGet,
+  ApiQueryOptions,
+} from '@/common/decorators/api-get.decorator';
 import type { ParsedQueryOptions } from '@/common/pipes';
 import type {
   FindQuery,
@@ -129,7 +133,7 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
     @ApiGet('one', entityType)
     async findOneByCondition(
       @ReqUser() user: User | null,
-      @RequestCondition(ConditionDto) condition: QueryCondition<E>,
+      @RequestCondition(ConditionDto, true) condition: QueryCondition<E>,
       @RequestQuery() query: ParsedQueryOptions,
     ): Promise<E> {
       assertRouteEnabled(routeConfigs.getOne);
@@ -165,10 +169,11 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
       description: HTTP_STATUS_MESSAGE[HTTP_STATUS.NOT_FOUND],
     })
     @ApiBody({ type: UpdateDto })
+    @ApiCondition(true)
     @UsePipes(validationPipes.update)
     async updateOneByCondition(
       @ReqUser() user: User | null,
-      @RequestCondition(ConditionDto) condition: QueryCondition<E>,
+      @RequestCondition(ConditionDto, true) condition: QueryCondition<E>,
       @Body() update: UpdateData<E>,
     ): Promise<E> {
       assertRouteEnabled(routeConfigs.updateOne);
@@ -217,9 +222,10 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
       status: HTTP_STATUS.NOT_FOUND,
       description: HTTP_STATUS_MESSAGE[HTTP_STATUS.NOT_FOUND],
     })
+    @ApiCondition(true)
     async deleteOneByCondition(
       @ReqUser() user: User | null,
-      @RequestCondition(ConditionDto) condition: QueryCondition<E>,
+      @RequestCondition(ConditionDto, true) condition: QueryCondition<E>,
     ): Promise<void> {
       assertRouteEnabled(routeConfigs.deleteOne);
       await this.service.deleteOne(user, condition);
@@ -255,6 +261,10 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
       return this.service.deleteManyByIds(user, body.ids);
     }
   }
+
+  Object.defineProperty(CrudControllerHost, 'name', {
+    value: `${entityType.name}CrudController`,
+  });
 
   setupAuthorization(
     CrudControllerHost,

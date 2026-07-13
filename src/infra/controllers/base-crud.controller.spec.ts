@@ -12,5 +12,6 @@ describe('BaseCrudControllerFactory', () => {
     expect(handlers.indexOf('deleteOneByCondition')).toBeLessThan(
       handlers.indexOf('deleteEntityById'),
     );
+    expect(Controller.name).toBe('RoleCrudController');
   });
 });

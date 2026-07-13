@@ -8,10 +8,16 @@ export class ConditionQueryPipe<T = unknown> implements PipeTransform<
   string,
   Promise<T>
 > {
-  constructor(private readonly schema: Type<T>) {}
+  constructor(
+    private readonly schema: Type<T>,
+    private readonly required = false,
+  ) {}
 
   async transform(value: string | undefined): Promise<T> {
     if (!value) {
+      if (this.required) {
+        throw new BadRequestException('Condition parameter is required');
+      }
       return {} as T;
     }
 
@@ -38,6 +44,13 @@ export class ConditionQueryPipe<T = unknown> implements PipeTransform<
       throw new BadRequestException(
         `Condition validation failed: ${messages.join('; ')}`,
       );
+    }
+
+    if (
+      this.required &&
+      Object.keys(conditionInstance as object).length === 0
+    ) {
+      throw new BadRequestException('Condition parameter cannot be empty');
     }
 
     return conditionInstance;

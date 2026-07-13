@@ -42,7 +42,8 @@ export class User extends BaseEntity {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
-  @Property({ nullable: true })
+  // Không serialize mật khẩu băm khi entity được trả qua API.
+  @Property({ nullable: true, hidden: true })
   password?: string;
 
   @ApiPropertyOptional()

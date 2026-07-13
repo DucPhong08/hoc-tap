@@ -3,13 +3,12 @@ import { ApiOkResponse, ApiQuery } from '@nestjs/swagger';
 import { PaginatedResponseDto } from '../dto/pagination.dto';
 import { HTTP_STATUS } from '../constants/http-status.constant';
 
-// Matches FindQuery modes: getOne, getMany, getPage
 type QueryMode = 'one' | 'many' | 'page';
 
-const ApiCondition = () =>
+export const ApiCondition = (required = false) =>
   ApiQuery({
     name: 'condition',
-    required: false,
+    required,
     type: String,
   });
 
@@ -26,28 +25,7 @@ export const ApiQueryOptions = (mode: QueryMode) => {
       type: String,
       description: '1: tăng dần, -1: giảm dần',
     }),
-    // ApiQuery({
-    //   name: 'softDelete',
-    //   required: false,
-    //   type: Boolean,
-    // }),
   ];
-
-  if (mode === 'many') {
-    decorators
-      .push
-      // ApiQuery({
-      //   name: 'limit',
-      //   required: false,
-      //   type: Number,
-      // }),
-      // ApiQuery({
-      //   name: 'offset',
-      //   required: false,
-      //   type: Number,
-      // }),
-      ();
-  }
 
   if (mode === 'page') {
     decorators.push(
@@ -90,7 +68,7 @@ export const ApiGet = (mode: QueryMode, entityType: Type<unknown>) => {
     Get(routePath),
     HttpCode(HTTP_STATUS.OK),
     apiOkResponse,
-    ApiCondition(),
+    ApiCondition(mode === 'one'),
     ApiQueryOptions(mode),
   );
 };

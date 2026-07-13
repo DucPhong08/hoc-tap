@@ -15,6 +15,17 @@ describe('ConditionQueryPipe', () => {
     ).resolves.toMatchObject({ code: 'admin', name: 'Administrator' });
   });
 
+  it.each([undefined, '{}'])(
+    'rejects a missing or empty required condition: %s',
+    async (value) => {
+      const requiredPipe = new ConditionQueryPipe(RoleConditionDto, true);
+
+      await expect(requiredPipe.transform(value)).rejects.toThrow(
+        BadRequestException,
+      );
+    },
+  );
+
   it('rejects non-whitelisted fields instead of producing an empty filter', async () => {
     await expect(pipe.transform('{"unknown":"value"}')).rejects.toThrow(
       BadRequestException,
