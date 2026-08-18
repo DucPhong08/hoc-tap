@@ -22,6 +22,12 @@ export class ConditionQueryPipe<T = unknown> implements PipeTransform<
     }
 
     const parsedCondition = this.parseConditionValue(value);
+
+    // Nếu condition truyền lên là mảng các FilterRule nâng cao ([{ field, operator, values }])
+    if (Array.isArray(parsedCondition)) {
+      return parsedCondition as unknown as T;
+    }
+
     const conditionInstance = plainToInstance(this.schema, parsedCondition, {
       enableImplicitConversion: true,
       excludeExtraneousValues: false,
@@ -65,13 +71,9 @@ export class ConditionQueryPipe<T = unknown> implements PipeTransform<
       throw new BadRequestException('Invalid JSON in condition parameter');
     }
 
-    if (
-      !parsedValue ||
-      typeof parsedValue !== 'object' ||
-      Array.isArray(parsedValue)
-    ) {
+    if (!parsedValue || typeof parsedValue !== 'object') {
       throw new BadRequestException(
-        'Condition parameter must be a JSON object',
+        'Condition parameter must be a JSON object or array of filter rules',
       );
     }
 
