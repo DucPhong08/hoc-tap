@@ -35,10 +35,10 @@ export function parseFilterRules<E>(
         condition = { $nin: Array.isArray(values) ? values : [values] };
         break;
       case OperatorType.LIKE:
-        condition = { $re: escapeRegexValue(values) };
+        condition = { $like: `%${escapeRegexValue(values)}%` };
         break;
       case OperatorType.I_LIKE:
-        condition = new RegExp(escapeRegexValue(values), 'i');
+        condition = { $ilike: `%${escapeRegexValue(values)}%` };
         break;
       case OperatorType.GREATER_THAN:
         condition = { $gt: values };
