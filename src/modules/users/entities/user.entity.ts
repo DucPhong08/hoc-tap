@@ -59,11 +59,20 @@ export class User extends BaseEntity {
   role?: RoleEntity;
 
   get roleCode(): string {
-    return this.role ? this.role.code : 'user';
+    if (
+      this.role &&
+      typeof this.role === 'object' &&
+      'code' in this.role &&
+      (this.role as any).code
+    ) {
+      return (this.role as any).code;
+    }
+    return 'user';
   }
 
   get roles(): string[] {
-    return [this.roleCode];
+    const code = this.roleCode || 'user';
+    return code === 'admin' ? ['admin', 'user'] : [code];
   }
 
   @ApiProperty()

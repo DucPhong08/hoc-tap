@@ -53,6 +53,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
     }
 
     if (status >= 500) {
+      console.error('Unhandled Exception:', exception);
       this.logger.error('Unhandled Exception', {
         message,
         stack: exception instanceof Error ? exception.stack : undefined,

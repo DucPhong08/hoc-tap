@@ -49,7 +49,11 @@ export class AuthService {
   }
 
   async login(email: string, password: string): Promise<LoginResponse> {
-    const [user] = await this.userService.getMany(null, { email });
+    const [user] = await this.userService.getMany(
+      null,
+      { email },
+      { population: ['role'] as any },
+    );
 
     if (!user || user.provider !== AuthProvider.LOCAL) {
       throw ApiError.Unauthorized('error-invalid-credentials');
@@ -108,7 +112,9 @@ export class AuthService {
         secret: authConfig?.jwtRefreshSecret,
       });
 
-      const user = await this.userService.getByIdOrNull(null, payload.sub);
+      const user = await this.userService.getByIdOrNull(null, payload.sub, {
+        populate: ['role'],
+      } as any);
 
       if (!user) {
         throw ApiError.Unauthorized('error-user-not-found');
@@ -124,7 +130,9 @@ export class AuthService {
   }
 
   async getUser(userId: string): Promise<AuthUserProfile> {
-    const user = await this.userService.getByIdOrNull(null, userId);
+    const user = await this.userService.getByIdOrNull(null, userId, {
+      populate: ['role'],
+    } as any);
 
     if (!user) {
       throw ApiError.Unauthorized('error-user-not-found');
