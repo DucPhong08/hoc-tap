@@ -6,6 +6,11 @@ import type {
 } from '@/common/types/repository.types';
 import { OperatorType } from '@/common/enums/operator-type.enum';
 
+const escapeRegexValue = (value: unknown): string =>
+  String(value)
+    .slice(0, 100)
+    .replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 export function parseFilterRules<E>(
   rules: FilterRule<E>[],
 ): Record<string, any> {
@@ -30,10 +35,10 @@ export function parseFilterRules<E>(
         condition = { $nin: Array.isArray(values) ? values : [values] };
         break;
       case OperatorType.LIKE:
-        condition = { $re: String(values) };
+        condition = { $re: escapeRegexValue(values) };
         break;
       case OperatorType.I_LIKE:
-        condition = new RegExp(String(values), 'i');
+        condition = new RegExp(escapeRegexValue(values), 'i');
         break;
       case OperatorType.GREATER_THAN:
         condition = { $gt: values };
