@@ -121,6 +121,5 @@ export async function populateEntity<E extends BaseEntity>(
     if (populate.length)
       await em.populate(entity, populate as unknown as Populate<E>);
   }
-  if (opts?.refresh) await em.refresh(entity);
   return entity;
 }

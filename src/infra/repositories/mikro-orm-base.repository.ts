@@ -207,8 +207,6 @@ export abstract class MikroOrmBaseRepository<
     wrap(entity).assign(data as any);
     await em.flush();
 
-    if (options?.refresh) await em.refresh(entity);
-
     return entity;
   }
 
@@ -224,8 +222,6 @@ export abstract class MikroOrmBaseRepository<
 
     wrap(entity).assign(data as any);
     await em.flush();
-
-    if (options?.refresh) await em.refresh(entity);
 
     return entity;
   }

@@ -29,8 +29,6 @@ export interface QueryOptions<T = unknown, E extends object = any>
 export interface CommandOptions<T = unknown, E extends object = any>
   extends BaseOptions<T>, Omit<MikroNativeInsertUpdateOptions<E>, 'ctx'> {
   population?: PopulationQuery<E>[];
-  /** Buộc nạp lại từ DB và làm mới dữ liệu trong bộ nhớ RAM của ORM */
-  refresh?: boolean;
 }
 
 export interface FindQuery<
@@ -43,7 +41,6 @@ export interface FindQuery<
   sort?: Partial<Record<Paths<E>, 1 | -1>>;
   limit?: number;
   offset?: number;
-  refresh?: boolean;
 }
 
 export interface DeleteCommand {
