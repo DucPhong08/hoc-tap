@@ -29,15 +29,15 @@ export class QueryOptionsPipe implements PipeTransform<
       parsedQuery.sort = this.parseSortFields(value.sort);
     }
 
-    if (value.softDelete !== undefined) {
+    if (value.softDelete != null) {
       parsedQuery.softDelete = this.parseBooleanFlag(value.softDelete);
     }
 
-    if (value.page !== undefined) {
+    if (value.page != null) {
       parsedQuery.page = this.parsePositiveInteger(value.page, 'page');
     }
 
-    if (value.limit !== undefined) {
+    if (value.limit != null) {
       const limit = this.parsePositiveInteger(value.limit, 'limit');
       if (limit > 1000) {
         throw new BadRequestException('limit cannot exceed 1000');
@@ -45,7 +45,7 @@ export class QueryOptionsPipe implements PipeTransform<
       parsedQuery.limit = limit;
     }
 
-    if (value.offset !== undefined) {
+    if (value.offset != null) {
       parsedQuery.offset = this.parseNonNegativeInteger(value.offset, 'offset');
     }
 

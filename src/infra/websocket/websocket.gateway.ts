@@ -209,10 +209,7 @@ export class WebsocketGateway
 
   // Gửi tới socket cụ thể
   sendToSocket(socketId: string, event: string, data: unknown): void {
-    const client = this.connectedClients.get(socketId);
-    if (client) {
-      client.emit(event, data);
-    }
+    this.connectedClients.get(socketId)?.emit(event, data);
   }
 
   // Kiểm tra user có online không

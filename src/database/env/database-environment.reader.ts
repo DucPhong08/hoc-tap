@@ -71,17 +71,11 @@ export class DatabaseEnvironmentReader {
 
   private readString(keys: string[]): string | undefined {
     for (const key of keys) {
-      const value = process.env[key];
-      if (!value) {
-        continue;
-      }
-
-      const normalizedValue = value.trim();
-      if (normalizedValue) {
-        return normalizedValue;
+      const trimmed = process.env[key]?.trim();
+      if (trimmed) {
+        return trimmed;
       }
     }
-
     return undefined;
   }
 
@@ -96,19 +90,7 @@ export class DatabaseEnvironmentReader {
   }
 
   private readBoolean(keys: string[]): boolean | undefined {
-    const value = this.readString(keys);
-    if (!value) {
-      return undefined;
-    }
-
-    if (value === 'true') {
-      return true;
-    }
-
-    if (value === 'false') {
-      return false;
-    }
-
-    return undefined;
+    const value = this.readString(keys)?.toLowerCase();
+    return value === 'true' ? true : value === 'false' ? false : undefined;
   }
 }

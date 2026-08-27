@@ -34,7 +34,7 @@ export class MigrationService implements OnModuleInit {
       const migrator = orm.migrator;
       const pendingMigrations = await migrator.getPendingMigrations();
 
-      if (pendingMigrations.length > 0) {
+      if (pendingMigrations.length) {
         await migrator.up();
       }
     } catch {

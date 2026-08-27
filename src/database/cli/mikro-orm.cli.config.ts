@@ -5,7 +5,7 @@ import { DatabaseConfigurationError } from '../errors/database-configuration.err
 import { DatabaseOptionsFactory } from '../options/database-options.factory';
 
 // Cho phép truyền context muốn chạy CLI qua biến môi trường (mặc định là 'main')
-const contextName = process.env.MIKRO_ORM_CLI_CONTEXT || DB_CONTEXTS.MAIN;
+const contextName = process.env.MIKRO_ORM_CLI_CONTEXT ?? DB_CONTEXTS.MAIN;
 const options = DatabaseOptionsFactory.createStandalone(contextName);
 
 if (options.driver === MongoDriver) {

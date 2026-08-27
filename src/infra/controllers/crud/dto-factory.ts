@@ -34,16 +34,16 @@ export const createCrudDtoBundle = <E extends BaseEntity>(
   conditionDto?: Type<unknown>,
 ): CrudDtoBundle => {
   const ConditionDto =
-    conditionDto ||
+    conditionDto ??
     rename(`${entityType.name}ConditionDto`, PartialType(entityType));
   const CreateDto =
-    createDto ||
+    createDto ??
     rename(
       `Create${entityType.name}Dto`,
       OmitType(entityType, BASE_OMIT_FIELDS),
     );
   const UpdateDto =
-    updateDto ||
+    updateDto ??
     rename(
       `Update${entityType.name}Dto`,
       PartialType(OmitType(entityType, BASE_OMIT_FIELDS)),

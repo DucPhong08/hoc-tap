@@ -15,13 +15,10 @@ export class MikroOrmTransactionService implements BaseTransaction<EntityManager
     callback: (transaction: EntityManager) => Promise<TResult>,
     options?: TransactionOptions,
   ): Promise<TResult> {
-    const disableTransactions =
-      process.env.DB_MAIN_DISABLE_TRANSACTIONS === 'true';
-
-    if (disableTransactions) {
+    if (process.env.DB_MAIN_DISABLE_TRANSACTIONS === 'true') {
       return callback(this.orm.em);
     }
 
-    return this.orm.em.transactional(async (em) => callback(em), options);
+    return this.orm.em.transactional(callback, options);
   }
 }

@@ -103,7 +103,7 @@ export abstract class MikroOrmBaseRepository<
       mergedQuery,
     );
 
-    return repository.findOne<string, string>(
+    return repository.findOne(
       Filter({ id } as QueryCondition<E>, {
         softDelete: mergedQuery?.softDelete,
       }),
@@ -122,7 +122,7 @@ export abstract class MikroOrmBaseRepository<
       mergedQuery,
     );
 
-    return repository.findOne<string, string>(
+    return repository.findOne(
       Filter(condition, {
         softDelete: mergedQuery?.softDelete,
       }),
@@ -141,7 +141,7 @@ export abstract class MikroOrmBaseRepository<
       mergedQuery,
     );
 
-    return repository.find<string, string>(
+    return repository.find(
       Filter(condition, {
         softDelete: mergedQuery?.softDelete,
       }),
@@ -153,13 +153,15 @@ export abstract class MikroOrmBaseRepository<
     condition: QueryCondition<E>,
     query?: FindQuery<E, TContext> & { page?: number; limit?: number },
   ): Promise<PaginationResult<E>> {
-    const mergedQuery = mergeMethodOptions(this.config, 'getPage', query) || {};
+    const mergedQuery = mergeMethodOptions(this.config, 'getPage', query) ?? {};
     const page = mergedQuery.page ?? 1;
     const limit = mergedQuery.limit ?? 10;
-    const sort = {
-      ...mergedQuery.sort,
-      createdAt: (mergedQuery.sort as any)?.createdAt ?? -1,
-    };
+    const sort = Array.isArray(mergedQuery.sort)
+      ? mergedQuery.sort
+      : {
+          ...mergedQuery.sort,
+          createdAt: (mergedQuery.sort as any)?.createdAt ?? -1,
+        };
 
     const { repository } = resolveContext(
       this.em,
@@ -177,10 +179,7 @@ export abstract class MikroOrmBaseRepository<
       offset,
     });
 
-    const [data, total] = await repository.findAndCount<string, string>(
-      filter,
-      fOptions,
-    );
+    const [data, total] = await repository.findAndCount(filter, fOptions);
 
     return {
       data: data as E[],
@@ -255,20 +254,7 @@ export abstract class MikroOrmBaseRepository<
     id: string,
     options?: DeleteCommand & CommandOptions<TContext, E>,
   ): Promise<E | null> {
-    const { em } = resolveContext(this.em, this.repository, options);
-    const entity = await this.getById(id, options);
-
-    if (!entity) return null;
-
-    if (options?.soft === false) {
-      await em.remove(entity).flush();
-      return entity;
-    }
-
-    entity.deletedAt = new Date();
-    await em.flush();
-
-    return entity;
+    return this.deleteOne({ id } as QueryCondition<E>, options);
   }
 
   async deleteOne(
@@ -342,7 +328,7 @@ export abstract class MikroOrmBaseRepository<
       const result = await (repository as MongoEntityRepository<E>)
         .getCollection()
         .findOne(filter as MongoFilter<E>, { projection: { _id: 1 } });
-      return result !== null;
+      return !!result;
     }
 
     const row = await (repository as SqlEntityRepository<E>)
@@ -352,7 +338,7 @@ export abstract class MikroOrmBaseRepository<
       .limit(1)
       .execute('get', false);
 
-    return row !== null;
+    return !!row;
   }
 
   async distinct<K extends keyof E>(

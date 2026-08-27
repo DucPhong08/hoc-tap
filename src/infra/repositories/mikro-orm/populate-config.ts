@@ -17,7 +17,6 @@ export function mergeMethodOptions<
 
   return {
     ...options,
-    population:
-      options.population !== undefined ? options.population : defaultPopulate,
+    population: options.population ?? defaultPopulate,
   } as O;
 }

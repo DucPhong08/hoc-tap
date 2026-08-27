@@ -270,7 +270,7 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
     CrudControllerHost,
     CRUD_ROUTE_DEFINITIONS,
     routeConfigs,
-    options?.defaultRoles ? options.defaultRoles : [SystemRole.ADMIN],
+    options?.defaultRoles ?? [SystemRole.ADMIN],
   );
   setupAudit(CrudControllerHost, CRUD_ROUTE_DEFINITIONS, routeConfigs);
 

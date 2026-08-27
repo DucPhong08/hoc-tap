@@ -129,11 +129,7 @@ export class DatabaseEnvironmentValidator {
   }
 
   private resolveApplicationMode(value?: string): ApplicationMode {
-    if (value === 'production') {
-      return 'production';
-    }
-
-    return 'development';
+    return value === 'production' ? 'production' : 'development';
   }
 
   private resolveDriver(
@@ -155,7 +151,7 @@ export class DatabaseEnvironmentValidator {
       return 'postgresql';
     }
 
-    const hasMongoShape = Boolean(environmentSnapshot.connectionUri);
+    const hasMongoShape = !!environmentSnapshot.connectionUri;
     const hasSqlShape = [
       environmentSnapshot.host,
       environmentSnapshot.port,
@@ -163,7 +159,7 @@ export class DatabaseEnvironmentValidator {
       environmentSnapshot.password,
       environmentSnapshot.databaseName,
       environmentSnapshot.schemaName,
-    ].some((value) => value !== undefined);
+    ].some((value) => value != null);
 
     if (hasMongoShape && hasSqlShape) {
       throw new DatabaseConfigurationError(

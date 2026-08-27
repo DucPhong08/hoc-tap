@@ -33,10 +33,7 @@ export function registerEntities(
   const groups: Record<string, EntityClass<AnyEntity>[]> = {};
   for (const entity of entities) {
     const ctx = findContext(entity);
-    if (!groups[ctx]) {
-      groups[ctx] = [];
-    }
-    groups[ctx].push(entity);
+    (groups[ctx] ??= []).push(entity);
   }
 
   return Object.entries(groups).map(([contextName, ctxEntities]) =>

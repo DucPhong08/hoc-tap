@@ -25,11 +25,10 @@ export class AllExceptionsFilter implements ExceptionFilter {
     let message: any = 'Internal server error';
     if (exception instanceof HttpException) {
       const res = exception.getResponse();
-      if (typeof res === 'object' && res !== null && 'message' in res) {
-        message = (res as any).message;
-      } else {
-        message = exception.message;
-      }
+      message =
+        typeof res === 'object' && res != null && 'message' in res
+          ? (res as any).message
+          : exception.message;
     }
 
     // Tự động dịch lỗi nếu co I18nContext
@@ -56,7 +55,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       console.error('Unhandled Exception:', exception);
       this.logger.error('Unhandled Exception', {
         message,
-        stack: exception instanceof Error ? exception.stack : undefined,
+        stack: (exception as Error)?.stack,
       });
     } else {
       this.logger.warn(`Client Error [${status}]: ${message}`);

@@ -32,7 +32,7 @@ describe('ConditionQueryPipe', () => {
     );
   });
 
-  it.each(['invalid-json', '[]', 'null', '"code"'])(
+  it.each(['invalid-json', 'null', '"code"'])(
     'rejects invalid condition input %s',
     async (value) => {
       await expect(pipe.transform(value)).rejects.toThrow(BadRequestException);

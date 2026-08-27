@@ -32,18 +32,10 @@ export function readBooleanValue(
   value: string | undefined,
   fallbackValue: boolean,
 ): boolean {
-  const normalizedValue = readStringValue(value);
-  if (!normalizedValue) {
-    return fallbackValue;
-  }
-
-  if (normalizedValue === 'true') {
-    return true;
-  }
-
-  if (normalizedValue === 'false') {
-    return false;
-  }
-
-  return fallbackValue;
+  const normalizedValue = readStringValue(value)?.toLowerCase();
+  return normalizedValue === 'true'
+    ? true
+    : normalizedValue === 'false'
+      ? false
+      : fallbackValue;
 }

@@ -15,19 +15,16 @@ export default function configuration(): ApplicationConfiguration {
       ? resolvedMode
       : 'development';
 
-  const config = {
+  return {
     mode,
     host: {
       host: readStringValue(environment.HOST, '0.0.0.0'),
       port: readNumberValue(environment.PORT, 3000),
     },
     cors: {
-      allowedOrigins: readStringValue(
-        environment.CORS_ALLOWED_ORIGINS,
-        'http://localhost:3000,http://localhost:3001',
-      )
-        .split(',')
-        .map((origin) => origin.trim()),
+      allowedOrigins: readStringValue(environment.CORS_ALLOWED_ORIGINS)
+        ?.split(',')
+        .map((origin) => origin.trim()) ?? ['http://localhost:3000'],
     },
     auth: {
       jwtSecret: readStringValue(environment.JWT_SECRET, 'your-secret-key'),
@@ -63,6 +60,4 @@ export default function configuration(): ApplicationConfiguration {
       '',
     ),
   };
-
-  return config;
 }

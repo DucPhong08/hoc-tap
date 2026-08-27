@@ -20,7 +20,7 @@ export class RedisCacheService
   private isConnected = false;
 
   constructor(private configService: ConfigService) {
-    this.config = this.configService.get<CacheConfig>('cache') || {
+    this.config = this.configService.get<CacheConfig>('cache') ?? {
       enabled: false,
       ttl: 300,
       prefix: 'app',
@@ -50,7 +50,7 @@ export class RedisCacheService
           port: redisConfig.port,
         },
         password: redisConfig.password,
-        database: redisConfig.db || 0,
+        database: redisConfig.db ?? 0,
       });
 
       this.client.on('error', (err: Error) =>
@@ -96,7 +96,7 @@ export class RedisCacheService
 
     try {
       const cacheKey = this.getKey(key);
-      const expiry = ttl || this.config.ttl;
+      const expiry = ttl ?? this.config.ttl;
 
       await this.client.setEx(cacheKey, expiry, JSON.stringify(value));
     } catch (error) {
@@ -151,7 +151,7 @@ export class RedisCacheService
 
     try {
       const keys = await this.client.keys(this.getKey(pattern));
-      if (keys.length > 0) {
+      if (keys.length) {
         await this.client.del(keys);
       }
     } catch (error) {
@@ -170,7 +170,7 @@ export class RedisCacheService
         const tagKey = this.getKey(`${this.tagPrefix}${tag}`);
         const keys = await this.client.sMembers(tagKey);
 
-        if (keys.length > 0) {
+        if (keys.length) {
           await this.client.del(keys);
         }
         await this.client.del(tagKey);

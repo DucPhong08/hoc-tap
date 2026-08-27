@@ -47,7 +47,7 @@ export class CacheInterceptor implements NestInterceptor {
 
     if (cacheOptions && cacheKey) {
       const cachedData = await this.cacheService.get(cacheKey);
-      if (cachedData !== null) {
+      if (cachedData != null) {
         return of(cachedData);
       }
     }

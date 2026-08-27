@@ -14,117 +14,88 @@ const escapeRegexValue = (value: unknown): string =>
 export function parseFilterRules<E>(
   rules: FilterRule<E>[],
 ): Record<string, any> {
-  const andConditions: any[] = [];
+  const andConditions: Record<string, any>[] = [];
 
   for (const rule of rules) {
     const { field, operator, values } = rule;
     const f = Array.isArray(field) ? field.join('.') : String(field);
-    let condition: any = undefined;
+    const condition = getOperatorCondition(operator, values);
 
-    switch (operator) {
-      case OperatorType.EQUAL:
-        condition = { $eq: values };
-        break;
-      case OperatorType.NOT_EQUAL:
-        condition = { $ne: values };
-        break;
-      case OperatorType.INCLUDE:
-        condition = { $in: Array.isArray(values) ? values : [values] };
-        break;
-      case OperatorType.EXCLUDE:
-        condition = { $nin: Array.isArray(values) ? values : [values] };
-        break;
-      case OperatorType.LIKE:
-        condition = { $like: `%${escapeRegexValue(values)}%` };
-        break;
-      case OperatorType.I_LIKE:
-        condition = { $ilike: `%${escapeRegexValue(values)}%` };
-        break;
-      case OperatorType.GREATER_THAN:
-        condition = { $gt: values };
-        break;
-      case OperatorType.GREATER_THAN_OR_EQUAL:
-        condition = { $gte: values };
-        break;
-      case OperatorType.LESS_THAN:
-        condition = { $lt: values };
-        break;
-      case OperatorType.LESS_THAN_OR_EQUAL:
-        condition = { $lte: values };
-        break;
-      case OperatorType.BETWEEN:
-        if (Array.isArray(values) && values.length === 2) {
-          condition = { $gte: values[0], $lte: values[1] };
-        }
-        break;
-      case OperatorType.IS_NULL:
-        condition = { $eq: null };
-        break;
-      case OperatorType.IS_NOT_NULL:
-        condition = { $ne: null };
-        break;
-    }
-
-    if (condition !== undefined) {
-      andConditions.push({ [f]: condition });
-    }
+    if (condition) andConditions.push({ [f]: condition });
   }
 
-  if (andConditions.length === 0) return {};
-  if (andConditions.length === 1) return andConditions[0];
-  return { $and: andConditions };
+  return andConditions.length === 0
+    ? {}
+    : andConditions.length === 1
+      ? andConditions[0]
+      : { $and: andConditions };
+}
+
+function getOperatorCondition(operator: OperatorType, values: any): any {
+  switch (operator) {
+    case OperatorType.EQUAL:
+      return { $eq: values };
+    case OperatorType.NOT_EQUAL:
+      return { $ne: values };
+    case OperatorType.INCLUDE:
+      return { $in: Array.isArray(values) ? values : [values] };
+    case OperatorType.EXCLUDE:
+      return { $nin: Array.isArray(values) ? values : [values] };
+    case OperatorType.LIKE:
+      return { $like: `%${escapeRegexValue(values)}%` };
+    case OperatorType.I_LIKE:
+      return { $ilike: `%${escapeRegexValue(values)}%` };
+    case OperatorType.GREATER_THAN:
+      return { $gt: values };
+    case OperatorType.GREATER_THAN_OR_EQUAL:
+      return { $gte: values };
+    case OperatorType.LESS_THAN:
+      return { $lt: values };
+    case OperatorType.LESS_THAN_OR_EQUAL:
+      return { $lte: values };
+    case OperatorType.BETWEEN:
+      return Array.isArray(values) && values.length === 2
+        ? { $gte: values[0], $lte: values[1] }
+        : undefined;
+    case OperatorType.IS_NULL:
+      return { $eq: null };
+    case OperatorType.IS_NOT_NULL:
+      return { $ne: null };
+    default:
+      return undefined;
+  }
 }
 
 /**
  * Chuẩn hóa điều kiện truy vấn và tự động áp dụng bộ lọc Soft Delete (deletedAt: null).
- * Hàm này đã được tối ưu hóa cấu trúc truy vấn (Query Flattening) để tối ưu hiệu năng DB:
- *
- * @example
- * // 1. Điều kiện rỗng:
- * Filter({}) -> { deletedAt: null }
- *
- * @example
- * // 2. Điều kiện phẳng (phổ biến nhất):
- * Filter({ id: '1' }) -> { id: '1', deletedAt: null }
- *
- * @example
- * // 3. Điều kiện phức tạp (chứa $and/$or):
- * Filter({ $or: [{ name: 'A' }, { age: 18 }] }) -> { $and: [{ $or: [...] }, { deletedAt: null }] }
+ * Tối ưu hóa cấu trúc truy vấn (Query Flattening) để tối ưu hiệu năng DB.
  */
 export function Filter<E extends BaseEntity>(
   condition: QueryCondition<E> = {},
   options?: { softDelete?: boolean },
 ): FilterQuery<E> {
-  let parsedCondition: FilterQuery<E> = {};
-
-  if (Array.isArray(condition)) {
-    parsedCondition = parseFilterRules(
-      condition as FilterRule<E>[],
-    ) as FilterQuery<E>;
-  } else {
-    parsedCondition = condition as FilterQuery<E>;
-  }
+  const parsedCondition = (
+    Array.isArray(condition)
+      ? parseFilterRules(condition as FilterRule<E>[])
+      : condition
+  ) as FilterQuery<E>;
 
   if (options?.softDelete) return parsedCondition;
 
-  const hasKeys = parsedCondition && Object.keys(parsedCondition).length > 0;
-  if (!hasKeys) {
-    return { deletedAt: null } as unknown as FilterQuery<E>;
-  }
+  const hasKeys = Object.keys(parsedCondition ?? {}).length > 0;
+  if (!hasKeys) return { deletedAt: null } as FilterQuery<E>;
 
-  if (
-    parsedCondition &&
+  const isFlat =
     typeof parsedCondition === 'object' &&
     !('$and' in parsedCondition) &&
-    !('$or' in parsedCondition)
-  ) {
-    return {
-      ...parsedCondition,
-      deletedAt: null,
-    } as unknown as FilterQuery<E>;
+    !('$or' in parsedCondition);
+  if (isFlat) {
+    return (
+      'deletedAt' in parsedCondition
+        ? parsedCondition
+        : { ...parsedCondition, deletedAt: null }
+    ) as FilterQuery<E>;
   }
 
-  return {
-    $and: [parsedCondition, { deletedAt: null }],
-  } as unknown as FilterQuery<E>;
+  return { $and: [parsedCondition, { deletedAt: null }] } as FilterQuery<E>;
 }
