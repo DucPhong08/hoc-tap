@@ -6,7 +6,7 @@ export const MAIN_DATABASE_CONTEXT: DatabaseContextDefinition = {
   contextName: DB_CONTEXTS.MAIN,
   entities: getEntitiesByContext(DB_CONTEXTS.MAIN),
   defaultMigrationPath: 'mikro-base/migrations',
-  defaultPoolMinSize: 2,
+  defaultPoolMinSize: 1,
   defaultPoolMaxSize: 10,
   defaultTimezone: '+07:00',
 };

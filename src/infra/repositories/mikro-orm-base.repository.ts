@@ -27,7 +27,7 @@ import {
   findOptions,
   populateEntity,
 } from './mikro-orm/helpers';
-import { RepositoryConfig } from '@/common/types/repository.types';
+import type { RepositoryConfig } from '@/common/types/repository.types';
 import { mergeMethodOptions } from './mikro-orm/populate-config';
 
 export abstract class MikroOrmBaseRepository<
@@ -207,7 +207,7 @@ export abstract class MikroOrmBaseRepository<
     wrap(entity).assign(data as any);
     await em.flush();
 
-    await populateEntity(em, entity, options);
+    if (options?.refresh) await em.refresh(entity);
 
     return entity;
   }
@@ -225,7 +225,7 @@ export abstract class MikroOrmBaseRepository<
     wrap(entity).assign(data as any);
     await em.flush();
 
-    await populateEntity(em, entity, options);
+    if (options?.refresh) await em.refresh(entity);
 
     return entity;
   }

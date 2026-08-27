@@ -41,6 +41,9 @@ export class PostgreSqlOptionsStrategy implements DatabaseDriverOptionsStrategy 
       pool: {
         min: settings.poolMinSize,
         max: settings.poolMaxSize,
+        idleTimeoutMillis: 30000,
+        reapIntervalMillis: 1000,
+        acquireTimeoutMillis: 30000,
       },
       migrations: {
         path: settings.migrationPath,

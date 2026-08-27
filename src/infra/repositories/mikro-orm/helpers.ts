@@ -87,20 +87,27 @@ export function parsePopulation(
 export function findOptions(query?: FindQuery<any>): Record<string, any> {
   if (!query) return {};
 
-  const { populate: parsedPopulate, extraFields } = parsePopulation(
-    query.population,
-  );
-  const parsedFields = [...parseFields(query.select), ...extraFields];
+  const options: Record<string, any> = {};
 
-  const raw: Record<string, any> = {
-    fields: parsedFields.length ? parsedFields : undefined,
-    populate: parsedPopulate.length ? parsedPopulate : undefined,
-    orderBy: Sort(query.sort),
-    limit: query.limit,
-    offset: query.offset,
-  };
+  if (query.population?.length) {
+    const { populate, extraFields } = parsePopulation(query.population);
+    if (populate.length) options.populate = populate;
+    const fields = [...parseFields(query.select), ...extraFields];
+    if (fields.length) options.fields = fields;
+  } else if (query.select) {
+    const fields = parseFields(query.select);
+    if (fields.length) options.fields = fields;
+  }
 
-  return Object.fromEntries(Object.entries(raw).filter(([, v]) => v != null));
+  if (query.sort != null) {
+    const orderBy = Sort(query.sort);
+    if (orderBy != null) options.orderBy = orderBy;
+  }
+
+  if (query.limit != null) options.limit = query.limit;
+  if (query.offset != null) options.offset = query.offset;
+
+  return options;
 }
 
 export async function populateEntity<E extends BaseEntity>(

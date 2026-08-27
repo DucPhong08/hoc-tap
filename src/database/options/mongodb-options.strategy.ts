@@ -27,6 +27,12 @@ export class MongoDbOptionsStrategy implements DatabaseDriverOptionsStrategy {
       discovery: {
         disableDynamicFileAccess: true,
       },
+      driverOptions: {
+        maxPoolSize: 10,
+        minPoolSize: 1,
+        maxIdleTimeMS: 30000,
+        connectTimeoutMS: 10000,
+      },
     };
   }
 }

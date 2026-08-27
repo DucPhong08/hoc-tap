@@ -6,7 +6,7 @@ export const LOGS_DATABASE_CONTEXT: DatabaseContextDefinition = {
   contextName: DB_CONTEXTS.LOGS,
   entities: getEntitiesByContext(DB_CONTEXTS.LOGS),
   defaultMigrationPath: 'mikro-logs/migrations',
-  defaultPoolMinSize: 2,
+  defaultPoolMinSize: 1,
   defaultPoolMaxSize: 10,
   defaultTimezone: '+07:00',
 };

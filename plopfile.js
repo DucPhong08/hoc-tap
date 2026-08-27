@@ -70,14 +70,14 @@ module.exports = function (plop) {
       },
       {
         type: 'modify',
-        path: 'src/modules/mikro/entity-registry.ts',
+        path: 'src/database/entity-registry.ts',
         pattern: /(\/\/ PLOP: IMPORT_ENTITY)/,
         template:
-          "import { {{pascalCase (singularize name)}} } from '../{{kebabCase (pluralize name)}}/entities/{{kebabCase (singularize name)}}.entity';\n$1",
+          "import { {{pascalCase (singularize name)}} } from '@/modules/{{kebabCase (pluralize name)}}/entities/{{kebabCase (singularize name)}}.entity';\n$1",
       },
       {
         type: 'modify',
-        path: 'src/modules/mikro/entity-registry.ts',
+        path: 'src/database/entity-registry.ts',
         pattern: /(\/\/ PLOP: ADD_MAIN_ENTITY)/,
         template: '{{pascalCase (singularize name)}},\n    $1',
       },
