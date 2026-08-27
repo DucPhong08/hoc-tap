@@ -1,8 +1,9 @@
 import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
+import type { PopulationQuery } from '@/common/types/repository/populate.types';
 
 export interface ParsedQueryOptions {
-  select?: string[];
-  population?: string[];
+  select?: Record<string, 1 | 0>;
+  population?: PopulationQuery<any>[];
   sort?: Record<string, 1 | -1>;
   softDelete?: boolean;
   page?: number;
@@ -22,8 +23,13 @@ export class QueryOptionsPipe implements PipeTransform<
 
     const parsedQuery: ParsedQueryOptions = {};
 
-    parsedQuery.select = this.parseCsvList(value.select);
-    parsedQuery.population = this.parseCsvList(value.populate);
+    if (value.select && typeof value.select === 'string') {
+      parsedQuery.select = this.parseSelectFields(value.select);
+    }
+    const popList = this.parseCsvList(value.populate);
+    if (popList?.length) {
+      parsedQuery.population = popList.map((path) => ({ path }));
+    }
 
     if (value.sort && typeof value.sort === 'string') {
       parsedQuery.sort = this.parseSortFields(value.sort);
@@ -122,5 +128,16 @@ export class QueryOptionsPipe implements PipeTransform<
     if (value === 'true' || value === true) return true;
     if (value === 'false' || value === false) return false;
     throw new BadRequestException('softDelete must be a boolean');
+  }
+
+  private parseSelectFields(selectValue: string): Record<string, 1 | 0> {
+    const selectFields: Record<string, 1 | 0> = {};
+    selectValue.split(',').forEach((field) => {
+      const fieldName = field.trim();
+      if (fieldName) {
+        selectFields[fieldName] = 1;
+      }
+    });
+    return selectFields;
   }
 }

@@ -86,10 +86,7 @@ export class MonitoringController {
         logs: recent,
       };
     } catch (error) {
-      return {
-        error: 'Failed to read error logs',
-        message: (error as Error)?.message ?? String(error),
-      };
+      return { error: 'Failed to read error logs', message: error.message };
     }
   }
 

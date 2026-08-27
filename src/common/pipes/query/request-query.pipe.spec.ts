@@ -16,8 +16,8 @@ describe('QueryOptionsPipe', () => {
         offset: '0',
       }),
     ).toEqual({
-      select: ['id', 'email'],
-      population: ['role'],
+      select: { id: 1, email: 1 },
+      population: [{ path: 'role' }],
       sort: { createdAt: -1, email: 1 },
       softDelete: false,
       page: 2,

@@ -21,9 +21,9 @@ import { AuthController } from './controllers/auth.controller';
       useFactory: (config: ConfigService) => {
         const authConfig = config.get<AuthConfig>('auth');
         return {
-          secret: authConfig?.jwtSecret || 'default-secret',
+          secret: authConfig?.jwtSecret ?? 'default-secret',
           signOptions: {
-            expiresIn: (authConfig?.jwtExpiresIn || '1h') as StringValue,
+            expiresIn: (authConfig?.jwtExpiresIn ?? '1h') as StringValue,
           },
         };
       },
@@ -37,10 +37,7 @@ import { AuthController } from './controllers/auth.controller';
       provide: 'GOOGLE_STRATEGY',
       useFactory: (config: ConfigService, authService: AuthService) => {
         const clientId = config.get<string>('GOOGLE_CLIENT_ID');
-        if (clientId) {
-          return new GoogleStrategy(config, authService);
-        }
-        return null;
+        return clientId ? new GoogleStrategy(config, authService) : null;
       },
       inject: [ConfigService, AuthService],
     },
@@ -48,10 +45,7 @@ import { AuthController } from './controllers/auth.controller';
       provide: 'FACEBOOK_STRATEGY',
       useFactory: (config: ConfigService, authService: AuthService) => {
         const appId = config.get<string>('FACEBOOK_APP_ID');
-        if (appId) {
-          return new FacebookStrategy(config, authService);
-        }
-        return null;
+        return appId ? new FacebookStrategy(config, authService) : null;
       },
       inject: [ConfigService, AuthService],
     },

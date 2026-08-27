@@ -18,6 +18,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { BaseEntity } from '@/common/entity/base.entity';
 import { AuthProvider } from '@/modules/auth/enums/auth-provider.enum';
 import { Role as RoleEntity } from '@/modules/roles/entities/role.entity';
+import { SystemRole } from '@/modules/roles/enums/system-role.enum';
 
 @Entity({ tableName: 'users' })
 export class User extends BaseEntity {
@@ -59,20 +60,14 @@ export class User extends BaseEntity {
   role?: RoleEntity;
 
   get roleCode(): string {
-    if (
-      this.role &&
-      typeof this.role === 'object' &&
-      'code' in this.role &&
-      (this.role as any).code
-    ) {
-      return (this.role as any).code;
-    }
-    return 'user';
+    return (this.role as any)?.code ?? SystemRole.USER;
   }
 
   get roles(): string[] {
-    const code = this.roleCode || 'user';
-    return code === 'admin' ? ['admin', 'user'] : [code];
+    const code = this.roleCode;
+    return code === (SystemRole.ADMIN as string)
+      ? [SystemRole.ADMIN, SystemRole.USER]
+      : [code];
   }
 
   @ApiProperty()

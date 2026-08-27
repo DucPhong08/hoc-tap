@@ -4,6 +4,8 @@ import { Request } from 'express';
 import { ROLES_KEY } from '../decorators/roles.decorator';
 import { User } from '@/modules/users/entities/user.entity';
 
+import { SystemRole } from '@/modules/roles/enums/system-role.enum';
+
 interface RequestWithUser extends Request {
   user?: User;
 }
@@ -24,7 +26,7 @@ export class RolesGuard implements CanActivate {
 
     const request = context.switchToHttp().getRequest<RequestWithUser>();
     const user = request.user;
-    if (user?.roles?.includes('admin')) {
+    if (user?.roles?.includes(SystemRole.ADMIN)) {
       return true;
     }
     return requiredRoles.some((role) => user?.roles?.includes(role));

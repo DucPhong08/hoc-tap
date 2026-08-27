@@ -15,8 +15,6 @@ export interface PopulationOptions<
   population?: PopulationQuery<Target<E, P>>[];
 }
 
-export type PopulationQuery<E extends object> =
-  | Paths<E>
-  | {
-      [P in Paths<E>]: PopulationOptions<E, P>;
-    }[Paths<E>];
+export type PopulationQuery<E extends object> = {
+  [P in Paths<E>]: PopulationOptions<E, P>;
+}[Paths<E>];

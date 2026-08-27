@@ -37,7 +37,7 @@ export interface FindQuery<
   E extends object = any,
   TContext = unknown,
 > extends QueryOptions<TContext, E> {
-  select?: Partial<Record<Paths<E>, 1 | 0>> | Paths<E>[];
+  select?: Partial<Record<Paths<E>, 1 | 0>>;
   filters?: FilterRule<E>[];
   population?: PopulationQuery<E>[];
   sort?: Partial<Record<Paths<E>, 1 | -1>>;

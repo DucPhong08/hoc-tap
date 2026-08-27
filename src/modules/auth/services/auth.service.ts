@@ -33,7 +33,7 @@ export class AuthService {
     const authConfig = this.configService.get<AuthConfig>('auth');
     const hashedPassword = await bcrypt.hash(
       password,
-      authConfig?.bcryptRounds || 10,
+      authConfig?.bcryptRounds ?? 10,
     );
 
     const user = await this.userService.create(null, {
@@ -52,14 +52,10 @@ export class AuthService {
     const [user] = await this.userService.getMany(
       null,
       { email },
-      { population: ['role'] as any },
+      { population: [{ path: 'role' }] },
     );
 
-    if (!user || user.provider !== AuthProvider.LOCAL) {
-      throw ApiError.Unauthorized('error-invalid-credentials');
-    }
-
-    if (!user.password) {
+    if (!user?.password || user.provider !== AuthProvider.LOCAL) {
       throw ApiError.Unauthorized('error-invalid-credentials');
     }
 
@@ -77,32 +73,25 @@ export class AuthService {
   }
 
   async validateOAuthUser(profile: OAuthProfile): Promise<User> {
-    let user;
+    const [existingUser] = await this.userService.getMany(null, {
+      email: profile.email,
+    });
 
-    if (!user) {
-      const [existingUser] = await this.userService.getMany(null, {
-        email: profile.email,
+    if (existingUser) {
+      return this.userService.updateById(null, existingUser.id, {
+        provider: profile.provider,
+        avatar: profile.avatar,
       });
-      user = existingUser;
-
-      if (user) {
-        user = await this.userService.updateById(null, user.id, {
-          provider: profile.provider,
-          avatar: profile.avatar,
-        });
-      } else {
-        user = await this.userService.create(null, {
-          email: profile.email,
-          firstName: profile.firstName,
-          lastName: profile.lastName,
-          provider: profile.provider,
-          avatar: profile.avatar,
-          isActive: true,
-        });
-      }
     }
 
-    return user;
+    return this.userService.create(null, {
+      email: profile.email,
+      firstName: profile.firstName,
+      lastName: profile.lastName,
+      provider: profile.provider,
+      avatar: profile.avatar,
+      isActive: true,
+    });
   }
 
   async refreshToken(refreshToken: string): Promise<LoginResponse> {
@@ -113,8 +102,8 @@ export class AuthService {
       });
 
       const user = await this.userService.getByIdOrNull(null, payload.sub, {
-        populate: ['role'],
-      } as any);
+        population: [{ path: 'role' }],
+      });
 
       if (!user) {
         throw ApiError.Unauthorized('error-user-not-found');
@@ -131,8 +120,8 @@ export class AuthService {
 
   async getUser(userId: string): Promise<AuthUserProfile> {
     const user = await this.userService.getByIdOrNull(null, userId, {
-      populate: ['role'],
-    } as any);
+      population: [{ path: 'role' }],
+    });
 
     if (!user) {
       throw ApiError.Unauthorized('error-user-not-found');
@@ -147,14 +136,14 @@ export class AuthService {
     const payload: JwtPayload = {
       sub: user.id,
       email: user.email,
-      roles: user.roles || [SystemRole.USER],
+      roles: user.roles ?? [SystemRole.USER],
     };
 
     const accessToken = this.jwtService.sign(payload);
 
     const refreshToken = this.jwtService.sign(payload, {
-      secret: authConfig?.jwtRefreshSecret || 'default-refresh-secret',
-      expiresIn: (authConfig?.jwtRefreshExpiresIn || '7d') as StringValue,
+      secret: authConfig?.jwtRefreshSecret ?? 'default-refresh-secret',
+      expiresIn: (authConfig?.jwtRefreshExpiresIn ?? '7d') as StringValue,
     });
 
     return {
@@ -170,8 +159,8 @@ export class AuthService {
       email: user.email,
       firstName: user.firstName,
       lastName: user.lastName,
-      roles: user.roles || [SystemRole.USER],
-      provider: user.provider || AuthProvider.LOCAL,
+      roles: user.roles ?? [SystemRole.USER],
+      provider: user.provider ?? AuthProvider.LOCAL,
       avatar: user.avatar,
       isActive: user.isActive,
     };

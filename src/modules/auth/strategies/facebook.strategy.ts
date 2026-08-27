@@ -12,9 +12,9 @@ export class FacebookStrategy extends PassportStrategy(Strategy, 'facebook') {
     private authService: AuthService,
   ) {
     super({
-      clientID: configService.get<string>('FACEBOOK_APP_ID') || '',
-      clientSecret: configService.get<string>('FACEBOOK_APP_SECRET') || '',
-      callbackURL: configService.get<string>('FACEBOOK_CALLBACK_URL') || '',
+      clientID: configService.get<string>('FACEBOOK_APP_ID') ?? '',
+      clientSecret: configService.get<string>('FACEBOOK_APP_SECRET') ?? '',
+      callbackURL: configService.get<string>('FACEBOOK_CALLBACK_URL') ?? '',
       scope: ['email'],
       profileFields: ['emails', 'name', 'photos'],
     });
@@ -31,9 +31,9 @@ export class FacebookStrategy extends PassportStrategy(Strategy, 'facebook') {
     const oauthProfile = {
       provider: AuthProvider.FACEBOOK,
       providerId: id,
-      email: emails?.[0]?.value || '',
-      firstName: name?.givenName || '',
-      lastName: name?.familyName || '',
+      email: emails?.[0]?.value ?? '',
+      firstName: name?.givenName ?? '',
+      lastName: name?.familyName ?? '',
       avatar: photos?.[0]?.value,
     };
 
