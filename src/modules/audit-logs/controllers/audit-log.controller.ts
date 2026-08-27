@@ -2,12 +2,11 @@ import { Controller, Get, Query, Param, Delete } from '@nestjs/common';
 import { ApiTags, ApiQuery } from '@nestjs/swagger';
 import { AuditLogService } from '../services/audit-log.service';
 import { AuditLog } from '../entities/audit-log.entity';
-import { Roles } from '@/common/decorators/roles.decorator';
-import { SystemRole } from '@/modules/roles/enums/system-role.enum';
+import { Authorization } from '@/common/decorators/authorization.decorator';
 
 @ApiTags('audit-logs')
 @Controller('audit-logs')
-@Roles(SystemRole.ADMIN)
+@Authorization()
 export class AuditLogController {
   constructor(private readonly auditLogService: AuditLogService) {}
 

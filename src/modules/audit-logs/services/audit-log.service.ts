@@ -23,24 +23,22 @@ export class AuditLogService {
   }
 
   async logMany(dataArray: LogActionData[]): Promise<AuditLog[]> {
-    const entities = dataArray.map((data) => ({
-      action: data.action,
-      entityType: data.entityType,
-      entityId: data.entityId,
-      userId: data.userId,
-      userEmail: data.userEmail,
-      ipAddress: data.ipAddress,
-      userAgent: data.userAgent,
-      endpoint: data.endpoint,
-      method: data.method,
-      description: data.description,
-    }));
-
-    const result: AuditLog[] = [];
-    for (const entity of entities) {
-      result.push(await this.repository.create(entity));
-    }
-    return result;
+    return Promise.all(
+      dataArray.map((data) =>
+        this.repository.create({
+          action: data.action,
+          entityType: data.entityType,
+          entityId: data.entityId,
+          userId: data.userId,
+          userEmail: data.userEmail,
+          ipAddress: data.ipAddress,
+          userAgent: data.userAgent,
+          endpoint: data.endpoint,
+          method: data.method,
+          description: data.description,
+        }),
+      ),
+    );
   }
 
   async getUserActions(userId: string, limit = 100): Promise<AuditLog[]> {
