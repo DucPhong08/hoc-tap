@@ -7,7 +7,7 @@ import {
 import { Reflector } from '@nestjs/core';
 import { Observable, throwError } from 'rxjs';
 import { tap, catchError } from 'rxjs/operators';
-import { AuditLogService } from '../services/audit-log.service';
+import { AuditLogQueueService } from '../services/audit-log-queue.service';
 import {
   AUDITABLE_KEY,
   AuditableOptions,
@@ -17,7 +17,7 @@ import {
 export class AuditInterceptor implements NestInterceptor {
   constructor(
     private readonly reflector: Reflector,
-    private readonly auditLogService: AuditLogService,
+    private readonly auditLogQueueService: AuditLogQueueService,
   ) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
@@ -46,8 +46,7 @@ export class AuditInterceptor implements NestInterceptor {
 
     return next.handle().pipe(
       tap((result) => {
-        // Fire and forget - không await
-        void this.logAuditSuccess(
+        this.logAuditSuccess(
           auditOptions,
           context,
           user,
@@ -59,7 +58,7 @@ export class AuditInterceptor implements NestInterceptor {
         );
       }),
       catchError((error) => {
-        void this.logFailedOperation(
+        this.logFailedOperation(
           auditOptions,
           context,
           user,
@@ -73,7 +72,7 @@ export class AuditInterceptor implements NestInterceptor {
     );
   }
 
-  private async logAuditSuccess(
+  private logAuditSuccess(
     auditOptions: AuditableOptions,
     context: ExecutionContext,
     user: any,
@@ -82,12 +81,12 @@ export class AuditInterceptor implements NestInterceptor {
     endpoint: string,
     method: string,
     result?: any,
-  ): Promise<void> {
+  ): void {
     try {
       const entityId = this.extractEntityId(context, result);
       const entityType = this.extractEntityType(context);
 
-      await this.auditLogService.log({
+      this.auditLogQueueService.push({
         action: auditOptions.action,
         entityType,
         entityId,
@@ -100,11 +99,11 @@ export class AuditInterceptor implements NestInterceptor {
         description: auditOptions.description,
       });
     } catch (error) {
-      console.error('Audit logging failed:', error);
+      console.error('Audit logging push failed:', error);
     }
   }
 
-  private async logFailedOperation(
+  private logFailedOperation(
     options: AuditableOptions,
     context: ExecutionContext,
     user: any,
@@ -112,12 +111,12 @@ export class AuditInterceptor implements NestInterceptor {
     userAgent: string,
     endpoint: string,
     method: string,
-  ): Promise<void> {
+  ): void {
     try {
       const entityId = this.extractEntityId(context);
       const entityType = this.extractEntityType(context);
 
-      await this.auditLogService.log({
+      this.auditLogQueueService.push({
         action: options.action,
         entityType,
         entityId,
@@ -130,7 +129,7 @@ export class AuditInterceptor implements NestInterceptor {
         description: options.description,
       });
     } catch (error) {
-      console.error('Failed operation audit logging failed:', error);
+      console.error('Failed operation audit logging push failed:', error);
     }
   }
 

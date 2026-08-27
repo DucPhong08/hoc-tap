@@ -31,12 +31,28 @@ import { RequestLoggingMiddleware } from './common/middleware/request-logging.mi
 import { RolesModule } from './modules/roles/roles.module';
 // PLOP: IMPORT_MODULE
 
+import { BullModule } from '@nestjs/bull';
+import { ConfigService } from '@nestjs/config';
+
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
       load: [configuration],
       ignoreEnvFile: false,
+    }),
+    BullModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        redis: {
+          host: configService.get<string>('cache.redis.host', 'localhost'),
+          port: configService.get<number>('cache.redis.port', 6379),
+          password:
+            configService.get<string>('cache.redis.password') || undefined,
+          db: configService.get<number>('cache.redis.db', 0),
+        },
+      }),
     }),
     I18nModule.forRoot({
       fallbackLanguage: 'vi',
