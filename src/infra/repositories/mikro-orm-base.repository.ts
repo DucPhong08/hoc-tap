@@ -43,10 +43,6 @@ export abstract class MikroOrmBaseRepository<
     return this.repository.getEntityManager();
   }
 
-  getEntityManager(): EntityManager {
-    return this.repository.getEntityManager();
-  }
-
   // ===========================================================================
   // Create
   // ===========================================================================
@@ -199,15 +195,7 @@ export abstract class MikroOrmBaseRepository<
     data: UpdateData<E>,
     options?: CommandOptions<TContext, E>,
   ): Promise<E | null> {
-    const { em } = resolveContext(this.em, this.repository, options);
-    const entity = await this.getById(id, options);
-
-    if (!entity) return null;
-
-    wrap(entity).assign(data as any);
-    await em.flush();
-
-    return entity;
+    return this.updateOne({ id } as QueryCondition<E>, data, options);
   }
 
   async updateOne(
@@ -215,11 +203,11 @@ export abstract class MikroOrmBaseRepository<
     data: UpdateData<E>,
     options?: CommandOptions<TContext, E>,
   ): Promise<E | null> {
-    const { em } = resolveContext(this.em, this.repository, options);
     const entity = await this.getOne(condition, options);
 
     if (!entity) return null;
 
+    const { em } = resolveContext(this.em, this.repository, options);
     wrap(entity).assign(data as any);
     await em.flush();
 
@@ -257,11 +245,11 @@ export abstract class MikroOrmBaseRepository<
     condition: QueryCondition<E>,
     options?: DeleteCommand & CommandOptions<TContext, E>,
   ): Promise<E | null> {
-    const { em } = resolveContext(this.em, this.repository, options);
     const entity = await this.getOne(condition, options);
 
     if (!entity) return null;
 
+    const { em } = resolveContext(this.em, this.repository, options);
     if (options?.soft === false) {
       await em.remove(entity).flush();
       return entity;
@@ -313,28 +301,15 @@ export abstract class MikroOrmBaseRepository<
     condition: QueryCondition<E>,
     query?: QueryOptions<TContext>,
   ): Promise<boolean> {
-    const { em, repository } = resolveContext(this.em, this.repository, query);
+    const { repository } = resolveContext(this.em, this.repository, query);
     const filter = Filter(condition, {
       softDelete: query?.softDelete,
     });
 
-    const isMongoDriver = em.getDriver() instanceof MongoDriver;
-
-    if (isMongoDriver) {
-      const result = await (repository as MongoEntityRepository<E>)
-        .getCollection()
-        .findOne(filter as MongoFilter<E>, { projection: { _id: 1 } });
-      return !!result;
-    }
-
-    const row = await (repository as SqlEntityRepository<E>)
-      .createQueryBuilder()
-      .select('1')
-      .where(filter as QBFilterQuery<E>)
-      .limit(1)
-      .execute('get', false);
-
-    return !!row;
+    const entity = await repository.findOne(filter, {
+      fields: ['id'] as any,
+    });
+    return !!entity;
   }
 
   async distinct<K extends keyof E>(
@@ -377,9 +352,9 @@ export abstract class MikroOrmBaseRepository<
       this.repository,
       options,
     );
-    const entity = await repository.findOne({
-      id,
-    } as any);
+    const entity = await repository.findOne(
+      Filter({ id } as QueryCondition<E>, { softDelete: true }),
+    );
 
     if (!entity) {
       return null;
@@ -389,9 +364,5 @@ export abstract class MikroOrmBaseRepository<
     await em.flush();
 
     return entity;
-  }
-
-  keys<K extends keyof E>(...names: K[]): K[] {
-    return names;
   }
 }

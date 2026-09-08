@@ -100,6 +100,4 @@ export interface IBaseRepository<E extends BaseEntity, TContext = unknown> {
   ): Promise<E[K][]>;
 
   restore(id: string, options?: CommandOptions<TContext, E>): Promise<E | null>;
-
-  keys<K extends keyof E>(...names: K[]): K[];
 }
