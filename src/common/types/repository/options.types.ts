@@ -1,13 +1,12 @@
-import type {
-  FindOptions as MikroFindOptions,
-  NativeInsertUpdateOptions as MikroNativeInsertUpdateOptions,
-} from '@mikro-orm/core';
+import type { FindOptions as MikroFindOptions } from '@mikro-orm/core';
 import type { Paths } from './util.types';
 import type { PopulationQuery } from './populate.types';
-import { FilterRule } from './filter.types';
+import type { FilterRule } from './filter.types';
+import type { User } from '@/modules/users/entities/user.entity';
 
 export interface BaseOptions<T = unknown> {
   transaction?: T;
+  user?: User;
 }
 
 export interface QueryOptions<T = unknown, E extends object = any>
@@ -26,11 +25,6 @@ export interface QueryOptions<T = unknown, E extends object = any>
   softDelete?: boolean;
 }
 
-export interface CommandOptions<T = unknown, E extends object = any>
-  extends BaseOptions<T>, Omit<MikroNativeInsertUpdateOptions<E>, 'ctx'> {
-  population?: PopulationQuery<E>[];
-}
-
 export interface FindQuery<
   E extends object = any,
   TContext = unknown,
@@ -38,12 +32,9 @@ export interface FindQuery<
   select?: Partial<Record<Paths<E>, 1 | 0>>;
   filters?: FilterRule<E>[];
   population?: PopulationQuery<E>[];
-  sort?: Partial<Record<Paths<E>, 1 | -1>>;
+  page?: number;
   limit?: number;
-  offset?: number;
-}
-
-export interface DeleteCommand {
+  sort?: Partial<Record<Paths<E>, 1 | -1>>;
   soft?: boolean;
 }
 

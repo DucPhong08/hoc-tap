@@ -27,7 +27,7 @@ export class SettingController {
     description: 'Update setting value',
   })
   async updateValueByKey(
-    @ReqUser() user: User | null,
+    @ReqUser() user: User,
     @Param('key') key: string,
     @Body('value') value: any,
   ): Promise<Setting> {

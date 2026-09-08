@@ -10,6 +10,6 @@ import { User } from './entities/user.entity';
   imports: [TransactionModule, ...registerEntities([User])],
   controllers: [UserController],
   providers: [UserService, UserRepository],
-  exports: [UserService],
+  exports: [UserService, UserRepository],
 })
 export class UsersModule {}

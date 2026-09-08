@@ -6,6 +6,7 @@ import { validate } from 'class-validator';
 import { BaseCrudService } from '@/infra/services/base-crud.service';
 import { Setting } from '../entities/setting.entity';
 import { SettingRepository } from '../repositories/setting.repository';
+import type { FindQuery } from '@/common/interfaces/repository.interface';
 import type { User } from '@/modules/users/entities/user.entity';
 import type { BaseTransaction } from '@/infra/transaction/base-transaction.interface';
 import { InjectTransaction } from '@/infra/transaction/transaction.provider';
@@ -42,9 +43,10 @@ export class SettingService extends BaseCrudService<Setting, EntityManager> {
    * Set giá trị setting với validation
    */
   async setSettingValue<T extends SettingKey>(
-    user: User | null,
+    user: User,
     key: T,
     value: SettingValue<T>,
+    query?: FindQuery<Setting, EntityManager>,
   ): Promise<Setting> {
     const ValueClass = MAP_SETTING_ENTITY[key];
 
@@ -61,7 +63,7 @@ export class SettingService extends BaseCrudService<Setting, EntityManager> {
       }
     }
 
-    return this.executeWithTransaction(undefined, async (txOptions) => {
+    return this.executeWithTransaction(query, async (txOptions) => {
       const existing = await this.settingRepository.getOne({ key }, txOptions);
 
       if (existing) {

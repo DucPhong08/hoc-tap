@@ -3,7 +3,7 @@ import { ApiError } from '@/common/exceptions/api-error';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
-import { UserService } from '@/modules/users/services/user.service';
+import { UserRepository } from '@/modules/users/repositories/user.repository';
 import { User } from '@/modules/users/entities/user.entity';
 import type { AuthConfig } from '@/config/configuration.types';
 import { JwtPayload } from '../strategies/jwt.strategy';
@@ -19,7 +19,7 @@ import type { StringValue } from 'ms';
 @Injectable()
 export class AuthService {
   constructor(
-    private userService: UserService,
+    private userRepository: UserRepository,
     private jwtService: JwtService,
     private configService: ConfigService,
   ) {}
@@ -30,14 +30,20 @@ export class AuthService {
     firstName: string,
     lastName: string,
   ): Promise<LoginResponse> {
+    const emailNorm = email.toLowerCase().trim();
+    const emailExists = await this.userRepository.exists({ email: emailNorm });
+    if (emailExists) {
+      throw ApiError.BadReq('error-user-exist');
+    }
+
     const authConfig = this.configService.get<AuthConfig>('auth');
     const hashedPassword = await bcrypt.hash(
       password,
       authConfig?.bcryptRounds ?? 10,
     );
 
-    const user = await this.userService.create(null, {
-      email,
+    const user = await this.userRepository.create({
+      email: emailNorm,
       password: hashedPassword,
       firstName,
       lastName,
@@ -49,9 +55,8 @@ export class AuthService {
   }
 
   async login(email: string, password: string): Promise<LoginResponse> {
-    const user = await this.userService.getOne(
-      null,
-      { email },
+    const user = await this.userRepository.getOne(
+      { email: email.toLowerCase().trim() },
       { population: [{ path: 'role' }] },
     );
 
@@ -73,20 +78,21 @@ export class AuthService {
   }
 
   async validateOAuthUser(profile: OAuthProfile): Promise<User> {
-    const existingUser = await this.userService.getOne(null, {
-      email: profile.email,
+    const emailNorm = profile.email.toLowerCase().trim();
+    const existingUser = await this.userRepository.getOne({
+      email: emailNorm,
     });
 
     if (existingUser) {
-      const updated = await this.userService.updateById(null, existingUser.id, {
+      const updated = await this.userRepository.updateById(existingUser.id, {
         provider: profile.provider,
         avatar: profile.avatar,
       });
       return updated!;
     }
 
-    return this.userService.create(null, {
-      email: profile.email,
+    return this.userRepository.create({
+      email: emailNorm,
       firstName: profile.firstName,
       lastName: profile.lastName,
       provider: profile.provider,
@@ -102,7 +108,7 @@ export class AuthService {
         secret: authConfig?.jwtRefreshSecret,
       });
 
-      const user = await this.userService.getById(null, payload.sub, {
+      const user = await this.userRepository.getById(payload.sub, {
         population: [{ path: 'role' }],
       });
 
@@ -120,7 +126,7 @@ export class AuthService {
   }
 
   async getUser(userId: string): Promise<AuthUserProfile> {
-    const user = await this.userService.getById(null, userId, {
+    const user = await this.userRepository.getById(userId, {
       population: [{ path: 'role' }],
     });
 

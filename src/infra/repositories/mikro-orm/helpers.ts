@@ -7,10 +7,7 @@ import { BaseEntity } from '@/common/entity/base.entity';
 import { Sort } from './sort';
 import { parseFilterRules } from './filter';
 import type { PopulationQuery } from '@/common/types/repository/populate.types';
-import type {
-  FindQuery,
-  CommandOptions,
-} from '@/common/types/repository/options.types';
+import type { FindQuery } from '@/common/types/repository/options.types';
 
 export const resolveContext = <E extends BaseEntity>(
   em: EntityManager,
@@ -105,7 +102,6 @@ export function findOptions(query?: FindQuery<any>): Record<string, any> {
   }
 
   if (query.limit != null) options.limit = query.limit;
-  if (query.offset != null) options.offset = query.offset;
 
   return options;
 }
@@ -113,7 +109,7 @@ export function findOptions(query?: FindQuery<any>): Record<string, any> {
 export async function populateEntity<E extends BaseEntity>(
   em: EntityManager,
   entity: E | null,
-  opts?: CommandOptions<EntityManager, E>,
+  opts?: FindQuery<E, EntityManager>,
 ): Promise<E | null> {
   if (!entity) return null;
   if (opts?.population) {

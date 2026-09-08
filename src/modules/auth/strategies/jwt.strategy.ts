@@ -3,7 +3,7 @@ import { ApiError } from '@/common/exceptions/api-error';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
-import { UserService } from '@/modules/users/services/user.service';
+import { UserRepository } from '@/modules/users/repositories/user.repository';
 import type { AuthConfig } from '@/config/configuration.types';
 
 export interface JwtPayload {
@@ -18,7 +18,7 @@ export interface JwtPayload {
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
     private configService: ConfigService,
-    private userService: UserService,
+    private userRepository: UserRepository,
   ) {
     const authConfig = configService.get<AuthConfig>('auth');
     super({
@@ -29,7 +29,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: JwtPayload) {
-    const user = await this.userService.getById(null, payload.sub, {
+    const user = await this.userRepository.getById(payload.sub, {
       population: [{ path: 'role' }],
     });
 

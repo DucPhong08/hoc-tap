@@ -3,9 +3,8 @@ import { Injectable, Optional } from '@nestjs/common';
 import { ApiError } from '@/common/exceptions/api-error';
 import { BaseCrudService } from '@/infra/services/base-crud.service';
 import { User } from '../entities/user.entity';
-import { UserPolicy } from '../policies/user.policy';
 import { UserRepository } from '../repositories/user.repository';
-import type { CommandOptions } from '@/common/interfaces/repository.interface';
+import type { FindQuery } from '@/common/interfaces/repository.interface';
 import type { BaseTransaction } from '@/infra/transaction/base-transaction.interface';
 import { InjectTransaction } from '@/infra/transaction/transaction.provider';
 
@@ -21,51 +20,48 @@ export class UserService extends BaseCrudService<User> {
   }
 
   async create(
-    user: User | null,
+    user: User,
     data: Partial<User>,
-    query?: CommandOptions<EntityManager, User>,
+    query?: FindQuery<User, EntityManager>,
   ): Promise<User> {
     return this.executeWithTransaction(query, async (txOptions) => {
       if (data.email) {
-        const existingUser = await this.userRepository.getOne(
+        data.email = data.email.toLowerCase().trim();
+        const emailExists = await this.userRepository.exists(
           { email: data.email },
           txOptions,
         );
 
-        if (existingUser) {
+        if (emailExists) {
           throw ApiError.BadReq('error-user-exist');
         }
       }
 
-      const userEntity = await super.create(user, data, txOptions);
-
-      return userEntity;
+      return super.create(user, data, txOptions);
     });
   }
 
   async updateById(
-    user: User | null,
+    user: User,
     id: string,
     data: Partial<User>,
-    query?: CommandOptions<EntityManager, User>,
+    query?: FindQuery<User, EntityManager>,
   ): Promise<User | null> {
     return this.executeWithTransaction(query, async (txOptions) => {
       const existingUser = await this.getById(user, id, txOptions);
+      if (!existingUser) return null;
 
       if (data.email) {
-        if (existingUser && data.email !== existingUser.email) {
-          if (!UserPolicy.canUpdateEmail(existingUser)) {
-            throw ApiError.BadReq('error-email-update-limit');
+        data.email = data.email.toLowerCase().trim();
+        if (data.email !== existingUser.email) {
+          const emailExists = await this.userRepository.exists(
+            { email: data.email },
+            txOptions,
+          );
+
+          if (emailExists) {
+            throw ApiError.BadReq('error-user-exist');
           }
-        }
-
-        const emailExists = await this.userRepository.getOne(
-          { email: data.email },
-          txOptions,
-        );
-
-        if (emailExists && emailExists.id !== existingUser?.id) {
-          throw ApiError.BadReq('error-user-exist');
         }
       }
 
