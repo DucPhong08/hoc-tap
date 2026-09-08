@@ -22,22 +22,20 @@ export class AuditLogService {
     });
   }
 
-  async logMany(dataArray: LogActionData[]): Promise<AuditLog[]> {
-    return Promise.all(
-      dataArray.map((data) =>
-        this.repository.create({
-          action: data.action,
-          entityType: data.entityType,
-          entityId: data.entityId,
-          userId: data.userId,
-          userEmail: data.userEmail,
-          ipAddress: data.ipAddress,
-          userAgent: data.userAgent,
-          endpoint: data.endpoint,
-          method: data.method,
-          description: data.description,
-        }),
-      ),
+  async logMany(dataArray: LogActionData[]): Promise<{ n: number }> {
+    return this.repository.insertMany(
+      dataArray.map((data) => ({
+        action: data.action,
+        entityType: data.entityType,
+        entityId: data.entityId,
+        userId: data.userId,
+        userEmail: data.userEmail,
+        ipAddress: data.ipAddress,
+        userAgent: data.userAgent,
+        endpoint: data.endpoint,
+        method: data.method,
+        description: data.description,
+      })),
     );
   }
 

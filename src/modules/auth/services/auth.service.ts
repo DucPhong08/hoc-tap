@@ -49,7 +49,7 @@ export class AuthService {
   }
 
   async login(email: string, password: string): Promise<LoginResponse> {
-    const [user] = await this.userService.getMany(
+    const user = await this.userService.getOne(
       null,
       { email },
       { population: [{ path: 'role' }] },
@@ -73,15 +73,16 @@ export class AuthService {
   }
 
   async validateOAuthUser(profile: OAuthProfile): Promise<User> {
-    const [existingUser] = await this.userService.getMany(null, {
+    const existingUser = await this.userService.getOne(null, {
       email: profile.email,
     });
 
     if (existingUser) {
-      return this.userService.updateById(null, existingUser.id, {
+      const updated = await this.userService.updateById(null, existingUser.id, {
         provider: profile.provider,
         avatar: profile.avatar,
       });
+      return updated!;
     }
 
     return this.userService.create(null, {
@@ -101,7 +102,7 @@ export class AuthService {
         secret: authConfig?.jwtRefreshSecret,
       });
 
-      const user = await this.userService.getByIdOrNull(null, payload.sub, {
+      const user = await this.userService.getById(null, payload.sub, {
         population: [{ path: 'role' }],
       });
 
@@ -119,7 +120,7 @@ export class AuthService {
   }
 
   async getUser(userId: string): Promise<AuthUserProfile> {
-    const user = await this.userService.getByIdOrNull(null, userId, {
+    const user = await this.userService.getById(null, userId, {
       population: [{ path: 'role' }],
     });
 

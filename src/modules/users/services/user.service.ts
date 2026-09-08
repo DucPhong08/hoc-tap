@@ -5,10 +5,7 @@ import { BaseCrudService } from '@/infra/services/base-crud.service';
 import { User } from '../entities/user.entity';
 import { UserPolicy } from '../policies/user.policy';
 import { UserRepository } from '../repositories/user.repository';
-import type {
-  DeleteCommand,
-  CommandOptions,
-} from '@/common/interfaces/repository.interface';
+import type { CommandOptions } from '@/common/interfaces/repository.interface';
 import type { BaseTransaction } from '@/infra/transaction/base-transaction.interface';
 import { InjectTransaction } from '@/infra/transaction/transaction.provider';
 
@@ -51,9 +48,9 @@ export class UserService extends BaseCrudService<User> {
     id: string,
     data: Partial<User>,
     query?: CommandOptions<EntityManager, User>,
-  ): Promise<User> {
+  ): Promise<User | null> {
     return this.executeWithTransaction(query, async (txOptions) => {
-      const existingUser = await this.getByIdOrNull(user, id, txOptions);
+      const existingUser = await this.getById(user, id, txOptions);
 
       if (data.email) {
         if (existingUser && data.email !== existingUser.email) {
@@ -73,22 +70,6 @@ export class UserService extends BaseCrudService<User> {
       }
 
       return super.updateById(user, id, data, txOptions);
-    });
-  }
-
-  async deleteById(
-    user: User | null,
-    id: string,
-    query?: DeleteCommand & CommandOptions<EntityManager, User>,
-  ): Promise<User> {
-    return this.executeWithTransaction(query, async (txOptions) => {
-      const userEntity = await this.getById(user, id, txOptions);
-
-      if (!UserPolicy.canDelete(userEntity)) {
-        throw ApiError.BadReq('error-user-delete-limit');
-      }
-
-      return super.deleteById(user, id, txOptions);
     });
   }
 }

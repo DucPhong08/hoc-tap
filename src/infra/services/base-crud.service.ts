@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import type { TransactionOptions } from '@mikro-orm/core';
 import type {
   QueryCondition,
@@ -20,14 +20,14 @@ export abstract class BaseCrudService<
   E extends BaseEntity,
   TContext = unknown,
 > {
-  protected readonly notFoundMessage: string;
+  public readonly notFoundMessage?: string;
   protected readonly transaction?: BaseTransaction<TContext>;
 
   constructor(
     protected readonly repository: IBaseRepository<E, TContext>,
     config?: BaseCrudServiceConfig<TContext>,
   ) {
-    this.notFoundMessage = config?.notFoundMessage ?? 'Không tìm thấy bản ghi';
+    this.notFoundMessage = config?.notFoundMessage;
     this.transaction = config?.transaction;
   }
 
@@ -55,18 +55,6 @@ export abstract class BaseCrudService<
     user: User | null,
     id: string,
     query?: FindQuery<E, TContext>,
-  ): Promise<E> {
-    const entity = await this.repository.getById(id, query);
-    if (!entity) {
-      throw new NotFoundException(`${this.notFoundMessage} với ID: ${id}`);
-    }
-    return entity;
-  }
-
-  async getByIdOrNull(
-    user: User | null,
-    id: string,
-    query?: FindQuery<E, TContext>,
   ): Promise<E | null> {
     return this.repository.getById(id, query);
   }
@@ -75,12 +63,8 @@ export abstract class BaseCrudService<
     user: User | null,
     condition: QueryCondition<E>,
     query?: FindQuery<E, TContext>,
-  ): Promise<E> {
-    const entity = await this.repository.getOne(condition, query);
-    if (!entity) {
-      throw new NotFoundException(this.notFoundMessage);
-    }
-    return entity;
+  ): Promise<E | null> {
+    return this.repository.getOne(condition, query);
   }
 
   async getMany(
@@ -104,13 +88,9 @@ export abstract class BaseCrudService<
     id: string,
     update: UpdateData<E>,
     query?: CommandOptions<TContext, E>,
-  ): Promise<E> {
+  ): Promise<E | null> {
     return this.executeWithTransaction(query, async (tx) => {
-      const entity = await this.repository.updateById(id, update, tx);
-      if (!entity) {
-        throw new NotFoundException(`${this.notFoundMessage} với ID: ${id}`);
-      }
-      return entity;
+      return this.repository.updateById(id, update, tx);
     });
   }
 
@@ -119,13 +99,9 @@ export abstract class BaseCrudService<
     condition: QueryCondition<E>,
     update: UpdateData<E>,
     query?: CommandOptions<TContext, E>,
-  ): Promise<E> {
+  ): Promise<E | null> {
     return this.executeWithTransaction(query, async (tx) => {
-      const entity = await this.repository.updateOne(condition, update, tx);
-      if (!entity) {
-        throw new NotFoundException(this.notFoundMessage);
-      }
-      return entity;
+      return this.repository.updateOne(condition, update, tx);
     });
   }
 
@@ -153,13 +129,9 @@ export abstract class BaseCrudService<
     user: User | null,
     id: string,
     query?: DeleteCommand & CommandOptions<TContext, E>,
-  ): Promise<E> {
+  ): Promise<E | null> {
     return this.executeWithTransaction(query, async (tx) => {
-      const entity = await this.repository.deleteById(id, tx);
-      if (!entity) {
-        throw new NotFoundException(`${this.notFoundMessage} với ID: ${id}`);
-      }
-      return entity;
+      return this.repository.deleteById(id, tx);
     });
   }
 
@@ -167,13 +139,9 @@ export abstract class BaseCrudService<
     user: User | null,
     condition: QueryCondition<E>,
     query?: DeleteCommand & CommandOptions<TContext, E>,
-  ): Promise<E> {
+  ): Promise<E | null> {
     return this.executeWithTransaction(query, async (tx) => {
-      const entity = await this.repository.deleteOne(condition, tx);
-      if (!entity) {
-        throw new NotFoundException(this.notFoundMessage);
-      }
-      return entity;
+      return this.repository.deleteOne(condition, tx);
     });
   }
 

@@ -65,12 +65,13 @@ export class SettingService extends BaseCrudService<Setting, EntityManager> {
       const existing = await this.settingRepository.getOne({ key }, txOptions);
 
       if (existing) {
-        return super.updateById(
+        const updated = await super.updateById(
           user,
           existing.id,
           { value: value as any },
           txOptions,
         );
+        return updated!;
       }
 
       return super.create(
@@ -85,20 +86,17 @@ export class SettingService extends BaseCrudService<Setting, EntityManager> {
   }
 
   async getSettingValues(keys: SettingKey[]): Promise<Record<string, any>> {
-    const settings = await Promise.all(
-      keys.map(async (key) => {
-        try {
-          const value = await this.getSettingValue(key as any);
-          return { key, value };
-        } catch {
-          return { key, value: null };
-        }
-      }),
-    );
+    if (!keys.length) return {};
 
-    return settings.reduce(
-      (acc, { key, value }) => {
-        acc[key] = value;
+    const settings = await this.settingRepository.getMany({
+      key: { $in: keys },
+    } as any);
+
+    const settingMap = new Map(settings.map((s) => [s.key, s.value]));
+
+    return keys.reduce(
+      (acc, key) => {
+        acc[key] = settingMap.get(key) ?? null;
         return acc;
       },
       {} as Record<string, any>,

@@ -135,7 +135,7 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
       @ReqUser() user: User | null,
       @RequestCondition(ConditionDto, true) condition: QueryCondition<E>,
       @RequestQuery() query: ParsedQueryOptions,
-    ): Promise<E> {
+    ): Promise<E | null> {
       assertRouteEnabled(routeConfigs.getOne);
       return this.service.getOne(user, condition, query as FindQuery<E>);
     }
@@ -154,7 +154,7 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
       @ReqUser() user: User | null,
       @Param('id') id: string,
       @RequestQuery() query: ParsedQueryOptions,
-    ): Promise<E> {
+    ): Promise<E | null> {
       assertRouteEnabled(routeConfigs.getById);
       return this.service.getById(user, id, query as FindQuery<E>);
     }
@@ -175,7 +175,7 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
       @ReqUser() user: User | null,
       @RequestCondition(ConditionDto, true) condition: QueryCondition<E>,
       @Body() update: UpdateData<E>,
-    ): Promise<E> {
+    ): Promise<E | null> {
       assertRouteEnabled(routeConfigs.updateOne);
       return this.service.updateOne(user, condition, update);
     }
@@ -195,7 +195,7 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
       @ReqUser() user: User | null,
       @Param('id') id: string,
       @Body() body: UpdateData<E>,
-    ): Promise<E> {
+    ): Promise<E | null> {
       assertRouteEnabled(routeConfigs.updateById);
       return this.service.updateById(user, id, body);
     }
