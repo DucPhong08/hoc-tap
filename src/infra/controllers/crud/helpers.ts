@@ -22,10 +22,15 @@ const CRUD_AUDIT_ACTIONS: Partial<Record<BaseRoute, AuditAction>> = {
 
 export const toConfig = (
   config: boolean | RouteConfig | undefined,
-): Required<RouteConfig> => ({
-  enabled: typeof config === 'boolean' ? config : (config?.enabled ?? true),
-  roles: typeof config === 'boolean' ? [] : (config?.roles ?? []),
-});
+): Required<RouteConfig> => {
+  if (typeof config === 'boolean') {
+    return { enabled: config, roles: [] };
+  }
+  return {
+    enabled: config?.enabled ?? true,
+    roles: config?.roles ?? [],
+  };
+};
 
 export const getRouteConfigs = (
   routes: CrudOptions['routes'] | undefined,

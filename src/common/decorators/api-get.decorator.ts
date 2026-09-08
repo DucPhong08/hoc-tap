@@ -48,26 +48,21 @@ export const ApiQueryOptions = (mode: QueryMode) => {
 };
 
 export const ApiGet = (mode: QueryMode, entityType: Type<unknown>) => {
-  const routePath = mode === 'one' ? 'one' : mode === 'many' ? 'many' : 'page';
-
-  const apiOkResponse =
-    mode === 'page'
-      ? ApiOkResponse({
-          type: PaginatedResponseDto,
-        })
-      : mode === 'many'
-        ? ApiOkResponse({
-            type: entityType,
-            isArray: true,
-          })
-        : ApiOkResponse({
-            type: entityType,
-          });
+  const getOkResponse = () => {
+    switch (mode) {
+      case 'page':
+        return ApiOkResponse({ type: PaginatedResponseDto });
+      case 'many':
+        return ApiOkResponse({ type: entityType, isArray: true });
+      case 'one':
+        return ApiOkResponse({ type: entityType });
+    }
+  };
 
   return applyDecorators(
-    Get(routePath),
+    Get(mode),
     HttpCode(HTTP_STATUS.OK),
-    apiOkResponse,
+    getOkResponse(),
     ApiCondition(mode === 'one'),
     ApiQueryOptions(mode),
   );

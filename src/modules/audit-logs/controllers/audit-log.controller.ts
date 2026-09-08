@@ -13,7 +13,7 @@ export class AuditLogController {
   @Get('recent')
   @ApiQuery({ name: 'limit', required: false, type: Number })
   async getRecentLogs(@Query('limit') limit?: number): Promise<AuditLog[]> {
-    return this.auditLogService.getRecentActions(limit || 50);
+    return this.auditLogService.getRecentActions(limit);
   }
 
   @Get('user/:userId')

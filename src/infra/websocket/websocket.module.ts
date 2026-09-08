@@ -13,9 +13,9 @@ import type { StringValue } from 'ms';
       useFactory: (configService: ConfigService) => {
         const authConfig = configService.get<AuthConfig>('auth');
         return {
-          secret: authConfig?.jwtSecret || 'default-secret',
+          secret: authConfig?.jwtSecret ?? 'default-secret',
           signOptions: {
-            expiresIn: (authConfig?.jwtExpiresIn || '1h') as StringValue,
+            expiresIn: (authConfig?.jwtExpiresIn ?? '1h') as StringValue,
           },
         };
       },

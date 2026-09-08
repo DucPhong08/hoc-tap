@@ -89,6 +89,8 @@ export class DatabaseEnvironmentReader {
 
   private readBoolean(keys: string[]): boolean | undefined {
     const value = this.readString(keys)?.toLowerCase();
-    return value === 'true' ? true : value === 'false' ? false : undefined;
+    if (value === 'true') return true;
+    if (value === 'false') return false;
+    return undefined;
   }
 }
