@@ -14,7 +14,6 @@ type DatabaseEnvironmentAliases = {
   connectionUri: string[];
   debugEnabled: string[];
   autoMigrationEnabled: string[];
-  migrationPath: string[];
   poolMinSize: string[];
   poolMaxSize: string[];
   timezone: string[];
@@ -62,7 +61,6 @@ export class DatabaseEnvironmentReader {
       connectionUri: [`${prefix}URI`],
       debugEnabled: [`${prefix}DEBUG`],
       autoMigrationEnabled: [`${prefix}AUTO_MIGRATE`],
-      migrationPath: [`${prefix}MIGRATIONS_PATH`],
       poolMinSize: [`${prefix}POOL_MIN`],
       poolMaxSize: [`${prefix}POOL_MAX`],
       timezone: [`${prefix}TIMEZONE`],
