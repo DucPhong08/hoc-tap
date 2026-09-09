@@ -2,11 +2,11 @@ import type { FindOptions as MikroFindOptions } from '@mikro-orm/core';
 import type { Paths } from './util.types';
 import type { PopulationQuery } from './populate.types';
 import type { FilterRule } from './filter.types';
-import type { User } from '@/modules/users/entities/user.entity';
+import type { IAuthUser } from '@/common/interfaces/auth-user.interface';
 
 export interface BaseOptions<T = unknown> {
   transaction?: T;
-  user?: User;
+  user?: IAuthUser;
 }
 
 export interface QueryOptions<T = unknown, E extends object = any>

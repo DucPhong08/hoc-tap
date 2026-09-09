@@ -15,7 +15,7 @@ import {
   ApiOkResponse,
   ApiResponse,
 } from '@nestjs/swagger';
-import { DeleteManyByIdsDto } from '@/common/dto/delete-many-byIds.dto';
+import { DeleteManyByIdsDto } from '@/common/dto/delete-many-by-ids.dto';
 import { PaginatedResponseDto } from '@/common/dto/pagination.dto';
 import { BaseEntity } from '@/common/entity/base.entity';
 import {
@@ -27,7 +27,7 @@ import {
   RequestQuery,
 } from '@/common/decorators/query.decorator';
 import { ReqUser } from '@/common/decorators/request-user.decorator';
-import { User } from '@/modules/users/entities/user.entity';
+import type { IAuthUser } from '@/common/interfaces/auth-user.interface';
 import {
   ApiCondition,
   ApiGet,
@@ -98,7 +98,7 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
     @ApiBody({ type: CreateDto })
     @UsePipes(validationPipes.create)
     async createEntity(
-      @ReqUser() user: User,
+      @ReqUser() user: IAuthUser,
       @Body() body: Partial<E>,
     ): Promise<E> {
       assertRouteEnabled(routeConfigs.create);
@@ -107,7 +107,7 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
 
     @ApiGet('many', entityType)
     async listEntities(
-      @ReqUser() user: User,
+      @ReqUser() user: IAuthUser,
       @RequestCondition(ConditionDto) condition: QueryCondition<E>,
       @RequestQuery() query: ParsedQueryOptions,
     ): Promise<E[]> {
@@ -117,7 +117,7 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
 
     @ApiGet('page', entityType)
     async paginateEntities(
-      @ReqUser() user: User,
+      @ReqUser() user: IAuthUser,
       @RequestCondition(ConditionDto) condition: QueryCondition<E>,
       @RequestQuery() query: ParsedQueryOptions,
     ): Promise<PaginatedResponseDto<E>> {
@@ -132,7 +132,7 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
 
     @ApiGet('one', entityType)
     async findOneByCondition(
-      @ReqUser() user: User,
+      @ReqUser() user: IAuthUser,
       @RequestCondition(ConditionDto, true) condition: QueryCondition<E>,
       @RequestQuery() query: ParsedQueryOptions,
     ): Promise<E | null> {
@@ -151,7 +151,7 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
     })
     @ApiQueryOptions('one')
     async findEntityById(
-      @ReqUser() user: User,
+      @ReqUser() user: IAuthUser,
       @Param('id') id: string,
       @RequestQuery() query: ParsedQueryOptions,
     ): Promise<E | null> {
@@ -172,7 +172,7 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
     @ApiCondition(true)
     @UsePipes(validationPipes.update)
     async updateOneByCondition(
-      @ReqUser() user: User,
+      @ReqUser() user: IAuthUser,
       @RequestCondition(ConditionDto, true) condition: QueryCondition<E>,
       @Body() update: UpdateData<E>,
     ): Promise<E | null> {
@@ -192,7 +192,7 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
     @ApiBody({ type: UpdateDto })
     @UsePipes(validationPipes.update)
     async updateEntityById(
-      @ReqUser() user: User,
+      @ReqUser() user: IAuthUser,
       @Param('id') id: string,
       @Body() body: UpdateData<E>,
     ): Promise<E | null> {
@@ -205,7 +205,7 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
     @ApiBody({ type: UpdateManyIdsDto })
     @UsePipes(validationPipes.updateManyByIds)
     async updateEntitiesByIds(
-      @ReqUser() user: User,
+      @ReqUser() user: IAuthUser,
       @Body() body: { ids: string[]; update: UpdateData<E> },
     ): Promise<{ affected: number }> {
       assertRouteEnabled(routeConfigs.updateByIds);
@@ -224,7 +224,7 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
     })
     @ApiCondition(true)
     async deleteOneByCondition(
-      @ReqUser() user: User,
+      @ReqUser() user: IAuthUser,
       @RequestCondition(ConditionDto, true) condition: QueryCondition<E>,
     ): Promise<void> {
       assertRouteEnabled(routeConfigs.deleteOne);
@@ -242,7 +242,7 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
       description: HTTP_STATUS_MESSAGE[HTTP_STATUS.NOT_FOUND],
     })
     async deleteEntityById(
-      @ReqUser() user: User,
+      @ReqUser() user: IAuthUser,
       @Param('id') id: string,
     ): Promise<void> {
       assertRouteEnabled(routeConfigs.deleteById);
@@ -254,7 +254,7 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
     @ApiBody({ type: DeleteManyByIdsDto })
     @UsePipes(validationPipes.deleteManyByIds)
     async deleteEntitiesByIds(
-      @ReqUser() user: User,
+      @ReqUser() user: IAuthUser,
       @Body() body: DeleteManyByIdsDto,
     ): Promise<{ deleted: number }> {
       assertRouteEnabled(routeConfigs.deleteByIds);

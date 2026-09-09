@@ -5,7 +5,7 @@ import { IsString, ValidateNested } from 'class-validator';
 import { BaseEntity } from '@/common/entity/base.entity';
 import type { UpdateData } from '@/common/interfaces/repository.interface';
 import { DtoValidationPipe } from '@/common/pipes';
-import { DeleteManyByIdsDto } from '@/common/dto/delete-many-byIds.dto';
+import { DeleteManyByIdsDto } from '@/common/dto/delete-many-by-ids.dto';
 const rename = <T>(name: string, cls: Type<T>): Type<T> => {
   const renamed = class extends (cls as Type<object>) {};
   Object.defineProperty(renamed, 'name', { value: name });

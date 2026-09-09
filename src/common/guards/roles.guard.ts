@@ -2,12 +2,11 @@ import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { Request } from 'express';
 import { ROLES_KEY } from '../decorators/roles.decorator';
-import { User } from '@/modules/users/entities/user.entity';
-
+import type { IAuthUser } from '@/common/interfaces/auth-user.interface';
 import { SystemRole } from '@/modules/roles/enums/system-role.enum';
 
-interface RequestWithUser extends Request {
-  user?: User;
+interface RequestWithUser extends Omit<Request, 'user'> {
+  user?: IAuthUser;
 }
 
 @Injectable()
