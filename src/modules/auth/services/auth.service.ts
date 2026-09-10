@@ -5,7 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import { UserRepository } from '@/modules/users/repositories/user.repository';
 import { User } from '@/modules/users/entities/user.entity';
-import type { AuthConfig } from '@/config/configuration.types';
+import type { AuthConfig } from '@/config/configuration';
 import { JwtPayload } from '../strategies/jwt.strategy';
 import {
   AuthUserProfile,

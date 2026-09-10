@@ -1,44 +1,36 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { InjectMikroORM } from '@mikro-orm/nestjs';
 import { MikroORM } from '@mikro-orm/core';
+import { PostgreSqlDriver } from '@mikro-orm/postgresql';
 import { DB_CONTEXTS } from '@/database/database.constants';
-import { DatabaseContextConfigService } from './runtime/database-context-config.service';
 
 @Injectable()
 export class MigrationService implements OnModuleInit {
   constructor(
-    @InjectMikroORM(DB_CONTEXTS.MAIN)
-    private readonly mainOrm: MikroORM,
-    @InjectMikroORM(DB_CONTEXTS.LOGS)
-    private readonly logsOrm: MikroORM,
-    private readonly contextConfigService: DatabaseContextConfigService,
+    @InjectMikroORM(DB_CONTEXTS.MAIN) private readonly mainOrm: MikroORM,
+    @InjectMikroORM(DB_CONTEXTS.LOGS) private readonly logsOrm: MikroORM,
   ) {}
 
   async onModuleInit() {
-    await this.migrateContext(DB_CONTEXTS.MAIN, this.mainOrm);
-    await this.migrateContext(DB_CONTEXTS.LOGS, this.logsOrm);
+    await this.migrate(DB_CONTEXTS.MAIN, this.mainOrm);
+    await this.migrate(DB_CONTEXTS.LOGS, this.logsOrm);
   }
 
-  private async migrateContext(contextName: string, orm: MikroORM) {
-    const { settings } = this.contextConfigService.getContext(contextName);
+  private async migrate(contextName: string, orm: MikroORM) {
+    const p = `DB_${contextName.toUpperCase()}_`;
 
     if (
-      settings.driver !== 'postgresql' ||
-      settings.applicationMode === 'production' ||
-      !settings.autoMigrationEnabled
-    ) {
+      orm.config.get('driver') !== PostgreSqlDriver ||
+      process.env.NODE_ENV === 'production' ||
+      process.env[`${p}AUTO_MIGRATE`] !== 'true'
+    )
       return;
-    }
 
     try {
-      const migrator = orm.migrator;
-      const pendingMigrations = await migrator.getPendingMigrations();
-
-      if (pendingMigrations.length) {
-        await migrator.up();
-      }
+      const pending = await orm.migrator.getPendingMigrations();
+      if (pending.length) await orm.migrator.up();
     } catch {
-      // Ignore migration extension/runtime warnings in development startup flow.
+      /* bỏ qua cảnh báo khởi động */
     }
 
     await orm.schema.updateSchema();

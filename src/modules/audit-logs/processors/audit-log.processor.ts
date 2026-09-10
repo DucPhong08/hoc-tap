@@ -36,9 +36,7 @@ export class AuditLogProcessor {
 
   @OnQueueError()
   onError(err: any): void {
-    this.logger.error(
-      `Error in Audit Log queue: ${err?.message || String(err)}`,
-    );
+    this.logger.verbose(`Audit queue: ${err?.message || String(err)}`);
   }
 
   @OnQueueFailed()

@@ -51,6 +51,9 @@ import { ConfigService } from '@nestjs/config';
           password:
             configService.get<string>('cache.redis.password') || undefined,
           db: configService.get<number>('cache.redis.db', 0),
+          maxRetriesPerRequest: 0,
+          enableOfflineQueue: false,
+          retryStrategy: () => null, // bỏ qua nếu Redis không có
         },
       }),
     }),

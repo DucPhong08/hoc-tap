@@ -7,7 +7,7 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import { DatabaseErrorInterceptor } from './common/interceptors/database-error.interceptor';
 import { TimeoutInterceptor } from './common/interceptors/timeout.interceptor';
-import type { HostConfig } from './config/configuration.types';
+import type { HostConfig } from './config/configuration';
 
 const API_PREFIX = 'api';
 const SWAGGER_TITLE = 'API Documentation';
@@ -54,10 +54,8 @@ export async function bootstrap() {
   app.setGlobalPrefix(API_PREFIX);
 
   // CORS
-  const allowedOrigins =
-    configService.get<string[]>('cors.allowedOrigins') ?? [];
   app.enableCors({
-    origin: allowedOrigins,
+    origin: true,
     credentials: true,
   });
 

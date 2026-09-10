@@ -1,44 +1,40 @@
-import { Global, Module } from '@nestjs/common';
-import { MikroOrmModule } from '@mikro-orm/nestjs';
+import { Global, Injectable, Module } from '@nestjs/common';
+import {
+  MikroOrmModule,
+  MikroOrmModuleOptions,
+  MikroOrmOptionsFactory,
+} from '@mikro-orm/nestjs';
 import { MigrationService } from './migration.service';
 import { DB_CONTEXTS } from '@/database/database.constants';
+import { DatabaseEnvReader } from './env/database-env';
 import { DatabaseContextRegistry } from './registration/database-context.registry';
-import { DatabaseEnvironmentReader } from './env/database-environment.reader';
-import { DatabaseEnvironmentValidator } from './env/database-environment.validator';
-import { DatabaseContextConfigService } from './runtime/database-context-config.service';
-import { PostgreSqlOptionsStrategy } from './options/postgresql-options.strategy';
-import { MongoDbOptionsStrategy } from './options/mongodb-options.strategy';
-import { DatabaseOptionsFactory } from './options/database-options.factory';
-import { MainMikroOrmOptionsFactory } from './runtime/main-mikro-orm-options.factory';
-import { LogsMikroOrmOptionsFactory } from './runtime/logs-mikro-orm-options.factory';
+
+@Injectable()
+class DatabaseConfigFactory implements MikroOrmOptionsFactory {
+  private readonly env = new DatabaseEnvReader();
+  private readonly registry = new DatabaseContextRegistry();
+
+  createMikroOrmOptions(contextName?: string): MikroOrmModuleOptions {
+    return {
+      ...this.env.buildOptions(this.registry.get(contextName!)),
+      autoLoadEntities: false,
+      registerRequestContext: false,
+    };
+  }
+}
 
 @Global()
 @Module({
   imports: [
-    // ── MAIN database ─────────────────────────────────────────────────
     MikroOrmModule.forRootAsync({
-      useClass: MainMikroOrmOptionsFactory,
+      useClass: DatabaseConfigFactory,
       contextName: DB_CONTEXTS.MAIN,
     }),
-
-    // ── LOGS database ─────────────────────────────────────────────────
     MikroOrmModule.forRootAsync({
-      useClass: LogsMikroOrmOptionsFactory,
+      useClass: DatabaseConfigFactory,
       contextName: DB_CONTEXTS.LOGS,
     }),
   ],
-  providers: [
-    DatabaseContextRegistry,
-    DatabaseEnvironmentReader,
-    DatabaseEnvironmentValidator,
-    DatabaseContextConfigService,
-    PostgreSqlOptionsStrategy,
-    MongoDbOptionsStrategy,
-    DatabaseOptionsFactory,
-    MainMikroOrmOptionsFactory,
-    LogsMikroOrmOptionsFactory,
-    MigrationService,
-  ],
-  exports: [DatabaseContextConfigService, DatabaseOptionsFactory],
+  providers: [MigrationService],
 })
 export class MikroOrmDatabaseModule {}

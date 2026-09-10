@@ -9,7 +9,6 @@ export interface CacheStrategy {
 }
 
 export interface CacheConfig {
-  enabled: boolean;
   ttl: number;
   prefix: string;
   redis?: {
