@@ -6,8 +6,10 @@ import {
 import { BaseEntity } from '@/common/entity/base.entity';
 import { Sort } from './sort';
 import { parseFilterRules } from './filter';
-import type { PopulationQuery } from '@/common/types/repository/populate.types';
-import type { FindQuery } from '@/common/types/repository/options.types';
+import type {
+  PopulationQuery,
+  FindQuery,
+} from '@/common/types/repository.types';
 
 export const resolveContext = <E extends BaseEntity>(
   em: EntityManager,

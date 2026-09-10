@@ -10,11 +10,9 @@ import { RedisCacheService } from './redis-cache.service';
 import {
   CACHE_EVICT_KEY,
   CACHE_KEY,
+  type CacheEvictOptions,
+  type CacheOptions,
 } from '@/common/decorators/cache.decorator';
-import type {
-  CacheEvictOptions,
-  CacheOptions,
-} from '@/common/types/cache.type';
 
 @Injectable()
 export class CacheInterceptor implements NestInterceptor {

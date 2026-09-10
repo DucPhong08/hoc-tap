@@ -7,3 +7,5 @@ export function Authorize(...roles: string[]) {
   const targetRoles = roles.length ? roles : [SystemRole.ADMIN];
   return applyDecorators(ApiBearerAuth(), Roles(...targetRoles));
 }
+
+export const Authorization = Authorize;

@@ -2,7 +2,7 @@ import { Controller, Get, Query, Param, Delete } from '@nestjs/common';
 import { ApiTags, ApiQuery } from '@nestjs/swagger';
 import { AuditLogService } from '../services/audit-log.service';
 import { AuditLog } from '../entities/audit-log.entity';
-import { Authorization } from '@/common/decorators/authorization.decorator';
+import { Authorization } from '@/common/decorators/authorize.decorator';
 
 @ApiTags('audit-logs')
 @Controller('audit-logs')

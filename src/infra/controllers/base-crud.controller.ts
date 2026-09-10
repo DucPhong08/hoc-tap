@@ -33,7 +33,7 @@ import {
   ApiGet,
   ApiQueryOptions,
 } from '@/common/decorators/api-get.decorator';
-import type { ParsedQueryOptions } from '@/common/pipes';
+import type { ParsedQueryOptions } from '@/common/pipes/request-query.pipe';
 import type {
   FindQuery,
   QueryCondition,

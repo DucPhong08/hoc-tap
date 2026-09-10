@@ -1,5 +1,15 @@
 import { SetMetadata } from '@nestjs/common';
-import type { CacheEvictOptions, CacheOptions } from '../types/cache.type';
+
+export interface CacheOptions {
+  ttl?: number;
+  key?: string;
+  tags?: string[];
+}
+
+export interface CacheEvictOptions {
+  key?: string;
+  tags?: string[];
+}
 
 export const CACHE_KEY = 'cache:options';
 export const CACHE_EVICT_KEY = 'cache:evict';

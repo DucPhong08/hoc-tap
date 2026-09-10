@@ -8,7 +8,7 @@ import type { Type, ValidationPipeOptions } from '@nestjs/common';
 
 @Injectable()
 export class DtoValidationPipe implements PipeTransform {
-  private readonly validationPipe: ValidationPipe;
+  private readonly pipe: ValidationPipe;
 
   constructor(
     options: ValidationPipeOptions,
@@ -18,12 +18,10 @@ export class DtoValidationPipe implements PipeTransform {
       param?: Type<unknown>;
     },
   ) {
-    this.validationPipe = new ValidationPipe({
+    this.pipe = new ValidationPipe({
       ...options,
       transform: true,
-      transformOptions: {
-        enableImplicitConversion: true,
-      },
+      transformOptions: { enableImplicitConversion: true },
     });
   }
 
@@ -31,16 +29,10 @@ export class DtoValidationPipe implements PipeTransform {
     value: unknown,
     metadata: ArgumentMetadata,
   ): Promise<unknown> {
-    const targetType =
+    const metatype =
       this.targetTypes[metadata.type as keyof typeof this.targetTypes];
-
-    if (!targetType) {
-      return value;
-    }
-
-    return this.validationPipe.transform(value, {
-      ...metadata,
-      metatype: targetType,
-    });
+    return metatype
+      ? this.pipe.transform(value, { ...metadata, metatype })
+      : value;
   }
 }

@@ -3,7 +3,7 @@ import { ApiTags } from '@nestjs/swagger';
 import { Auditable } from '@/common/decorators/auditable.decorator';
 import { Setting } from '../entities/setting.entity';
 import { SettingService } from '../services/setting.service';
-import { Authorization } from '@/common/decorators/authorization.decorator';
+import { Authorization } from '@/common/decorators/authorize.decorator';
 import { AuditAction } from '@/modules/audit-logs/enums/audit-action.enum';
 import { ReqUser } from '@/common/decorators/request-user.decorator';
 import type { User } from '@/modules/users/entities/user.entity';

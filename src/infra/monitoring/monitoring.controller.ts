@@ -2,7 +2,7 @@ import { Controller, Get } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
 import { Public } from '@/common/decorators/public.decorator';
-import { Authorization } from '@/common/decorators/authorization.decorator';
+import { Authorization } from '@/common/decorators/authorize.decorator';
 import { Roles } from '@/common/decorators/roles.decorator';
 import { SystemRole } from '@/modules/roles/enums/system-role.enum';
 import { ApiTags } from '@nestjs/swagger';
