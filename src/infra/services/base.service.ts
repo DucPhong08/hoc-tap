@@ -9,43 +9,50 @@ import type {
 } from '@/common/interfaces/repository.interface';
 import type { IBaseRepository } from '@/common/interfaces/repository.interface';
 import { BaseEntity } from '@/common/entity/base.entity';
-import type { BaseCrudServiceConfig } from './base-crud.constant';
 import { BaseTransaction } from '../transaction/base-transaction.interface';
 import type { IAuthUser } from '@/common/interfaces/auth-user.interface';
 
+export interface BaseServiceConfig<TContext = unknown> {
+  notFoundMessage?: string;
+  transaction?: BaseTransaction<TContext>;
+}
+
 @Injectable()
-export abstract class BaseCrudService<
+export abstract class BaseService<
   E extends BaseEntity,
   TContext = unknown,
+  TCreate = Partial<E>,
+  TUpdate = UpdateData<E>,
+  TCondition = QueryCondition<E>,
 > {
   public readonly notFoundMessage?: string;
   protected readonly transaction?: BaseTransaction<TContext>;
 
   constructor(
     protected readonly repository: IBaseRepository<E, TContext>,
-    config?: BaseCrudServiceConfig<TContext>,
+    config?: BaseServiceConfig<TContext>,
   ) {
-    this.notFoundMessage = config?.notFoundMessage;
+    this.notFoundMessage = config?.notFoundMessage ?? 'Không tìm thấy dữ liệu';
     this.transaction = config?.transaction;
   }
 
   async create(
     user: IAuthUser,
-    dto: Partial<E>,
+    dto: TCreate,
     query?: FindQuery<E, TContext>,
   ): Promise<E> {
-    return this.executeWithTransaction(query, (tx) =>
-      this.repository.create(dto, tx),
+    return this.executeWithTransaction(query, (txOptions) =>
+      this.repository.create(dto as Partial<E>, txOptions),
     );
   }
 
   async insertMany(
     user: IAuthUser,
-    dtos: Partial<E>[],
+    dtos: TCreate[],
     query?: FindQuery<E, TContext>,
   ): Promise<{ n: number }> {
-    return this.executeWithTransaction(query, (tx) =>
-      this.repository.insertMany(dtos, tx),
+    return this.executeWithTransaction(query, (txOptions) =>
+      this.repository.insertMany(dtos as Partial<E>[], txOptions),
     );
   }
 
@@ -59,68 +66,81 @@ export abstract class BaseCrudService<
 
   async getOne(
     user: IAuthUser,
-    condition: QueryCondition<E>,
+    condition: TCondition,
     query?: FindQuery<E, TContext>,
   ): Promise<E | null> {
-    return this.repository.getOne(condition, query);
+    return this.repository.getOne(condition as QueryCondition<E>, query);
   }
 
   async getMany(
     user: IAuthUser,
-    condition: QueryCondition<E>,
+    condition: TCondition,
     query?: FindQuery<E, TContext>,
   ): Promise<E[]> {
-    return this.repository.getMany(condition, query);
+    return this.repository.getMany(condition as QueryCondition<E>, query);
   }
 
   async getPage(
     user: IAuthUser,
-    condition: QueryCondition<E>,
+    condition: TCondition,
     query?: FindQuery<E, TContext>,
   ): Promise<PaginationResult<E>> {
-    return this.repository.getPage(condition, query);
+    return this.repository.getPage(condition as QueryCondition<E>, query);
   }
 
   async updateById(
     user: IAuthUser,
     id: string,
-    update: UpdateData<E>,
+    update: TUpdate,
     query?: FindQuery<E, TContext>,
   ): Promise<E | null> {
-    return this.executeWithTransaction(query, async (tx) => {
-      return this.repository.updateById(id, update, tx);
+    return this.executeWithTransaction(query, async (txOptions) => {
+      return this.repository.updateById(id, update as UpdateData<E>, txOptions);
     });
   }
 
   async updateOne(
     user: IAuthUser,
-    condition: QueryCondition<E>,
-    update: UpdateData<E>,
+    condition: TCondition,
+    update: TUpdate,
     query?: FindQuery<E, TContext>,
   ): Promise<E | null> {
-    return this.executeWithTransaction(query, async (tx) => {
-      return this.repository.updateOne(condition, update, tx);
+    return this.executeWithTransaction(query, async (txOptions) => {
+      return this.repository.updateOne(
+        condition as QueryCondition<E>,
+        update as UpdateData<E>,
+        txOptions,
+      );
     });
   }
 
   async updateMany(
     user: IAuthUser,
-    condition: QueryCondition<E>,
-    update: UpdateData<E>,
+    condition: TCondition,
+    update: TUpdate,
     query?: FindQuery<E, TContext>,
   ): Promise<{ affected: number }> {
-    return this.executeWithTransaction(query, (tx) =>
-      this.repository.updateMany(condition, update, tx),
+    return this.executeWithTransaction(query, (txOptions) =>
+      this.repository.updateMany(
+        condition as QueryCondition<E>,
+        update as UpdateData<E>,
+        txOptions,
+      ),
     );
   }
 
   async updateManyByIds(
     user: IAuthUser,
     ids: string[],
-    update: UpdateData<E>,
+    update: TUpdate,
     query?: FindQuery<E, TContext>,
   ): Promise<{ affected: number }> {
-    return this.updateMany(user, { id: { $in: ids } } as any, update, query);
+    return this.updateMany(
+      user,
+      { id: { $in: ids } } as unknown as TCondition,
+      update,
+      query,
+    );
   }
 
   async deleteById(
@@ -128,28 +148,31 @@ export abstract class BaseCrudService<
     id: string,
     query?: FindQuery<E, TContext>,
   ): Promise<E | null> {
-    return this.executeWithTransaction(query, async (tx) => {
-      return this.repository.deleteById(id, tx);
+    return this.executeWithTransaction(query, async (txOptions) => {
+      return this.repository.deleteById(id, txOptions);
     });
   }
 
   async deleteOne(
     user: IAuthUser,
-    condition: QueryCondition<E>,
+    condition: TCondition,
     query?: FindQuery<E, TContext>,
   ): Promise<E | null> {
-    return this.executeWithTransaction(query, async (tx) => {
-      return this.repository.deleteOne(condition, tx);
+    return this.executeWithTransaction(query, async (txOptions) => {
+      return this.repository.deleteOne(
+        condition as QueryCondition<E>,
+        txOptions,
+      );
     });
   }
 
   async deleteMany(
     user: IAuthUser,
-    condition: QueryCondition<E>,
+    condition: TCondition,
     query?: FindQuery<E, TContext>,
   ): Promise<{ deleted: number }> {
-    return this.executeWithTransaction(query, (tx) =>
-      this.repository.deleteMany(condition, tx),
+    return this.executeWithTransaction(query, (txOptions) =>
+      this.repository.deleteMany(condition as QueryCondition<E>, txOptions),
     );
   }
 
@@ -158,23 +181,27 @@ export abstract class BaseCrudService<
     ids: string[],
     query?: FindQuery<E, TContext>,
   ): Promise<{ deleted: number }> {
-    return this.deleteMany(user, { id: { $in: ids } } as any, query);
+    return this.deleteMany(
+      user,
+      { id: { $in: ids } } as unknown as TCondition,
+      query,
+    );
   }
 
   async count(
     user: IAuthUser,
-    condition?: QueryCondition<E>,
+    condition?: TCondition,
     query?: QueryOptions<TContext>,
   ): Promise<number> {
-    return this.repository.count(condition, query);
+    return this.repository.count(condition as QueryCondition<E>, query);
   }
 
   async exists(
     user: IAuthUser,
-    condition: QueryCondition<E>,
+    condition: TCondition,
     query?: QueryOptions<TContext>,
   ): Promise<boolean> {
-    return this.repository.exists(condition, query);
+    return this.repository.exists(condition as QueryCondition<E>, query);
   }
 
   protected async executeWithTransaction<

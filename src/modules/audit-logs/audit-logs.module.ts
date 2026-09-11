@@ -10,8 +10,6 @@ import { AuditLogQueueService } from './services/audit-log-queue.service';
 import { BullModule } from '@nestjs/bull';
 import { QueueName } from '@/common/constants/queue.constant';
 import { AuditLogProcessor } from './processors/audit-log.processor';
-import { registerEntities } from '@/database/entity-registry.helper';
-import { AuditLog } from './entities/audit-log.entity';
 
 @Global()
 @Module({
@@ -20,7 +18,6 @@ import { AuditLog } from './entities/audit-log.entity';
     BullModule.registerQueue({
       name: QueueName.AUDIT_LOG,
     }),
-    ...registerEntities([AuditLog]),
   ],
   controllers: [AuditLogController],
   providers: [

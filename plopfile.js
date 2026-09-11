@@ -37,8 +37,13 @@ module.exports = function (plop) {
       },
       {
         type: 'add',
-        path: 'src/modules/{{kebabCase (pluralize name)}}/entities/{{kebabCase (singularize name)}}.entity.ts',
-        templateFile: 'nest-templates/module/entity.ts.hbs',
+        path: 'src/modules/{{kebabCase (pluralize name)}}/dto/create-{{kebabCase (singularize name)}}.dto.ts',
+        templateFile: 'nest-templates/module/create-dto.ts.hbs',
+      },
+      {
+        type: 'add',
+        path: 'src/modules/{{kebabCase (pluralize name)}}/dto/update-{{kebabCase (singularize name)}}.dto.ts',
+        templateFile: 'nest-templates/module/update-dto.ts.hbs',
       },
       {
         type: 'add',
@@ -47,13 +52,8 @@ module.exports = function (plop) {
       },
       {
         type: 'add',
-        path: 'src/modules/{{kebabCase (pluralize name)}}/dto/create-{{kebabCase (singularize name)}}.dto.ts',
-        templateFile: 'nest-templates/module/create-dto.ts.hbs',
-      },
-      {
-        type: 'add',
-        path: 'src/modules/{{kebabCase (pluralize name)}}/dto/update-{{kebabCase (singularize name)}}.dto.ts',
-        templateFile: 'nest-templates/module/update-dto.ts.hbs',
+        path: 'src/modules/{{kebabCase (pluralize name)}}/entities/{{kebabCase (singularize name)}}.entity.ts',
+        templateFile: 'nest-templates/module/entity.ts.hbs',
       },
       {
         type: 'modify',

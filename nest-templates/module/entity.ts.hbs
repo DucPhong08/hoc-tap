@@ -1,6 +1,5 @@
 import { Entity, Property } from '@mikro-orm/core';
-import { IsNotEmpty, IsString } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { IsString } from 'class-validator';
 import { BaseEntity } from '@/common/entity/base.entity';
 
 @Entity({ tableName: '{{snakeCase (pluralize name)}}' })

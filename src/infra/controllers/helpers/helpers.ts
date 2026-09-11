@@ -2,14 +2,29 @@ import { NotFoundException, Type } from '@nestjs/common';
 import { Authorize } from '@/common/decorators/authorize.decorator';
 import { Auditable } from '@/common/decorators/auditable.decorator';
 import { AuditAction } from '@/modules/audit-logs/enums/audit-action.enum';
+import { SystemRole } from '@/modules/roles/enums/system-role.enum';
 import type {
   BaseRoute,
-  CrudOptions,
-  CrudRouteDefinition,
+  BaseControllerOptions,
+  BaseRouteDefinition,
   RouteConfig,
 } from './types';
 
-const CRUD_AUDIT_ACTIONS: Partial<Record<BaseRoute, AuditAction>> = {
+export const ROUTE_DEFINITIONS: BaseRouteDefinition[] = [
+  { route: 'create', handlerName: 'createEntity' },
+  { route: 'getMany', handlerName: 'listEntities' },
+  { route: 'getPage', handlerName: 'paginateEntities' },
+  { route: 'getById', handlerName: 'findEntityById' },
+  { route: 'getOne', handlerName: 'findOneByCondition' },
+  { route: 'updateOne', handlerName: 'updateOneByCondition' },
+  { route: 'updateById', handlerName: 'updateEntityById' },
+  { route: 'updateByIds', handlerName: 'updateEntitiesByIds' },
+  { route: 'deleteOne', handlerName: 'deleteOneByCondition' },
+  { route: 'deleteById', handlerName: 'deleteEntityById' },
+  { route: 'deleteByIds', handlerName: 'deleteEntitiesByIds' },
+];
+
+const BASE_AUDIT_ACTIONS: Partial<Record<BaseRoute, AuditAction>> = {
   create: AuditAction.CREATE,
   updateOne: AuditAction.UPDATE,
   updateById: AuditAction.UPDATE,
@@ -32,7 +47,7 @@ export const toConfig = (
 };
 
 export const getRouteConfigs = (
-  routes: CrudOptions['routes'] | undefined,
+  routes: BaseControllerOptions['routes'] | undefined,
 ): Record<BaseRoute, Required<RouteConfig>> => ({
   create: toConfig(routes?.create),
   getMany: toConfig(routes?.getMany),
@@ -69,7 +84,7 @@ const decorate = (
 
 export function setupAuthorization(
   controllerClass: Type<object>,
-  routeDefinitions: CrudRouteDefinition[],
+  routeDefinitions: BaseRouteDefinition[] = ROUTE_DEFINITIONS,
   routeConfigs: Record<BaseRoute, Required<RouteConfig>>,
   defaultRoles: string[] = [],
 ): void {
@@ -87,15 +102,29 @@ export function setupAuthorization(
 
 export function setupAudit(
   controllerClass: Type<object>,
-  routeDefinitions: CrudRouteDefinition[],
+  routeDefinitions: BaseRouteDefinition[] = ROUTE_DEFINITIONS,
   routeConfigs: Record<BaseRoute, Required<RouteConfig>>,
 ): void {
   routeDefinitions.forEach(({ route, handlerName }) => {
-    const action = CRUD_AUDIT_ACTIONS[route];
+    const action = BASE_AUDIT_ACTIONS[route];
     const routeConfig = routeConfigs[route];
 
     if (action && routeConfig.enabled) {
       decorate(controllerClass, handlerName, Auditable({ action }));
     }
   });
+}
+
+export function applyRouteMetadata(
+  controllerClass: Type<object>,
+  routeConfigs: Record<BaseRoute, Required<RouteConfig>>,
+  defaultRoles: string[] = [SystemRole.ADMIN],
+): void {
+  setupAuthorization(
+    controllerClass,
+    ROUTE_DEFINITIONS,
+    routeConfigs,
+    defaultRoles,
+  );
+  setupAudit(controllerClass, ROUTE_DEFINITIONS, routeConfigs);
 }

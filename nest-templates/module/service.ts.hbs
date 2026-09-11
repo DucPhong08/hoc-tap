@@ -1,15 +1,13 @@
 import { Injectable } from '@nestjs/common';
-import { BaseCrudService } from '@/infra/services/base-crud.service';
+import { BaseService } from '@/infra/services/base.service';
 import { {{pascalCase (singularize name)}} } from '../entities/{{kebabCase (singularize name)}}.entity';
 import { {{pascalCase (singularize name)}}Repository } from '../repositories/{{kebabCase (singularize name)}}.repository';
 
 @Injectable()
-export class {{pascalCase (singularize name)}}Service extends BaseCrudService<{{pascalCase (singularize name)}}> {
+export class {{pascalCase (singularize name)}}Service extends BaseService<{{pascalCase (singularize name)}}> {
   constructor(
-    private readonly {{camelCase (singularize name)}}Repository: {{pascalCase (singularize name)}}Repository,
+    repository: {{pascalCase (singularize name)}}Repository,
   ) {
-    super({{camelCase (singularize name)}}Repository, {
-      notFoundMessage: 'Không tìm thấy {{kebabCase (singularize name)}}',
-    });
+    super(repository);
   }
 }

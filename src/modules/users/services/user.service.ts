@@ -2,7 +2,7 @@ import { EntityManager } from '@mikro-orm/core';
 import { BadRequestException, Injectable, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
-import { BaseCrudService } from '@/infra/services/base-crud.service';
+import { BaseService } from '@/infra/services/base.service';
 import { User } from '../entities/user.entity';
 import { UserRepository } from '../repositories/user.repository';
 import type { FindQuery } from '@/common/interfaces/repository.interface';
@@ -12,7 +12,7 @@ import type { IAuthUser } from '@/common/interfaces/auth-user.interface';
 import type { AuthConfig } from '@/config/configuration';
 
 @Injectable()
-export class UserService extends BaseCrudService<User> {
+export class UserService extends BaseService<User> {
   constructor(
     private readonly userRepository: UserRepository,
     @Optional()

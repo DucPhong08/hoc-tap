@@ -3,12 +3,11 @@ import { SettingController } from './controllers/setting.controller';
 import { SettingService } from './services/setting.service';
 import { SettingRepository } from './repositories/setting.repository';
 import { TransactionModule } from '@/infra/transaction/transaction.module';
-import { registerEntities } from '@/database/entity-registry.helper';
-import { Setting } from './entities/setting.entity';
 
 @Module({
-  imports: [TransactionModule, ...registerEntities([Setting])],
+  imports: [TransactionModule],
   controllers: [SettingController],
   providers: [SettingService, SettingRepository],
+  exports: [SettingService, SettingRepository],
 })
 export class SettingsModule {}

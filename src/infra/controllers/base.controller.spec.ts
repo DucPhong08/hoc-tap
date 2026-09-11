@@ -1,9 +1,9 @@
 import { Role } from '@/modules/roles/entities/role.entity';
-import { BaseCrudControllerFactory } from './base-crud.controller';
+import { BaseController } from './base.controller';
 
-describe('BaseCrudControllerFactory', () => {
+describe('BaseController', () => {
   it('registers static one routes before dynamic id routes', () => {
-    const Controller = BaseCrudControllerFactory(Role);
+    const Controller = BaseController(Role);
     const handlers = Object.getOwnPropertyNames(Controller.prototype);
 
     expect(handlers.indexOf('updateOneByCondition')).toBeLessThan(
@@ -12,6 +12,6 @@ describe('BaseCrudControllerFactory', () => {
     expect(handlers.indexOf('deleteOneByCondition')).toBeLessThan(
       handlers.indexOf('deleteEntityById'),
     );
-    expect(Controller.name).toBe('RoleCrudController');
+    expect(Controller.name).toBe('RoleBaseController');
   });
 });

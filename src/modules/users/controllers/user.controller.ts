@@ -1,6 +1,6 @@
 import { Controller } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { BaseCrudControllerFactory } from '@/infra/controllers/base-crud.controller';
+import { BaseController } from '@/infra/controllers/base.controller';
 import { User } from '../entities/user.entity';
 import { UserService } from '../services/user.service';
 import { CreateUserDto } from '../dto/create-user.dto';
@@ -10,7 +10,7 @@ import { SystemRole } from '@/modules/roles/enums/system-role.enum';
 
 @ApiTags('users')
 @Controller('users')
-export class UserController extends BaseCrudControllerFactory(
+export class UserController extends BaseController(
   User,
   CreateUserDto,
   UpdateUserDto,

@@ -1,3 +1,5 @@
+import type { Type } from '@nestjs/common';
+
 export type BaseRoute =
   | 'create'
   | 'getMany'
@@ -11,7 +13,7 @@ export type BaseRoute =
   | 'deleteById'
   | 'deleteByIds';
 
-export type CrudHandlerName =
+export type BaseHandlerName =
   | 'createEntity'
   | 'listEntities'
   | 'paginateEntities'
@@ -29,14 +31,25 @@ export interface RouteConfig {
   roles?: string[];
 }
 
-export interface CrudOptions {
+export interface BaseControllerOptions<C = unknown, U = unknown, CD = unknown> {
   defaultRoles?: string[];
   routes?: {
     [key in BaseRoute]?: boolean | RouteConfig;
   };
+  dtos?: {
+    create?: Type<C>;
+    update?: Type<U>;
+    condition?: Type<CD>;
+  };
 }
 
-export interface CrudRouteDefinition {
+export type ControllerOptions<
+  C = unknown,
+  U = unknown,
+  CD = unknown,
+> = BaseControllerOptions<C, U, CD>;
+
+export interface BaseRouteDefinition {
   route: BaseRoute;
-  handlerName: CrudHandlerName;
+  handlerName: BaseHandlerName;
 }

@@ -3,20 +3,24 @@ import { OmitType, PartialType, ApiProperty } from '@nestjs/swagger';
 import { Type as TransformType } from 'class-transformer';
 import { IsString, ValidateNested } from 'class-validator';
 import { BaseEntity } from '@/common/entity/base.entity';
-import type { UpdateData } from '@/common/interfaces/repository.interface';
+import type {
+  QueryCondition,
+  UpdateData,
+} from '@/common/interfaces/repository.interface';
 import { DtoValidationPipe } from '@/common/pipes/dto-validation.pipe';
 import { DeleteManyByIdsDto } from '@/common/dto/delete-many-by-ids.dto';
+
 const rename = <T>(name: string, cls: Type<T>): Type<T> => {
   const renamed = class extends (cls as Type<object>) {};
   Object.defineProperty(renamed, 'name', { value: name });
   return renamed as Type<T>;
 };
 
-export interface CrudDtoBundle {
-  ConditionDto: Type<unknown>;
-  CreateDto: Type<unknown>;
-  UpdateDto: Type<unknown>;
-  UpdateManyIdsDto: Type<unknown>;
+export interface BaseDtoBundle<C = unknown, U = unknown, CD = unknown> {
+  ConditionDto: Type<CD>;
+  CreateDto: Type<C>;
+  UpdateDto: Type<U>;
+  UpdateManyIdsDto: Type<object>;
   validationPipes: {
     create: DtoValidationPipe;
     update: DtoValidationPipe;
@@ -27,27 +31,32 @@ export interface CrudDtoBundle {
 
 const BASE_OMIT_FIELDS = ['id', 'createdAt', 'updatedAt', 'deletedAt'] as const;
 
-export const createCrudDtoBundle = <E extends BaseEntity>(
+export const createBaseDtoBundle = <
+  E extends BaseEntity,
+  C = Partial<E>,
+  U = UpdateData<E>,
+  CD = QueryCondition<E>,
+>(
   entityType: Type<E>,
-  createDto?: Type<unknown>,
-  updateDto?: Type<unknown>,
-  conditionDto?: Type<unknown>,
-): CrudDtoBundle => {
-  const ConditionDto =
-    conditionDto ??
-    rename(`${entityType.name}ConditionDto`, PartialType(entityType));
-  const CreateDto =
-    createDto ??
+  createDto?: Type<C>,
+  updateDto?: Type<U>,
+  conditionDto?: Type<CD>,
+): BaseDtoBundle<C, U, CD> => {
+  const ConditionDto = (conditionDto ??
+    rename(
+      `${entityType.name}ConditionDto`,
+      PartialType(entityType),
+    )) as Type<CD>;
+  const CreateDto = (createDto ??
     rename(
       `Create${entityType.name}Dto`,
       OmitType(entityType, BASE_OMIT_FIELDS),
-    );
-  const UpdateDto =
-    updateDto ??
+    )) as Type<C>;
+  const UpdateDto = (updateDto ??
     rename(
       `Update${entityType.name}Dto`,
       PartialType(OmitType(entityType, BASE_OMIT_FIELDS)),
-    );
+    )) as Type<U>;
 
   class UpdateManyByIdsDto {
     @IsString({ each: true })

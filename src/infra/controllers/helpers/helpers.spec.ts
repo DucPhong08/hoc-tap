@@ -1,13 +1,13 @@
 import { SystemRole } from '@/modules/roles/enums/system-role.enum';
 import { ROLES_KEY } from '@/common/decorators/roles.decorator';
-import type { CrudRouteDefinition } from './types';
+import type { BaseRouteDefinition } from './types';
 import { getRouteConfigs, setupAuthorization } from './helpers';
 
-const ROUTES: CrudRouteDefinition[] = [
+const ROUTES: BaseRouteDefinition[] = [
   { route: 'getMany', handlerName: 'listEntities' },
 ];
 
-describe('CRUD authorization metadata', () => {
+describe('Base authorization metadata', () => {
   it('inherits controller roles when a route has no override', () => {
     class TestController {
       listEntities(this: void): void {}

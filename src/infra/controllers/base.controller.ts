@@ -36,56 +36,136 @@ import type {
   QueryCondition,
   UpdateData,
 } from '@/common/interfaces/repository.interface';
-import { BaseCrudService } from '../services/base-crud.service';
+import { BaseService } from '../services/base.service';
 import {
-  setupAuthorization,
-  setupAudit,
+  applyRouteMetadata,
   assertRouteEnabled,
   getRouteConfigs,
-} from './crud/helpers';
-import { createCrudDtoBundle } from './crud/dto-factory';
+} from './helpers/helpers';
+import { createBaseDtoBundle } from './helpers/dto-factory';
 import type {
   BaseRoute,
-  CrudOptions,
-  CrudRouteDefinition,
+  BaseControllerOptions,
+  ControllerOptions,
   RouteConfig,
-} from './crud/types';
+} from './helpers/types';
 import { SystemRole } from '@/modules/roles/enums/system-role.enum';
 
-export type { BaseRoute, CrudOptions, RouteConfig };
+export type {
+  BaseRoute,
+  BaseControllerOptions,
+  ControllerOptions,
+  RouteConfig,
+};
 
-const CRUD_ROUTE_DEFINITIONS: CrudRouteDefinition[] = [
-  { route: 'create', handlerName: 'createEntity' },
-  { route: 'getMany', handlerName: 'listEntities' },
-  { route: 'getPage', handlerName: 'paginateEntities' },
-  { route: 'getById', handlerName: 'findEntityById' },
-  { route: 'getOne', handlerName: 'findOneByCondition' },
-  { route: 'updateOne', handlerName: 'updateOneByCondition' },
-  { route: 'updateById', handlerName: 'updateEntityById' },
-  { route: 'updateByIds', handlerName: 'updateEntitiesByIds' },
-  { route: 'deleteOne', handlerName: 'deleteOneByCondition' },
-  { route: 'deleteById', handlerName: 'deleteEntityById' },
-  { route: 'deleteByIds', handlerName: 'deleteEntitiesByIds' },
-];
+export interface IBaseController<
+  E extends BaseEntity,
+  C = Partial<E>,
+  U = UpdateData<E>,
+  CD = QueryCondition<E>,
+> {
+  createEntity(user: IAuthUser, body: C): Promise<E>;
+  listEntities(
+    user: IAuthUser,
+    condition: CD,
+    query: ParsedQueryOptions,
+  ): Promise<E[]>;
+  paginateEntities(
+    user: IAuthUser,
+    condition: CD,
+    query: ParsedQueryOptions,
+  ): Promise<PaginatedResponseDto<E>>;
+  findOneByCondition(
+    user: IAuthUser,
+    condition: CD,
+    query: ParsedQueryOptions,
+  ): Promise<E | null>;
+  findEntityById(
+    user: IAuthUser,
+    id: string,
+    query: ParsedQueryOptions,
+  ): Promise<E | null>;
+  updateOneByCondition(
+    user: IAuthUser,
+    condition: CD,
+    update: U,
+  ): Promise<E | null>;
+  updateEntityById(user: IAuthUser, id: string, body: U): Promise<E | null>;
+  updateEntitiesByIds(
+    user: IAuthUser,
+    body: { ids: string[]; update: U },
+  ): Promise<{ affected: number }>;
+  deleteOneByCondition(user: IAuthUser, condition: CD): Promise<void>;
+  deleteEntityById(user: IAuthUser, id: string): Promise<void>;
+  deleteEntitiesByIds(
+    user: IAuthUser,
+    body: DeleteManyByIdsDto,
+  ): Promise<{ deleted: number }>;
+}
 
-export function BaseCrudControllerFactory<E extends BaseEntity>(
+export function BaseController<
+  E extends BaseEntity,
+  C = Partial<E>,
+  U = UpdateData<E>,
+  CD = QueryCondition<E>,
+>(
   entityType: Type<E>,
-  createDto?: Type<unknown>,
-  updateDto?: Type<unknown>,
-  conditionDto?: Type<unknown>,
-  options: CrudOptions = {},
-): Type<object> {
-  const routeConfigs = getRouteConfigs(options.routes);
+  options?: BaseControllerOptions<C, U, CD>,
+): Type<IBaseController<E, C, U, CD>>;
+
+export function BaseController<
+  E extends BaseEntity,
+  C = Partial<E>,
+  U = UpdateData<E>,
+  CD = QueryCondition<E>,
+>(
+  entityType: Type<E>,
+  createDto?: Type<C>,
+  updateDto?: Type<U>,
+  conditionDto?: Type<CD>,
+  options?: BaseControllerOptions<C, U, CD>,
+): Type<IBaseController<E, C, U, CD>>;
+
+export function BaseController<
+  E extends BaseEntity,
+  C = Partial<E>,
+  U = UpdateData<E>,
+  CD = QueryCondition<E>,
+>(
+  entityType: Type<E>,
+  createDtoOrOptions?: Type<C> | BaseControllerOptions<C, U, CD>,
+  updateDto?: Type<U>,
+  conditionDto?: Type<CD>,
+  options: BaseControllerOptions<C, U, CD> = {},
+): Type<IBaseController<E, C, U, CD>> {
+  let createDto: Type<C> | undefined;
+  let controllerOptions = options;
+
+  if (
+    createDtoOrOptions &&
+    typeof createDtoOrOptions === 'object' &&
+    !('prototype' in createDtoOrOptions)
+  ) {
+    controllerOptions = createDtoOrOptions;
+  } else {
+    createDto = createDtoOrOptions as Type<C> | undefined;
+  }
+
+  createDto = createDto ?? controllerOptions.dtos?.create;
+  updateDto = updateDto ?? controllerOptions.dtos?.update;
+  conditionDto = conditionDto ?? controllerOptions.dtos?.condition;
+
+  const routeConfigs = getRouteConfigs(controllerOptions.routes);
   const {
     ConditionDto,
     CreateDto,
     UpdateDto,
     UpdateManyIdsDto,
     validationPipes,
-  } = createCrudDtoBundle(entityType, createDto, updateDto, conditionDto);
+  } = createBaseDtoBundle(entityType, createDto, updateDto, conditionDto);
 
-  class CrudControllerHost {
-    constructor(protected readonly service: BaseCrudService<E>) {}
+  class BaseControllerHost implements IBaseController<E, C, U, CD> {
+    constructor(protected readonly service: BaseService<E>) {}
 
     @Post()
     @ApiCreatedResponse({
@@ -96,31 +176,35 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
     @UsePipes(validationPipes.create)
     async createEntity(
       @ReqUser() user: IAuthUser,
-      @Body() body: Partial<E>,
+      @Body() body: C,
     ): Promise<E> {
       assertRouteEnabled(routeConfigs.create);
-      return this.service.create(user, body);
+      return this.service.create(user, body as Partial<E>);
     }
 
     @ApiGet('many', entityType)
     async listEntities(
       @ReqUser() user: IAuthUser,
-      @RequestCondition(ConditionDto) condition: QueryCondition<E>,
+      @RequestCondition(ConditionDto) condition: CD,
       @RequestQuery() query: ParsedQueryOptions,
     ): Promise<E[]> {
       assertRouteEnabled(routeConfigs.getMany);
-      return this.service.getMany(user, condition, query as FindQuery<E>);
+      return this.service.getMany(
+        user,
+        condition as QueryCondition<E>,
+        query as FindQuery<E>,
+      );
     }
 
     @ApiGet('page', entityType)
     async paginateEntities(
       @ReqUser() user: IAuthUser,
-      @RequestCondition(ConditionDto) condition: QueryCondition<E>,
+      @RequestCondition(ConditionDto) condition: CD,
       @RequestQuery() query: ParsedQueryOptions,
     ): Promise<PaginatedResponseDto<E>> {
       assertRouteEnabled(routeConfigs.getPage);
       const { page = 1, limit = 10, ...findQuery } = query;
-      return this.service.getPage(user, condition, {
+      return this.service.getPage(user, condition as QueryCondition<E>, {
         ...(findQuery as FindQuery<E>),
         page,
         limit,
@@ -130,11 +214,15 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
     @ApiGet('one', entityType)
     async findOneByCondition(
       @ReqUser() user: IAuthUser,
-      @RequestCondition(ConditionDto, true) condition: QueryCondition<E>,
+      @RequestCondition(ConditionDto, true) condition: CD,
       @RequestQuery() query: ParsedQueryOptions,
     ): Promise<E | null> {
       assertRouteEnabled(routeConfigs.getOne);
-      return this.service.getOne(user, condition, query as FindQuery<E>);
+      return this.service.getOne(
+        user,
+        condition as QueryCondition<E>,
+        query as FindQuery<E>,
+      );
     }
 
     @Get(':id')
@@ -170,11 +258,15 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
     @UsePipes(validationPipes.update)
     async updateOneByCondition(
       @ReqUser() user: IAuthUser,
-      @RequestCondition(ConditionDto, true) condition: QueryCondition<E>,
-      @Body() update: UpdateData<E>,
+      @RequestCondition(ConditionDto, true) condition: CD,
+      @Body() update: U,
     ): Promise<E | null> {
       assertRouteEnabled(routeConfigs.updateOne);
-      return this.service.updateOne(user, condition, update);
+      return this.service.updateOne(
+        user,
+        condition as QueryCondition<E>,
+        update as UpdateData<E>,
+      );
     }
 
     @Put(':id')
@@ -191,10 +283,10 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
     async updateEntityById(
       @ReqUser() user: IAuthUser,
       @Param('id') id: string,
-      @Body() body: UpdateData<E>,
+      @Body() body: U,
     ): Promise<E | null> {
       assertRouteEnabled(routeConfigs.updateById);
-      return this.service.updateById(user, id, body);
+      return this.service.updateById(user, id, body as UpdateData<E>);
     }
 
     @Put('many/ids')
@@ -203,10 +295,14 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
     @UsePipes(validationPipes.updateManyByIds)
     async updateEntitiesByIds(
       @ReqUser() user: IAuthUser,
-      @Body() body: { ids: string[]; update: UpdateData<E> },
+      @Body() body: { ids: string[]; update: U },
     ): Promise<{ affected: number }> {
       assertRouteEnabled(routeConfigs.updateByIds);
-      return this.service.updateManyByIds(user, body.ids, body.update);
+      return this.service.updateManyByIds(
+        user,
+        body.ids,
+        body.update as UpdateData<E>,
+      );
     }
 
     @Delete('one')
@@ -222,10 +318,10 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
     @ApiCondition(true)
     async deleteOneByCondition(
       @ReqUser() user: IAuthUser,
-      @RequestCondition(ConditionDto, true) condition: QueryCondition<E>,
+      @RequestCondition(ConditionDto, true) condition: CD,
     ): Promise<void> {
       assertRouteEnabled(routeConfigs.deleteOne);
-      await this.service.deleteOne(user, condition);
+      await this.service.deleteOne(user, condition as QueryCondition<E>);
     }
 
     @Delete(':id')
@@ -259,17 +355,17 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
     }
   }
 
-  Object.defineProperty(CrudControllerHost, 'name', {
-    value: `${entityType.name}CrudController`,
+  Object.defineProperty(BaseControllerHost, 'name', {
+    value: `${entityType.name}BaseController`,
   });
 
-  setupAuthorization(
-    CrudControllerHost,
-    CRUD_ROUTE_DEFINITIONS,
+  applyRouteMetadata(
+    BaseControllerHost,
     routeConfigs,
-    options?.defaultRoles ?? [SystemRole.ADMIN],
+    controllerOptions?.defaultRoles ?? [SystemRole.ADMIN],
   );
-  setupAudit(CrudControllerHost, CRUD_ROUTE_DEFINITIONS, routeConfigs);
 
-  return CrudControllerHost;
+  return BaseControllerHost;
 }
+
+export const BaseControllerFactory = BaseController;

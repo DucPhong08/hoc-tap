@@ -2,7 +2,7 @@ import { EntityManager } from '@mikro-orm/core';
 import { BadRequestException, Injectable, Optional } from '@nestjs/common';
 import { plainToClass } from 'class-transformer';
 import { validate } from 'class-validator';
-import { BaseCrudService } from '@/infra/services/base-crud.service';
+import { BaseService } from '@/infra/services/base.service';
 import { Setting } from '../entities/setting.entity';
 import { SettingRepository } from '../repositories/setting.repository';
 import type { FindQuery } from '@/common/interfaces/repository.interface';
@@ -16,7 +16,7 @@ import {
 import { SettingKey } from '../enums/setting-key.enum';
 
 @Injectable()
-export class SettingService extends BaseCrudService<Setting, EntityManager> {
+export class SettingService extends BaseService<Setting, EntityManager> {
   constructor(
     private readonly settingRepository: SettingRepository,
     @Optional()
