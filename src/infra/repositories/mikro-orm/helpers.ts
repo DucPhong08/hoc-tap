@@ -34,9 +34,7 @@ export const parseFields = (
   if (!select) return [];
   const fields = Array.isArray(select)
     ? select
-    : Object.entries(select)
-        .filter(([, v]) => v === 1 || v === '1' || v === true)
-        .map(([k]) => k);
+    : Object.keys(select).filter((k) => select[k]);
   return prefix ? fields.map((f) => `${prefix}.${f}`) : fields;
 };
 
@@ -94,16 +92,11 @@ export function findOptions(query?: FindQuery<any>): Record<string, any> {
     const fields = [...parseFields(query.select), ...extraFields];
     if (fields.length) options.fields = fields;
   } else if (query.select) {
-    const fields = parseFields(query.select);
-    if (fields.length) options.fields = fields;
+    options.fields = parseFields(query.select);
   }
 
-  if (query.sort != null) {
-    const orderBy = Sort(query.sort);
-    if (orderBy != null) options.orderBy = orderBy;
-  }
-
-  if (query.limit != null) options.limit = query.limit;
+  if (query.sort) options.orderBy = Sort(query.sort);
+  if (query.limit) options.limit = query.limit;
 
   return options;
 }
@@ -113,11 +106,10 @@ export async function populateEntity<E extends BaseEntity>(
   entity: E | null,
   opts?: FindQuery<E, EntityManager>,
 ): Promise<E | null> {
-  if (!entity) return null;
-  if (opts?.population) {
-    const { populate } = parsePopulation(opts.population);
-    if (populate.length)
-      await em.populate(entity, populate as unknown as Populate<E>);
+  if (!entity || !opts?.population) return entity;
+  const { populate } = parsePopulation(opts.population);
+  if (populate.length) {
+    await em.populate(entity, populate as unknown as Populate<E>);
   }
   return entity;
 }
