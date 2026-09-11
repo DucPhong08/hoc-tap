@@ -14,21 +14,15 @@ function validateFilterRules(rules: unknown[]): void {
       );
     }
     const rule = item as Record<string, unknown>;
-    if (
-      !rule.field ||
-      (typeof rule.field !== 'string' && !Array.isArray(rule.field))
-    ) {
+    if (!rule.field || typeof rule.field !== 'string') {
       throw new BadRequestException(
         `Trường 'field' tại rule [${index}] không hợp lệ`,
       );
     }
-    const fieldStr = Array.isArray(rule.field)
-      ? rule.field.join('.')
-      : String(rule.field);
     if (
-      fieldStr.includes('__proto__') ||
-      fieldStr.includes('prototype') ||
-      fieldStr.includes('constructor')
+      rule.field.includes('__proto__') ||
+      rule.field.includes('prototype') ||
+      rule.field.includes('constructor')
     ) {
       throw new BadRequestException(
         `Trường 'field' tại rule [${index}] chứa ký tự không được phép`,

@@ -5,6 +5,7 @@ import {
   CallHandler,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import type { Request } from 'express';
 import { Observable, throwError } from 'rxjs';
 import { tap, catchError } from 'rxjs/operators';
 import { AuditLogQueueService } from '../services/audit-log-queue.service';
@@ -40,9 +41,9 @@ export class AuditInterceptor implements NestInterceptor {
     }
 
     const ipAddress = this.getClientIp(request);
-    const userAgent = (request.headers as any)['user-agent'] as string;
-    const endpoint = (request as any).url as string;
-    const method = (request as any).method as string;
+    const userAgent = (request.headers['user-agent'] as string) || '';
+    const endpoint = request.url;
+    const method = request.method;
 
     return next.handle().pipe(
       tap((result) => {

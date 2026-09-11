@@ -43,8 +43,7 @@ export function parseFilterRules<E>(
   rules: FilterRule<E>[],
 ): Record<string, any> {
   const andConditions = rules.map(({ field, operator, values }) => ({
-    [Array.isArray(field) ? field.join('.') : (field as string)]:
-      OPERATOR_STRATEGIES[operator]?.(values),
+    [field as string]: OPERATOR_STRATEGIES[operator]?.(values),
   }));
 
   if (andConditions.length <= 1) return andConditions[0] ?? {};

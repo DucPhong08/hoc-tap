@@ -28,13 +28,11 @@ export const resolveContext = <E extends BaseEntity>(
 };
 
 export const parseFields = (
-  select?: string[] | Record<string, any>,
+  select?: Record<string, any>,
   prefix = '',
 ): string[] => {
   if (!select) return [];
-  const fields = Array.isArray(select)
-    ? select
-    : Object.keys(select).filter((k) => select[k]);
+  const fields = Object.keys(select).filter((k) => select[k]);
   return prefix ? fields.map((f) => `${prefix}.${f}`) : fields;
 };
 
@@ -42,41 +40,27 @@ export function parsePopulation(
   population?: PopulationQuery<any>[],
   prefix = '',
 ): { populate: unknown[]; extraFields: string[] } {
-  if (!Array.isArray(population)) return { populate: [], extraFields: [] };
+  if (!population?.length) return { populate: [], extraFields: [] };
 
   const populate: unknown[] = [];
   const extraFields: string[] = [];
 
   for (const item of population) {
-    if (typeof item === 'string') {
-      populate.push(item);
-    } else if (item?.path) {
-      const {
-        path,
-        filters,
-        sort,
-        limit,
-        select,
-        population: nestedPop,
-      } = item;
-      const currPrefix = prefix ? `${prefix}.${path}` : path;
-      const option: Record<string, any> = { field: path };
+    const { path, filters, sort, limit, select, population: nestedPop } = item;
+    const currPrefix = prefix ? `${prefix}.${path}` : path;
+    const option: Record<string, any> = { field: path };
 
-      if (filters)
-        option.where = Array.isArray(filters)
-          ? parseFilterRules(filters)
-          : filters;
-      if (sort) option.orderBy = Sort(sort);
-      if (limit) option.limit = limit;
-      if (select) extraFields.push(...parseFields(select, currPrefix));
+    if (filters?.length) option.where = parseFilterRules(filters);
+    if (sort) option.orderBy = Sort(sort);
+    if (limit) option.limit = limit;
+    if (select) extraFields.push(...parseFields(select, currPrefix));
 
-      if (Array.isArray(nestedPop)) {
-        const child = parsePopulation(nestedPop, currPrefix);
-        if (child.populate.length) option.children = child.populate;
-        extraFields.push(...child.extraFields);
-      }
-      populate.push(option);
+    if (nestedPop?.length) {
+      const child = parsePopulation(nestedPop, currPrefix);
+      if (child.populate.length) option.children = child.populate;
+      extraFields.push(...child.extraFields);
     }
+    populate.push(option);
   }
   return { populate, extraFields };
 }
@@ -103,10 +87,10 @@ export function findOptions(query?: FindQuery<any>): Record<string, any> {
 
 export async function populateEntity<E extends BaseEntity>(
   em: EntityManager,
-  entity: E | null,
+  entity: E,
   opts?: FindQuery<E, EntityManager>,
-): Promise<E | null> {
-  if (!entity || !opts?.population) return entity;
+): Promise<E> {
+  if (!opts?.population?.length) return entity;
   const { populate } = parsePopulation(opts.population);
   if (populate.length) {
     await em.populate(entity, populate as unknown as Populate<E>);

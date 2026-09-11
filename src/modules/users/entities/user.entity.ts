@@ -59,7 +59,7 @@ export class User extends BaseEntity {
   role?: RoleEntity;
 
   get roleCode(): string {
-    return (this.role as any)?.code ?? SystemRole.USER;
+    return this.role?.code ?? SystemRole.USER;
   }
 
   get roles(): string[] {

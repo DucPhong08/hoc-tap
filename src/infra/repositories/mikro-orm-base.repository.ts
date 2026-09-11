@@ -139,12 +139,7 @@ export abstract class MikroOrmBaseRepository<
     const mergedQuery = mergeMethodOptions(this.config, 'getPage', query) ?? {};
     const page = mergedQuery.page ?? 1;
     const limit = mergedQuery.limit ?? 10;
-    const sort = Array.isArray(mergedQuery.sort)
-      ? mergedQuery.sort
-      : {
-          ...mergedQuery.sort,
-          createdAt: (mergedQuery.sort as any)?.createdAt ?? -1,
-        };
+    const sort = mergedQuery.sort ?? { createdAt: -1 };
 
     const { repository } = resolveContext(
       this.em,

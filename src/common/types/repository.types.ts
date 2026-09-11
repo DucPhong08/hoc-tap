@@ -30,7 +30,7 @@ export type Paths<T, D extends number = 3> = [D] extends [never]
 
 /* ---------- Filter rules ---------- */
 export interface FilterRule<E = any> {
-  field: Paths<E> | string[];
+  field: Paths<E>;
   operator: OperatorType;
   values?: any;
 }
