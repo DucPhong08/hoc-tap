@@ -1,6 +1,5 @@
 import { EntityManager } from '@mikro-orm/core';
-import { Injectable, Optional } from '@nestjs/common';
-import { ApiError } from '@/common/exceptions/api-error';
+import { BadRequestException, Injectable, Optional } from '@nestjs/common';
 import { plainToClass } from 'class-transformer';
 import { validate } from 'class-validator';
 import { BaseCrudService } from '@/infra/services/base-crud.service';
@@ -59,7 +58,7 @@ export class SettingService extends BaseCrudService<Setting, EntityManager> {
 
       if (validateResult.length > 0) {
         console.error('Setting validation failed:', validateResult);
-        throw ApiError.BadReq('error-setting-invalid');
+        throw new BadRequestException('error-setting-invalid');
       }
     }
 

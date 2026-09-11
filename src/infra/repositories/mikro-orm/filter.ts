@@ -31,39 +31,46 @@ export function parseFilterRules<E>(
       : { $and: andConditions };
 }
 
-function getOperatorCondition(operator: OperatorType, values: any): any {
-  switch (operator) {
-    case OperatorType.EQUAL:
-      return { $eq: values };
-    case OperatorType.NOT_EQUAL:
-      return { $ne: values };
-    case OperatorType.INCLUDE:
-      return { $in: Array.isArray(values) ? values : [values] };
-    case OperatorType.EXCLUDE:
-      return { $nin: Array.isArray(values) ? values : [values] };
-    case OperatorType.LIKE:
-      return { $like: `%${escapeRegexValue(values)}%` };
-    case OperatorType.I_LIKE:
-      return { $ilike: `%${escapeRegexValue(values)}%` };
-    case OperatorType.GREATER_THAN:
-      return { $gt: values };
-    case OperatorType.GREATER_THAN_OR_EQUAL:
-      return { $gte: values };
-    case OperatorType.LESS_THAN:
-      return { $lt: values };
-    case OperatorType.LESS_THAN_OR_EQUAL:
-      return { $lte: values };
-    case OperatorType.BETWEEN:
-      return Array.isArray(values) && values.length === 2
-        ? { $gte: values[0], $lte: values[1] }
-        : undefined;
-    case OperatorType.IS_NULL:
-      return { $eq: null };
-    case OperatorType.IS_NOT_NULL:
-      return { $ne: null };
-    default:
-      return undefined;
-  }
+export type OperatorConditionHandler = (
+  values: unknown,
+) => Record<string, unknown> | undefined;
+
+export const OPERATOR_STRATEGIES: Record<
+  OperatorType,
+  OperatorConditionHandler
+> = {
+  [OperatorType.EQUAL]: (values) => ({ $eq: values }),
+  [OperatorType.NOT_EQUAL]: (values) => ({ $ne: values }),
+  [OperatorType.INCLUDE]: (values) => ({
+    $in: Array.isArray(values) ? values : [values],
+  }),
+  [OperatorType.EXCLUDE]: (values) => ({
+    $nin: Array.isArray(values) ? values : [values],
+  }),
+  [OperatorType.LIKE]: (values) => ({
+    $like: `%${escapeRegexValue(values)}%`,
+  }),
+  [OperatorType.I_LIKE]: (values) => ({
+    $ilike: `%${escapeRegexValue(values)}%`,
+  }),
+  [OperatorType.GREATER_THAN]: (values) => ({ $gt: values }),
+  [OperatorType.GREATER_THAN_OR_EQUAL]: (values) => ({ $gte: values }),
+  [OperatorType.LESS_THAN]: (values) => ({ $lt: values }),
+  [OperatorType.LESS_THAN_OR_EQUAL]: (values) => ({ $lte: values }),
+  [OperatorType.BETWEEN]: (values) =>
+    Array.isArray(values) && values.length === 2
+      ? { $gte: values[0], $lte: values[1] }
+      : undefined,
+  [OperatorType.IS_NULL]: () => ({ $eq: null }),
+  [OperatorType.IS_NOT_NULL]: () => ({ $ne: null }),
+};
+
+export function getOperatorCondition(
+  operator: OperatorType,
+  values: unknown,
+): Record<string, unknown> | undefined {
+  const handler = OPERATOR_STRATEGIES[operator];
+  return handler ? handler(values) : undefined;
 }
 
 /**

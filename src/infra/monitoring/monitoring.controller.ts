@@ -23,22 +23,28 @@ export class MonitoringController {
     };
   }
 
-  @Get('worker-info')
-  @Roles(SystemRole.ADMIN)
-  getWorkerInfo() {
-    return {
-      workerId: process.pid,
-      memory: {
-        rss: `${Math.round(process.memoryUsage().rss / 1024 / 1024)}MB`,
-        heapTotal: `${Math.round(process.memoryUsage().heapTotal / 1024 / 1024)}MB`,
-        heapUsed: `${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`,
-        external: `${Math.round(process.memoryUsage().external / 1024 / 1024)}MB`,
-      },
-      cpu: process.cpuUsage(),
-      uptime: `${Math.round(process.uptime())}s`,
-      platform: process.platform,
-      nodeVersion: process.version,
-    };
+  private async readLastLines(
+    filePath: string,
+    maxLines: number,
+    maxBytes = 64 * 1024,
+  ): Promise<string[]> {
+    const handle = await fs.promises.open(filePath, 'r');
+    try {
+      const stat = await handle.stat();
+      const fileSize = stat.size;
+      if (fileSize === 0) return [];
+
+      const readBytes = Math.min(fileSize, maxBytes);
+      const position = fileSize - readBytes;
+      const buffer = Buffer.alloc(readBytes);
+
+      await handle.read(buffer, 0, readBytes, position);
+      const content = buffer.toString('utf-8');
+      const lines = content.split('\n').filter((l) => l.trim());
+      return lines.slice(-maxLines);
+    } finally {
+      await handle.close();
+    }
   }
 
   @Get('logs/recent')
@@ -50,12 +56,8 @@ export class MonitoringController {
         return { logs: [], message: 'No logs found' };
       }
 
-      const content = await fs.promises.readFile(logPath, 'utf-8');
-      const lines = content.split('\n').filter((line) => line.trim());
-      const recent = lines.slice(-50); // Last 50 lines
-
+      const recent = await this.readLastLines(logPath, 50);
       return {
-        total: lines.length,
         recent: recent.length,
         logs: recent,
       };
@@ -76,17 +78,16 @@ export class MonitoringController {
         return { logs: [], message: 'No error logs found' };
       }
 
-      const content = await fs.promises.readFile(logPath, 'utf-8');
-      const lines = content.split('\n').filter((line) => line.trim());
-      const recent = lines.slice(-20); // Last 20 errors
-
+      const recent = await this.readLastLines(logPath, 20);
       return {
-        total: lines.length,
         recent: recent.length,
         logs: recent,
       };
     } catch (error) {
-      return { error: 'Failed to read error logs', message: error.message };
+      return {
+        error: 'Failed to read error logs',
+        message: (error as Error)?.message ?? String(error),
+      };
     }
   }
 

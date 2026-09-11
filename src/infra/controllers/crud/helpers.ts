@@ -1,7 +1,6 @@
-import { Type } from '@nestjs/common';
+import { NotFoundException, Type } from '@nestjs/common';
 import { Authorize } from '@/common/decorators/authorize.decorator';
 import { Auditable } from '@/common/decorators/auditable.decorator';
-import { ApiError } from '@/common/exceptions/api-error';
 import { AuditAction } from '@/modules/audit-logs/enums/audit-action.enum';
 import type {
   BaseRoute,
@@ -50,7 +49,7 @@ export const getRouteConfigs = (
 
 export const assertRouteEnabled = (config: RouteConfig): void => {
   if (!config.enabled) {
-    throw ApiError.NotFound('error-route-not-available');
+    throw new NotFoundException('error-route-not-available');
   }
 };
 

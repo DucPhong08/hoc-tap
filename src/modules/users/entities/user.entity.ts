@@ -24,7 +24,7 @@ export class User extends BaseEntity {
   @ApiProperty()
   @IsEmail()
   @MaxLength(150)
-  @Property({})
+  @Property({ unique: true })
   email!: string;
 
   @ApiProperty()

@@ -135,7 +135,6 @@ export class AuditInterceptor implements NestInterceptor {
 
   private extractEntityId(context: ExecutionContext, result?: any): string {
     const request = context.switchToHttp().getRequest<any>();
-    const args = context.getArgs().slice(2);
 
     // 1. Từ URL params (:id)
     if (request.params?.id) {
@@ -159,19 +158,6 @@ export class AuditInterceptor implements NestInterceptor {
 
     if (result?.email) {
       return String(result.email);
-    }
-
-    // 5. Argument đầu tiên
-    if (args[0]) {
-      if (typeof args[0] === 'string') {
-        return args[0];
-      }
-      if (args[0].id) {
-        return String(args[0].id);
-      }
-      if (args[0].email) {
-        return String(args[0].email);
-      }
     }
 
     return 'unknown';

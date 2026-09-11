@@ -10,9 +10,11 @@ import { catchError, timeout } from 'rxjs/operators';
 
 @Injectable()
 export class TimeoutInterceptor implements NestInterceptor {
+  constructor(private readonly timeoutMs: number = 15000) {}
+
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     return next.handle().pipe(
-      timeout(5000), // Giới hạn thời gian xử lý yêu cầu tối đa 5 giây (5000ms)
+      timeout(this.timeoutMs),
       catchError((err) => {
         if (err instanceof TimeoutError) {
           return throwError(

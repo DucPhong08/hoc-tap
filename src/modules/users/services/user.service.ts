@@ -1,6 +1,7 @@
 import { EntityManager } from '@mikro-orm/core';
-import { Injectable, Optional } from '@nestjs/common';
-import { ApiError } from '@/common/exceptions/api-error';
+import { BadRequestException, Injectable, Optional } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import * as bcrypt from 'bcrypt';
 import { BaseCrudService } from '@/infra/services/base-crud.service';
 import { User } from '../entities/user.entity';
 import { UserRepository } from '../repositories/user.repository';
@@ -8,6 +9,7 @@ import type { FindQuery } from '@/common/interfaces/repository.interface';
 import type { BaseTransaction } from '@/infra/transaction/base-transaction.interface';
 import { InjectTransaction } from '@/infra/transaction/transaction.provider';
 import type { IAuthUser } from '@/common/interfaces/auth-user.interface';
+import type { AuthConfig } from '@/config/configuration';
 
 @Injectable()
 export class UserService extends BaseCrudService<User> {
@@ -16,8 +18,16 @@ export class UserService extends BaseCrudService<User> {
     @Optional()
     @InjectTransaction()
     transaction?: BaseTransaction<EntityManager>,
+    @Optional()
+    private readonly configService?: ConfigService,
   ) {
     super(userRepository, { transaction });
+  }
+
+  private async hashPassword(password: string): Promise<string> {
+    const rounds =
+      this.configService?.get<AuthConfig>('auth')?.bcryptRounds ?? 10;
+    return bcrypt.hash(password, rounds);
   }
 
   private normalizeEmail(email: string): string {
@@ -36,7 +46,7 @@ export class UserService extends BaseCrudService<User> {
     const emailExists = await this.userRepository.exists({ email }, txOptions);
 
     if (emailExists) {
-      throw ApiError.BadReq('error-user-exist');
+      throw new BadRequestException('error-user-exist');
     }
   }
 
@@ -51,6 +61,10 @@ export class UserService extends BaseCrudService<User> {
       if (payload.email) {
         payload.email = this.normalizeEmail(payload.email);
         await this.assertEmailUnique(payload.email, txOptions);
+      }
+
+      if (payload.password) {
+        payload.password = await this.hashPassword(payload.password);
       }
 
       return super.create(user, payload, txOptions);
@@ -78,6 +92,10 @@ export class UserService extends BaseCrudService<User> {
           txOptions,
           existingUser.email,
         );
+      }
+
+      if (payload.password) {
+        payload.password = await this.hashPassword(payload.password);
       }
 
       return super.updateById(user, id, payload, txOptions);

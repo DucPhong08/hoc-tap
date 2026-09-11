@@ -15,7 +15,7 @@ export class UserController extends BaseCrudControllerFactory(
   CreateUserDto,
   UpdateUserDto,
   UserConditionDto,
-  { defaultRoles: [SystemRole.USER] },
+  { defaultRoles: [SystemRole.ADMIN] },
 ) {
   constructor(private readonly userService: UserService) {
     super(userService);

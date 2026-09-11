@@ -98,11 +98,13 @@ export class RedisCacheService
     await this.set(key, value, ttl);
     if (!this.isConnected) return;
     try {
+      const effectiveTtl = ttl ?? this.config.ttl;
       for (const tag of tags) {
-        await this.client!.sAdd(
-          this.key(`${this.tagPrefix}${tag}`),
-          this.key(key),
-        );
+        const tagKey = this.key(`${this.tagPrefix}${tag}`);
+        await this.client!.sAdd(tagKey, this.key(key));
+        if (effectiveTtl) {
+          await this.client!.expire(tagKey, effectiveTtl * 2);
+        }
       }
     } catch {
       /* bỏ qua */
@@ -121,8 +123,16 @@ export class RedisCacheService
   async delByPattern(pattern: string): Promise<void> {
     if (!this.isConnected) return;
     try {
-      const keys = await this.client!.keys(this.key(pattern));
-      if (keys.length) await this.client!.del(keys);
+      const keys: string[] = [];
+      for await (const key of this.client!.scanIterator({
+        MATCH: this.key(pattern),
+        COUNT: 100,
+      })) {
+        keys.push(key);
+      }
+      if (keys.length) {
+        await this.client!.del(keys);
+      }
     } catch {
       /* bỏ qua */
     }

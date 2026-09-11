@@ -8,7 +8,10 @@ import {
 } from '@nestjs/bull';
 import { Logger } from '@nestjs/common';
 import type { Job } from 'bull';
+import { CreateRequestContext, MikroORM } from '@mikro-orm/core';
+import { InjectMikroORM } from '@mikro-orm/nestjs';
 import { QueueName, AuditLogJob } from '@/common/constants/queue.constant';
+import { DB_CONTEXTS } from '@/database/database.constants';
 import { AuditLogService } from '../services/audit-log.service';
 import type { LogActionData } from '../constants/audit-log.constant';
 
@@ -20,7 +23,10 @@ export type AuditLogJobPayload = {
 export class AuditLogProcessor {
   private readonly logger = new Logger(AuditLogProcessor.name);
 
-  constructor(private readonly auditLogService: AuditLogService) {}
+  constructor(
+    private readonly auditLogService: AuditLogService,
+    @InjectMikroORM(DB_CONTEXTS.LOGS) private readonly logsOrm: MikroORM,
+  ) {}
 
   @OnQueueActive()
   onActive(job: Job): void {
@@ -47,6 +53,7 @@ export class AuditLogProcessor {
   }
 
   @Process(AuditLogJob.PROCESS_BATCH)
+  @CreateRequestContext((processor: AuditLogProcessor) => processor.logsOrm)
   async handleProcessLog(job: Job<AuditLogJobPayload>): Promise<void> {
     const { log } = job.data;
     if (!log) return;

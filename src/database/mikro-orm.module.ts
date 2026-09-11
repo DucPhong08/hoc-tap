@@ -34,6 +34,7 @@ class DatabaseConfigFactory implements MikroOrmOptionsFactory {
       useClass: DatabaseConfigFactory,
       contextName: DB_CONTEXTS.LOGS,
     }),
+    MikroOrmModule.forMiddleware(),
   ],
   providers: [MigrationService],
 })

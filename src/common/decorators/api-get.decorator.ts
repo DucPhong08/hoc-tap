@@ -1,7 +1,12 @@
-import { Get, HttpCode, Type, applyDecorators } from '@nestjs/common';
+import {
+  Get,
+  HttpCode,
+  HttpStatus,
+  Type,
+  applyDecorators,
+} from '@nestjs/common';
 import { ApiOkResponse, ApiQuery } from '@nestjs/swagger';
 import { PaginatedResponseDto } from '../dto/pagination.dto';
-import { HTTP_STATUS } from '../constants/http-status.constant';
 
 type QueryMode = 'one' | 'many' | 'page';
 
@@ -61,7 +66,7 @@ export const ApiGet = (mode: QueryMode, entityType: Type<unknown>) => {
 
   return applyDecorators(
     Get(mode),
-    HttpCode(HTTP_STATUS.OK),
+    HttpCode(HttpStatus.OK),
     getOkResponse(),
     ApiCondition(mode === 'one'),
     ApiQueryOptions(mode),

@@ -3,6 +3,7 @@ import {
   Delete,
   Get,
   HttpCode,
+  HttpStatus,
   Param,
   Post,
   Put,
@@ -18,10 +19,6 @@ import {
 import { DeleteManyByIdsDto } from '@/common/dto/delete-many-by-ids.dto';
 import { PaginatedResponseDto } from '@/common/dto/pagination.dto';
 import { BaseEntity } from '@/common/entity/base.entity';
-import {
-  HTTP_STATUS,
-  HTTP_STATUS_MESSAGE,
-} from '@/common/constants/http-status.constant';
 import {
   RequestCondition,
   RequestQuery,
@@ -92,7 +89,7 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
 
     @Post()
     @ApiCreatedResponse({
-      description: HTTP_STATUS_MESSAGE[HTTP_STATUS.CREATED],
+      description: 'Created',
       type: entityType,
     })
     @ApiBody({ type: CreateDto })
@@ -142,12 +139,12 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
 
     @Get(':id')
     @ApiOkResponse({
-      description: HTTP_STATUS_MESSAGE[HTTP_STATUS.OK],
+      description: 'OK',
       type: entityType,
     })
     @ApiResponse({
-      status: HTTP_STATUS.NOT_FOUND,
-      description: HTTP_STATUS_MESSAGE[HTTP_STATUS.NOT_FOUND],
+      status: HttpStatus.NOT_FOUND,
+      description: 'Not Found',
     })
     @ApiQueryOptions('one')
     async findEntityById(
@@ -161,12 +158,12 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
 
     @Put('one')
     @ApiOkResponse({
-      description: HTTP_STATUS_MESSAGE[HTTP_STATUS.OK],
+      description: 'OK',
       type: entityType,
     })
     @ApiResponse({
-      status: HTTP_STATUS.NOT_FOUND,
-      description: HTTP_STATUS_MESSAGE[HTTP_STATUS.NOT_FOUND],
+      status: HttpStatus.NOT_FOUND,
+      description: 'Not Found',
     })
     @ApiBody({ type: UpdateDto })
     @ApiCondition(true)
@@ -182,12 +179,12 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
 
     @Put(':id')
     @ApiOkResponse({
-      description: HTTP_STATUS_MESSAGE[HTTP_STATUS.OK],
+      description: 'OK',
       type: entityType,
     })
     @ApiResponse({
-      status: HTTP_STATUS.NOT_FOUND,
-      description: HTTP_STATUS_MESSAGE[HTTP_STATUS.NOT_FOUND],
+      status: HttpStatus.NOT_FOUND,
+      description: 'Not Found',
     })
     @ApiBody({ type: UpdateDto })
     @UsePipes(validationPipes.update)
@@ -201,7 +198,7 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
     }
 
     @Put('many/ids')
-    @ApiOkResponse({ description: HTTP_STATUS_MESSAGE[HTTP_STATUS.OK] })
+    @ApiOkResponse({ description: 'OK' })
     @ApiBody({ type: UpdateManyIdsDto })
     @UsePipes(validationPipes.updateManyByIds)
     async updateEntitiesByIds(
@@ -213,14 +210,14 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
     }
 
     @Delete('one')
-    @HttpCode(HTTP_STATUS.NO_CONTENT)
+    @HttpCode(HttpStatus.NO_CONTENT)
     @ApiResponse({
-      status: HTTP_STATUS.NO_CONTENT,
-      description: HTTP_STATUS_MESSAGE[HTTP_STATUS.NO_CONTENT],
+      status: HttpStatus.NO_CONTENT,
+      description: 'No Content',
     })
     @ApiResponse({
-      status: HTTP_STATUS.NOT_FOUND,
-      description: HTTP_STATUS_MESSAGE[HTTP_STATUS.NOT_FOUND],
+      status: HttpStatus.NOT_FOUND,
+      description: 'Not Found',
     })
     @ApiCondition(true)
     async deleteOneByCondition(
@@ -232,14 +229,14 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
     }
 
     @Delete(':id')
-    @HttpCode(HTTP_STATUS.NO_CONTENT)
+    @HttpCode(HttpStatus.NO_CONTENT)
     @ApiResponse({
-      status: HTTP_STATUS.NO_CONTENT,
-      description: HTTP_STATUS_MESSAGE[HTTP_STATUS.NO_CONTENT],
+      status: HttpStatus.NO_CONTENT,
+      description: 'No Content',
     })
     @ApiResponse({
-      status: HTTP_STATUS.NOT_FOUND,
-      description: HTTP_STATUS_MESSAGE[HTTP_STATUS.NOT_FOUND],
+      status: HttpStatus.NOT_FOUND,
+      description: 'Not Found',
     })
     async deleteEntityById(
       @ReqUser() user: IAuthUser,
@@ -250,7 +247,7 @@ export function BaseCrudControllerFactory<E extends BaseEntity>(
     }
 
     @Delete('many/ids')
-    @ApiOkResponse({ description: HTTP_STATUS_MESSAGE[HTTP_STATUS.OK] })
+    @ApiOkResponse({ description: 'OK' })
     @ApiBody({ type: DeleteManyByIdsDto })
     @UsePipes(validationPipes.deleteManyByIds)
     async deleteEntitiesByIds(

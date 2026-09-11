@@ -1,5 +1,8 @@
-import { Injectable } from '@nestjs/common';
-import { ApiError } from '@/common/exceptions/api-error';
+import {
+  BadRequestException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
@@ -33,7 +36,7 @@ export class AuthService {
     const emailNorm = email.toLowerCase().trim();
     const emailExists = await this.userRepository.exists({ email: emailNorm });
     if (emailExists) {
-      throw ApiError.BadReq('error-user-exist');
+      throw new BadRequestException('error-user-exist');
     }
 
     const authConfig = this.configService.get<AuthConfig>('auth');
@@ -61,17 +64,17 @@ export class AuthService {
     );
 
     if (!user?.password || user.provider !== AuthProvider.LOCAL) {
-      throw ApiError.Unauthorized('error-invalid-credentials');
+      throw new UnauthorizedException('error-invalid-credentials');
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (!isPasswordValid) {
-      throw ApiError.Unauthorized('error-invalid-credentials');
+      throw new UnauthorizedException('error-invalid-credentials');
     }
 
     if (!user.isActive) {
-      throw ApiError.Unauthorized('error-user-disabled');
+      throw new UnauthorizedException('error-user-disabled');
     }
 
     return this.generateTokens(user);
@@ -113,7 +116,7 @@ export class AuthService {
       });
 
       if (!user) {
-        throw ApiError.Unauthorized('error-user-not-found');
+        throw new UnauthorizedException('error-user-not-found');
       }
 
       return this.generateTokens(user);
@@ -121,7 +124,7 @@ export class AuthService {
       if (e.message === 'error-user-not-found') {
         throw e;
       }
-      throw ApiError.Unauthorized('error-invalid-refresh-token');
+      throw new UnauthorizedException('error-invalid-refresh-token');
     }
   }
 
@@ -131,7 +134,7 @@ export class AuthService {
     });
 
     if (!user) {
-      throw ApiError.Unauthorized('error-user-not-found');
+      throw new UnauthorizedException('error-user-not-found');
     }
 
     return this.toAuthUserProfile(user);

@@ -47,7 +47,6 @@ export class DatabaseEnvReader {
         password: s(`${p}PASSWORD`),
         schema: s(`${p}SCHEMA`),
         debug: b(`${p}DEBUG`) ?? !isProd,
-        allowGlobalContext: true,
         useBatchInserts: true,
         useBatchUpdates: true,
         discovery: { disableDynamicFileAccess: true },
@@ -89,7 +88,6 @@ export class DatabaseEnvReader {
       clientUrl:
         parsed?.normalizedUri ?? `mongodb://${auth}${host}:${port}/${dbName}`,
       debug: b(`${p}DEBUG`) ?? !isProd,
-      allowGlobalContext: true,
       discovery: { disableDynamicFileAccess: true },
       driverOptions: {
         maxPoolSize: 10,

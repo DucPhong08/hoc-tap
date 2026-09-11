@@ -83,14 +83,18 @@ export class CacheInterceptor implements NestInterceptor {
       return options.key;
     }
 
-    const { url, method, query, params } = request;
+    const { url, method, query = {}, params = {}, user } = request;
     const keyParts = [method, url];
 
-    if (Object.keys(query).length > 0) {
+    if (user?.id || user?.sub) {
+      keyParts.push(`user:${user.id || user.sub}`);
+    }
+
+    if (query && Object.keys(query).length > 0) {
       keyParts.push(JSON.stringify(query));
     }
 
-    if (Object.keys(params).length > 0) {
+    if (params && Object.keys(params).length > 0) {
       keyParts.push(JSON.stringify(params));
     }
 
