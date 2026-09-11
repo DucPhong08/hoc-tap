@@ -1,7 +1,3 @@
-import type {
-  FilterQuery,
-  FindOptions as MikroFindOptions,
-} from '@mikro-orm/core';
 import { OperatorType } from '@/common/enums/operator-type.enum';
 import type { IAuthUser } from '@/common/interfaces/auth-user.interface';
 
@@ -14,7 +10,7 @@ export type Paths<T, D extends number = 3> = [D] extends [never]
     ? never
     : T extends { toHexString(): string } // Exclude ObjectId
       ? never
-      : T extends { getItems(): infer U } // MikroORM Collection
+      : T extends { getItems(): infer U } // Collection
         ? Paths<U, D>
         : T extends Array<infer U>
           ? Paths<U, D>
@@ -28,6 +24,34 @@ export type Paths<T, D extends number = 3> = [D] extends [never]
               }[keyof T & (string | number)]
             : never;
 
+/* ---------- Condition & Operators (ORM-Agnostic with Full Autocomplete) ---------- */
+export type ComparisonOperator<T> = {
+  $eq?: T;
+  $ne?: T;
+  $gt?: T;
+  $gte?: T;
+  $lt?: T;
+  $lte?: T;
+  $in?: T[];
+  $nin?: T[];
+  $like?: string | RegExp;
+  $ilike?: string;
+  $regex?: string | RegExp;
+  $exists?: boolean;
+  $not?: ComparisonOperator<T>;
+};
+
+export type FieldCondition<T> = T | ComparisonOperator<T>;
+
+export type WhereCondition<E> = {
+  [P in keyof E]?: FieldCondition<E[P]>;
+} & {
+  $and?: WhereCondition<E>[];
+  $or?: WhereCondition<E>[];
+  $not?: WhereCondition<E>;
+  [key: `${string}.${string}`]: any;
+};
+
 /* ---------- Filter rules ---------- */
 export interface FilterRule<E = any> {
   field: Paths<E>;
@@ -35,7 +59,7 @@ export interface FilterRule<E = any> {
   values?: any;
 }
 
-export type QueryCondition<E> = FilterQuery<E> | FilterRule<E>[];
+export type QueryCondition<E> = WhereCondition<E> | FilterRule<E>[];
 
 /* ---------- Population ---------- */
 type Target<E, P> = P extends keyof E ? NonNullable<E[P]> : any;
@@ -56,37 +80,26 @@ export type PopulationQuery<E extends object> = {
   [P in Paths<E>]: PopulationOptions<E, P>;
 }[Paths<E>];
 
-/* ---------- Query options ---------- */
+/* ---------- Query options (ORM-Agnostic) ---------- */
 export interface BaseOptions<T = unknown> {
   transaction?: T;
   user?: IAuthUser;
 }
 
-export interface QueryOptions<T = unknown, E extends object = any>
-  extends
-    BaseOptions<T>,
-    Pick<
-      MikroFindOptions<E, any, any, any>,
-      | 'disableIdentityMap'
-      | 'cache'
-      | 'strategy'
-      | 'lockMode'
-      | 'lockTableAliases'
-      | 'connectionType'
-      | 'indexHint'
-    > {
+export interface QueryOptions<T = unknown> extends BaseOptions<T> {
   softDelete?: boolean;
 }
 
 export interface FindQuery<
   E extends object = any,
   TContext = unknown,
-> extends QueryOptions<TContext, E> {
+> extends QueryOptions<TContext> {
   select?: Partial<Record<Paths<E>, 1 | 0>>;
   filters?: FilterRule<E>[];
   population?: PopulationQuery<E>[];
   page?: number;
   limit?: number;
+  offset?: number;
   sort?: Partial<Record<Paths<E>, 1 | -1>>;
   soft?: boolean;
 }

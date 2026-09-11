@@ -114,7 +114,7 @@ export abstract class MikroOrmBaseRepository<
   }
 
   async getMany(
-    condition: QueryCondition<E>,
+    condition?: QueryCondition<E>,
     query?: FindQuery<E, TContext>,
   ): Promise<E[]> {
     const mergedQuery = mergeMethodOptions(this.config, 'getMany', query);
@@ -133,7 +133,7 @@ export abstract class MikroOrmBaseRepository<
   }
 
   async getPage(
-    condition: QueryCondition<E>,
+    condition?: QueryCondition<E>,
     query?: FindQuery<E, TContext>,
   ): Promise<PaginationResult<E>> {
     const mergedQuery = mergeMethodOptions(this.config, 'getPage', query) ?? {};
@@ -150,14 +150,12 @@ export abstract class MikroOrmBaseRepository<
     const filter = Filter(condition, {
       softDelete: mergedQuery.softDelete,
     });
-    const fOptions = {
-      ...findOptions({
-        ...mergedQuery,
-        sort,
-        limit,
-      }),
+    const fOptions = findOptions({
+      ...mergedQuery,
+      sort,
+      limit,
       offset,
-    };
+    });
 
     const [data, total] = await repository.findAndCount(filter, fOptions);
 

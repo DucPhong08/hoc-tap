@@ -57,11 +57,9 @@ export function Filter<E extends BaseEntity>(
   condition: QueryCondition<E> = {},
   options?: { softDelete?: boolean },
 ): FilterQuery<E> {
-  const parsed = (
-    Array.isArray(condition)
-      ? parseFilterRules(condition as FilterRule<E>[])
-      : condition
-  ) as Record<string, any>;
+  const parsed: Record<string, any> = Array.isArray(condition)
+    ? parseFilterRules(condition)
+    : condition;
 
   if (options?.softDelete || 'deletedAt' in parsed) {
     return parsed as FilterQuery<E>;

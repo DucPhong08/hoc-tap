@@ -28,11 +28,11 @@ export interface IReadRepository<E extends BaseEntity, TContext = unknown> {
     query?: FindQuery<E, TContext>,
   ): Promise<E | null>;
   getMany(
-    condition: QueryCondition<E>,
+    condition?: QueryCondition<E>,
     query?: FindQuery<E, TContext>,
   ): Promise<E[]>;
   getPage(
-    condition: QueryCondition<E>,
+    condition?: QueryCondition<E>,
     query?: FindQuery<E, TContext>,
   ): Promise<PaginationResult<E>>;
   count(

@@ -90,7 +90,7 @@ export class SettingService extends BaseService<Setting, EntityManager> {
 
     const settings = await this.settingRepository.getMany({
       key: { $in: keys },
-    } as any);
+    });
 
     const settingMap = new Map(settings.map((s) => [s.key, s.value]));
 

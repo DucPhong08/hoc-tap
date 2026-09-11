@@ -74,7 +74,7 @@ export abstract class BaseService<
 
   async getMany(
     user: IAuthUser,
-    condition: TCondition,
+    condition?: TCondition,
     query?: FindQuery<E, TContext>,
   ): Promise<E[]> {
     return this.repository.getMany(condition as QueryCondition<E>, query);
@@ -82,7 +82,7 @@ export abstract class BaseService<
 
   async getPage(
     user: IAuthUser,
-    condition: TCondition,
+    condition?: TCondition,
     query?: FindQuery<E, TContext>,
   ): Promise<PaginationResult<E>> {
     return this.repository.getPage(condition as QueryCondition<E>, query);

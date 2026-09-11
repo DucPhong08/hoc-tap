@@ -81,6 +81,7 @@ export function findOptions(query?: FindQuery<any>): Record<string, any> {
 
   if (query.sort) options.orderBy = Sort(query.sort);
   if (query.limit) options.limit = query.limit;
+  if (query.offset != null) options.offset = query.offset;
 
   return options;
 }
