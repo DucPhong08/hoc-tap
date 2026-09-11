@@ -8,6 +8,6 @@ import { TransactionModule } from '@/infra/transaction/transaction.module';
   imports: [TransactionModule],
   controllers: [SettingController],
   providers: [SettingService, SettingRepository],
-  exports: [SettingService, SettingRepository],
+  exports: [SettingService],
 })
 export class SettingsModule {}
