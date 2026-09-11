@@ -1,5 +1,5 @@
 import { EntityManager } from '@mikro-orm/core';
-import { BadRequestException, Injectable, Optional } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import { BaseService } from '@/infra/services/base.service';
@@ -15,18 +15,16 @@ import type { AuthConfig } from '@/config/configuration';
 export class UserService extends BaseService<User> {
   constructor(
     private readonly userRepository: UserRepository,
-    @Optional()
     @InjectTransaction()
-    transaction?: BaseTransaction<EntityManager>,
-    @Optional()
-    private readonly configService?: ConfigService,
+    transaction: BaseTransaction<EntityManager>,
+    private readonly configService: ConfigService,
   ) {
     super(userRepository, { transaction });
   }
 
   private async hashPassword(password: string): Promise<string> {
     const rounds =
-      this.configService?.get<AuthConfig>('auth')?.bcryptRounds ?? 10;
+      this.configService.get<AuthConfig>('auth')?.bcryptRounds ?? 10;
     return bcrypt.hash(password, rounds);
   }
 

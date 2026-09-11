@@ -33,9 +33,7 @@ export interface RouteConfig {
 
 export interface BaseControllerOptions<C = unknown, U = unknown, CD = unknown> {
   defaultRoles?: string[];
-  routes?: {
-    [key in BaseRoute]?: boolean | RouteConfig;
-  };
+  routes?: Partial<Record<BaseRoute, RouteConfig>>;
   dtos?: {
     create?: Type<C>;
     update?: Type<U>;

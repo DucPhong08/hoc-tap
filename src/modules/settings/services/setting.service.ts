@@ -1,5 +1,5 @@
 import { EntityManager } from '@mikro-orm/core';
-import { BadRequestException, Injectable, Optional } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { plainToClass } from 'class-transformer';
 import { validate } from 'class-validator';
 import { BaseService } from '@/infra/services/base.service';
@@ -19,9 +19,8 @@ import { SettingKey } from '../enums/setting-key.enum';
 export class SettingService extends BaseService<Setting, EntityManager> {
   constructor(
     private readonly settingRepository: SettingRepository,
-    @Optional()
     @InjectTransaction()
-    transaction?: BaseTransaction<EntityManager>,
+    transaction: BaseTransaction<EntityManager>,
   ) {
     super(settingRepository, {
       transaction,

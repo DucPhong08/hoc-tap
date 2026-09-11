@@ -34,17 +34,10 @@ const BASE_AUDIT_ACTIONS: Partial<Record<BaseRoute, AuditAction>> = {
   deleteByIds: AuditAction.DELETE,
 };
 
-export const toConfig = (
-  config: boolean | RouteConfig | undefined,
-): Required<RouteConfig> => {
-  if (typeof config === 'boolean') {
-    return { enabled: config, roles: [] };
-  }
-  return {
-    enabled: config?.enabled ?? true,
-    roles: config?.roles ?? [],
-  };
-};
+export const toConfig = (config?: RouteConfig): Required<RouteConfig> => ({
+  enabled: config?.enabled ?? true,
+  roles: config?.roles ?? [],
+});
 
 export const getRouteConfigs = (
   routes: BaseControllerOptions['routes'] | undefined,
