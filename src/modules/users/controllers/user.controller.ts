@@ -7,7 +7,7 @@ import { UpdateUserDto } from '../dto/update-user.dto';
 import { UserConditionDto } from '../dto/user-condition.dto';
 import { Authorize } from '@/common/decorators/authorize.decorator';
 import { ReqUser } from '@/common/decorators/request-user.decorator';
-import { Role } from '@/common/enums/role.enum';
+import { Role } from '@/common/constants/role.constant';
 import { UserService } from '../services/user.service';
 
 @ApiTags('users')

@@ -14,7 +14,7 @@ import {
   OAuthProfile,
 } from '../interfaces/oauth-profile.interface';
 import { AuthProvider } from '../enums/auth-provider.enum';
-import { Role } from '@/common/enums/role.enum';
+import { Role } from '@/common/constants/role.constant';
 import { AuditLogService } from '@/modules/audit-logs/services/audit-log.service';
 import { AuthResult, TokenPair } from '../types/auth-result.type';
 

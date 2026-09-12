@@ -2,7 +2,7 @@ import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { Request } from 'express';
 import { ROLES_KEY } from '../decorators/authorize.decorator';
-import { Role } from '@/common/enums/role.enum';
+import { Role } from '@/common/constants/role.constant';
 import type { IAuthUser } from '@/common/interfaces/auth-user.interface';
 
 interface RequestWithUser extends Omit<Request, 'user'> {

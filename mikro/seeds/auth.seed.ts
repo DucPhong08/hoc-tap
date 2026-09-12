@@ -1,7 +1,7 @@
 import { EntityManager } from '@mikro-orm/core';
 import * as bcrypt from 'bcrypt';
 import { User } from '@/modules/users/entities/user.entity';
-import { Role } from '@/common/enums/role.enum';
+import { Role } from '@/common/constants/role.constant';
 import { AuthProvider } from '@/modules/auth/enums/auth-provider.enum';
 
 /**

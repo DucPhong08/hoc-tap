@@ -2,7 +2,7 @@ import { NotFoundException, Type } from '@nestjs/common';
 import { Authorize } from '@/common/decorators/authorize.decorator';
 import { Auditable } from '@/common/decorators/auditable.decorator';
 import { AuditAction } from '@/modules/audit-logs/enums/audit-action.enum';
-import { Role } from '@/common/enums/role.enum';
+import { Role } from '@/common/constants/role.constant';
 import type {
   BaseRoute,
   BaseControllerOptions,
@@ -79,7 +79,7 @@ export function setupAuthorization(
   controllerClass: Type<object>,
   routeDefinitions: BaseRouteDefinition[] = ROUTE_DEFINITIONS,
   routeConfigs: Record<BaseRoute, Required<RouteConfig>>,
-  defaultRoles: string[] = [Role.ADMIN],
+  defaultRoles: Role[] = [Role.ADMIN],
 ): void {
   const classDecorator =
     defaultRoles.length > 0 ? Authorize(...defaultRoles) : Authorize();
@@ -111,7 +111,7 @@ export function setupAudit(
 export function applyRouteMetadata(
   controllerClass: Type<object>,
   routeConfigs: Record<BaseRoute, Required<RouteConfig>>,
-  defaultRoles: string[] = [Role.ADMIN],
+  defaultRoles: Role[] = [Role.ADMIN],
 ): void {
   setupAuthorization(
     controllerClass,

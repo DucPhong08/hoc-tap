@@ -17,7 +17,7 @@ import {
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { BaseEntity } from '@/common/entity/base.entity';
 import { AuthProvider } from '@/modules/auth/enums/auth-provider.enum';
-import { Role } from '@/common/enums/role.enum';
+import { Role } from '@/common/constants/role.constant';
 import type { SessionEntity } from '@/modules/auth/entities/session.entity';
 
 @Entity({ tableName: 'users' })

@@ -6,7 +6,7 @@ import {
   Authorize,
   Authorization,
 } from '@/common/decorators/authorize.decorator';
-import { Role } from '@/common/enums/role.enum';
+import { Role } from '@/common/constants/role.constant';
 import { ApiTags } from '@nestjs/swagger';
 
 @ApiTags('monitoring')
