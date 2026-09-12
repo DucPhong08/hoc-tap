@@ -1,5 +1,5 @@
-import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { NestFactory, Reflector } from '@nestjs/core';
+import { ClassSerializerInterceptor, ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
@@ -71,10 +71,13 @@ export async function bootstrap() {
   // Global filters - chỉ dùng AllExceptionsFilter
   app.useGlobalFilters(new AllExceptionsFilter());
 
+  const reflector = app.get(Reflector);
+
   app.useGlobalInterceptors(
     new DatabaseErrorInterceptor(),
     new TimeoutInterceptor(),
-    new TransformInterceptor(), // Transform response first
+    new ClassSerializerInterceptor(reflector),
+    new TransformInterceptor(), // Transform response
   );
 
   // Swagger

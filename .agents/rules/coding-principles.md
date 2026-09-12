@@ -40,3 +40,19 @@ Khi viết code, refactor hoặc thiết kế kiến trúc trong dự án, Agent
 9. **Law of Demeter (Principle of Least Knowledge)**:
    - Một object chỉ nên giao tiếp với các đối tượng cộng tác trực tiếp ("chỉ nói chuyện với bạn bè, không nói chuyện với người lạ").
    - Tránh chuỗi truy cập sâu (ví dụ: `a.getB().getC().doAction()`); hãy đóng gói hành động vào method của đối tượng trực tiếp.
+
+---
+
+## Naming Conventions & Intent-Driven Design
+
+- Giữ naming convention và cách đặt tên đang có trong base code.
+- Ưu tiên tên phản ánh **đúng intent và responsibility thực tế**.
+- Không đổi tên chỉ để "đẹp hơn" hoặc áp dụng convention mới nếu base hiện tại đã nhất quán.
+- Tránh tên generic như `process`, `handle`, `manage`, `execute`, `do` khi có domain verb chính xác hơn.
+- `build`, `create`, `get`, `find`, `validate`, `ensure`, `revoke`, `rotate` phải được dùng đúng semantic của operation.
+- Ưu tiên tên **ngắn, rõ, nhất quán với context của class/module**.
+- Không đặt tên theo implementation detail nếu intent đã rõ.
+- Khi thêm function/class mới, **ưu tiên tái sử dụng pattern naming đã tồn tại trong base** thay vì tự tạo convention mới.
+- Không rename code hiện hữu nếu không cần thiết cho task.
+
+> **Core Rule**: Follow the existing base naming convention first; name new code by its actual intent and responsibility.

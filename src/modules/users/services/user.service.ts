@@ -11,6 +11,8 @@ import { InjectTransaction } from '@/infra/transaction/transaction.provider';
 import type { IAuthUser } from '@/common/interfaces/auth-user.interface';
 import type { AuthConfig } from '@/config/configuration';
 
+import type { UpdateProfileDto } from '../dto/update-user.dto';
+
 @Injectable()
 export class UserService extends BaseService<User> {
   constructor(
@@ -97,6 +99,24 @@ export class UserService extends BaseService<User> {
       }
 
       return super.updateById(user, id, payload, txOptions);
+    });
+  }
+
+  async updateProfile(
+    user: IAuthUser,
+    dto: UpdateProfileDto,
+  ): Promise<User | null> {
+    if (!user.id) {
+      throw new BadRequestException('error-invalid-user-id');
+    }
+
+    return this.executeWithTransaction(undefined, async (txOptions) => {
+      const payload: Partial<User> = {};
+      if (dto.firstName !== undefined) payload.firstName = dto.firstName;
+      if (dto.lastName !== undefined) payload.lastName = dto.lastName;
+      if (dto.avatar !== undefined) payload.avatar = dto.avatar;
+
+      return super.updateById(user, user.id!, payload, txOptions);
     });
   }
 }

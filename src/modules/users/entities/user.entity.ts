@@ -15,6 +15,7 @@ import {
   IsEnum,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Exclude } from 'class-transformer';
 import { BaseEntity } from '@/common/entity/base.entity';
 import { AuthProvider } from '@/modules/auth/enums/auth-provider.enum';
 import { Role } from '@/common/constants/role.constant';
@@ -43,6 +44,7 @@ export class User extends BaseEntity {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
+  @Exclude()
   @Property({ nullable: true, hidden: true })
   password?: string;
 
@@ -79,10 +81,12 @@ export class User extends BaseEntity {
   lockedUntil?: Date;
 
   // --- Relations ---
+  @Exclude()
   @OneToMany('SessionEntity', (session: SessionEntity) => session.user)
   sessions = new Collection<SessionEntity>(this);
 
   // --- Runtime Property ---
+  @Exclude()
   sessionId?: string;
 
   // --- Lifecycle Hooks ---

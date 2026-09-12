@@ -1,9 +1,9 @@
-import { Controller, Get, Post, Body } from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
+import { Controller, Get, Post, Patch, Body } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { BaseController } from '@/infra/controllers/base.controller';
 import { User } from '../entities/user.entity';
 import { CreateUserDto } from '../dto/create-user.dto';
-import { UpdateUserDto } from '../dto/update-user.dto';
+import { UpdateUserDto, UpdateProfileDto } from '../dto/update-user.dto';
 import { UserConditionDto } from '../dto/user-condition.dto';
 import { Authorize } from '@/common/decorators/authorize.decorator';
 import { ReqUser } from '@/common/decorators/request-user.decorator';
@@ -17,10 +17,29 @@ export class UserController extends BaseController(
   CreateUserDto,
   UpdateUserDto,
   UserConditionDto,
-  { defaultRoles: [Role.ADMIN, Role.USER] },
+  {
+    defaultRoles: [Role.ADMIN],
+    routes: {
+      create: { enabled: false },
+      updateOne: { enabled: false },
+      updateByIds: { enabled: false },
+      deleteOne: { enabled: false },
+      deleteByIds: { enabled: false },
+    },
+  },
 ) {
   constructor(private readonly userService: UserService) {
     super(userService);
+  }
+
+  @Patch('profile')
+  @Authorize(Role.USER, Role.ADMIN)
+  @ApiBearerAuth()
+  async updateProfile(
+    @ReqUser() user: User,
+    @Body() dto: UpdateProfileDto,
+  ): Promise<User | null> {
+    return this.userService.updateProfile(user, dto);
   }
 
   @Get('list-all')

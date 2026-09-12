@@ -5,4 +5,12 @@ export class CreateUserDto extends OmitType(User, [
   'id',
   'createdAt',
   'updatedAt',
-]) {}
+  'deletedAt',
+  'role',
+  'provider',
+  'isActive',
+  'failedLoginAttempts',
+  'lockedUntil',
+  'sessions',
+  'sessionId',
+] as const) {}

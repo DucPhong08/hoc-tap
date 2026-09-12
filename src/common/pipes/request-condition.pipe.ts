@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
 import type { Type } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
-import { validate } from 'class-validator';
+import { getMetadataStorage, validate } from 'class-validator';
 import { OperatorType } from '@/common/enums/operator-type.enum';
 
 const VALID_OPERATORS = new Set(Object.values(OperatorType));
@@ -46,6 +46,39 @@ export class RequestConditionPipe<T = unknown> implements PipeTransform<
     private readonly required = false,
   ) {}
 
+  private validateAllowedFields(rules: unknown[]): void {
+    if (!this.schema) return;
+
+    const metadatas = getMetadataStorage().getTargetValidationMetadatas(
+      this.schema,
+      '',
+      false,
+      false,
+    );
+    const allowedFields = new Set(metadatas.map((m) => m.propertyName));
+
+    if (allowedFields.size === 0) {
+      try {
+        const sample = new (this.schema as any)();
+        Object.keys(sample).forEach((k) => allowedFields.add(k));
+      } catch {
+        // bỏ qua nếu schema không khởi tạo trực tiếp được
+      }
+    }
+
+    if (allowedFields.size > 0) {
+      for (const item of rules) {
+        const rule = item as Record<string, unknown>;
+        const field = String(rule.field);
+        if (!allowedFields.has(field)) {
+          throw new BadRequestException(
+            `Trường '${field}' không được phép dùng làm điều kiện lọc`,
+          );
+        }
+      }
+    }
+  }
+
   async transform(value: string | undefined): Promise<T> {
     if (!value) {
       if (this.required)
@@ -67,6 +100,7 @@ export class RequestConditionPipe<T = unknown> implements PipeTransform<
     // Mảng filter rules nâng cao
     if (Array.isArray(parsed)) {
       validateFilterRules(parsed);
+      this.validateAllowedFields(parsed);
       if (this.required && parsed.length === 0) {
         throw new BadRequestException('Condition không được để rỗng');
       }
