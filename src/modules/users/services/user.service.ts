@@ -34,7 +34,7 @@ export class UserService extends BaseService<User> {
 
   private async checkUniqueEmail(
     email: string,
-    txOptions?: FindQuery<User, EntityManager>,
+    txOptions?: FindQuery<User>,
     currentEmail?: string,
   ): Promise<void> {
     if (currentEmail && email === currentEmail) {
@@ -51,7 +51,7 @@ export class UserService extends BaseService<User> {
   async create(
     user: IAuthUser,
     data: Partial<User>,
-    query?: FindQuery<User, EntityManager>,
+    query?: FindQuery<User>,
   ): Promise<User> {
     return this.executeWithTransaction(query, async (txOptions) => {
       const payload = { ...data };
@@ -73,7 +73,7 @@ export class UserService extends BaseService<User> {
     user: IAuthUser,
     id: string,
     data: Partial<User>,
-    query?: FindQuery<User, EntityManager>,
+    query?: FindQuery<User>,
   ): Promise<User | null> {
     return this.executeWithTransaction(query, async (txOptions) => {
       const existingUser = await this.getById(user, id, txOptions);

@@ -6,7 +6,7 @@ import { SessionEntity } from '@/modules/auth/entities/session.entity';
 // PLOP: IMPORT_ENTITY
 import type { EntityClass, AnyEntity } from '@mikro-orm/core';
 
-export const REGISTRY: Record<string, EntityClass<AnyEntity>[]> = {
+export const ENTITY_REGISTRY: Record<string, EntityClass<AnyEntity>[]> = {
   [DB_CONTEXTS.MAIN]: [
     User,
     Setting,

@@ -10,8 +10,8 @@ export class {{pascalCase (singularize name)}}Repository extends MikroOrmBaseRep
 > {
   constructor(
     @InjectEntityRepository({{pascalCase (singularize name)}})
-    repo: EntityRepository<{{pascalCase (singularize name)}}>,
+    repository: EntityRepository<{{pascalCase (singularize name)}}>,
   ) {
-    super(repo);
+    super(repository);
   }
 }

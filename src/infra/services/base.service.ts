@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { TransactionOptions } from '@mikro-orm/core';
+import type { EntityManager, TransactionOptions } from '@mikro-orm/core';
 import type {
   QueryCondition,
   PaginationResult,
@@ -12,7 +12,7 @@ import { BaseEntity } from '@/common/entity/base.entity';
 import { BaseTransaction } from '../transaction/base-transaction.interface';
 import type { IAuthUser } from '@/common/interfaces/auth-user.interface';
 
-export interface BaseServiceConfig<TContext = unknown> {
+export interface BaseServiceConfig<TContext = EntityManager> {
   notFoundMessage?: string;
   transaction?: BaseTransaction<TContext>;
 }
@@ -20,7 +20,7 @@ export interface BaseServiceConfig<TContext = unknown> {
 @Injectable()
 export abstract class BaseService<
   E extends BaseEntity,
-  TContext = unknown,
+  TContext = EntityManager,
   TCreate = Partial<E>,
   TUpdate = UpdateData<E>,
   TCondition = QueryCondition<E>,

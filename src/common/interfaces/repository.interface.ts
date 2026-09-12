@@ -21,7 +21,7 @@ export type {
   BaseOptions,
 };
 
-export interface IReadRepository<E extends BaseEntity, TContext = unknown> {
+export interface IReadRepository<E extends BaseEntity, TContext = any> {
   getById(id: string, query?: FindQuery<E, TContext>): Promise<E | null>;
   getOne(
     condition: QueryCondition<E>,
@@ -50,7 +50,7 @@ export interface IReadRepository<E extends BaseEntity, TContext = unknown> {
   ): Promise<E[K][]>;
 }
 
-export interface IWriteRepository<E extends BaseEntity, TContext = unknown> {
+export interface IWriteRepository<E extends BaseEntity, TContext = any> {
   create(data: Partial<E>, query?: FindQuery<E, TContext>): Promise<E>;
   insertMany(
     data: Partial<E>[],
@@ -58,7 +58,7 @@ export interface IWriteRepository<E extends BaseEntity, TContext = unknown> {
   ): Promise<{ n: number }>;
 }
 
-export interface IUpdateRepository<E extends BaseEntity, TContext = unknown> {
+export interface IUpdateRepository<E extends BaseEntity, TContext = any> {
   updateById(
     id: string,
     data: UpdateData<E>,
@@ -76,7 +76,7 @@ export interface IUpdateRepository<E extends BaseEntity, TContext = unknown> {
   ): Promise<BulkWriteResult>;
 }
 
-export interface IDeleteRepository<E extends BaseEntity, TContext = unknown> {
+export interface IDeleteRepository<E extends BaseEntity, TContext = any> {
   deleteById(id: string, query?: FindQuery<E, TContext>): Promise<E | null>;
   deleteOne(
     condition: QueryCondition<E>,
@@ -89,7 +89,7 @@ export interface IDeleteRepository<E extends BaseEntity, TContext = unknown> {
   restore(id: string, query?: FindQuery<E, TContext>): Promise<E | null>;
 }
 
-export interface IBaseRepository<E extends BaseEntity, TContext = unknown>
+export interface IBaseRepository<E extends BaseEntity, TContext = any>
   extends
     IReadRepository<E, TContext>,
     IWriteRepository<E, TContext>,

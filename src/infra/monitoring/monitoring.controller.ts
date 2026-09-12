@@ -15,7 +15,7 @@ import { ApiTags } from '@nestjs/swagger';
 export class MonitoringController {
   @Get('health')
   @Public()
-  getHealth() {
+  health() {
     return {
       status: 'ok',
       workerId: process.pid,
@@ -51,7 +51,7 @@ export class MonitoringController {
 
   @Get('logs/recent')
   @Authorize(Role.ADMIN)
-  async getRecentLogs() {
+  async recentLogs() {
     try {
       const logPath = path.join('logs', 'app.log');
       if (!fs.existsSync(logPath)) {
@@ -73,7 +73,7 @@ export class MonitoringController {
 
   @Get('logs/errors')
   @Authorize(Role.ADMIN)
-  async getErrorLogs() {
+  async errorLogs() {
     try {
       const logPath = path.join('logs', 'error.log');
       if (!fs.existsSync(logPath)) {
@@ -95,7 +95,7 @@ export class MonitoringController {
 
   @Get('stats')
   @Authorize(Role.ADMIN)
-  getStats() {
+  stats() {
     const memUsage = process.memoryUsage();
     const cpuUsage = process.cpuUsage();
 

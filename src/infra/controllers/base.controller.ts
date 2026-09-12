@@ -39,7 +39,7 @@ import type {
 import { BaseService } from '../services/base.service';
 import {
   applyRouteMetadata,
-  assertRouteEnabled,
+  checkRouteEnabled,
   getRouteConfigs,
 } from './helpers/helpers';
 import { createBaseDtoBundle } from './helpers/dto-factory';
@@ -63,40 +63,36 @@ export interface IBaseController<
   U = UpdateData<E>,
   CD = QueryCondition<E>,
 > {
-  createEntity(user: IAuthUser, body: C): Promise<E>;
-  listEntities(
+  create(user: IAuthUser, body: C): Promise<E>;
+  getMany(
     user: IAuthUser,
     condition: CD,
     query: ParsedQueryOptions,
   ): Promise<E[]>;
-  paginateEntities(
+  getPage(
     user: IAuthUser,
     condition: CD,
     query: ParsedQueryOptions,
   ): Promise<PaginatedResponseDto<E>>;
-  findOneByCondition(
+  getOne(
     user: IAuthUser,
     condition: CD,
     query: ParsedQueryOptions,
   ): Promise<E | null>;
-  findEntityById(
+  getById(
     user: IAuthUser,
     id: string,
     query: ParsedQueryOptions,
   ): Promise<E | null>;
-  updateOneByCondition(
-    user: IAuthUser,
-    condition: CD,
-    update: U,
-  ): Promise<E | null>;
-  updateEntityById(user: IAuthUser, id: string, body: U): Promise<E | null>;
-  updateEntitiesByIds(
+  updateOne(user: IAuthUser, condition: CD, update: U): Promise<E | null>;
+  updateById(user: IAuthUser, id: string, body: U): Promise<E | null>;
+  updateByIds(
     user: IAuthUser,
     body: { ids: string[]; update: U },
   ): Promise<{ affected: number }>;
-  deleteOneByCondition(user: IAuthUser, condition: CD): Promise<void>;
-  deleteEntityById(user: IAuthUser, id: string): Promise<void>;
-  deleteEntitiesByIds(
+  deleteOne(user: IAuthUser, condition: CD): Promise<void>;
+  deleteById(user: IAuthUser, id: string): Promise<void>;
+  deleteByIds(
     user: IAuthUser,
     body: DeleteManyByIdsDto,
   ): Promise<{ deleted: number }>;
@@ -173,21 +169,18 @@ export function BaseController<
     })
     @ApiBody({ type: CreateDto })
     @UsePipes(validationPipes.create)
-    async createEntity(
-      @ReqUser() user: IAuthUser,
-      @Body() body: C,
-    ): Promise<E> {
-      assertRouteEnabled(routeConfigs.create);
+    async create(@ReqUser() user: IAuthUser, @Body() body: C): Promise<E> {
+      checkRouteEnabled(routeConfigs.create);
       return this.service.create(user, body as Partial<E>);
     }
 
     @ApiGet('many', entityType)
-    async listEntities(
+    async getMany(
       @ReqUser() user: IAuthUser,
       @RequestCondition(ConditionDto) condition: CD,
       @RequestQuery() query: ParsedQueryOptions,
     ): Promise<E[]> {
-      assertRouteEnabled(routeConfigs.getMany);
+      checkRouteEnabled(routeConfigs.getMany);
       return this.service.getMany(
         user,
         condition as QueryCondition<E>,
@@ -196,12 +189,12 @@ export function BaseController<
     }
 
     @ApiGet('page', entityType)
-    async paginateEntities(
+    async getPage(
       @ReqUser() user: IAuthUser,
       @RequestCondition(ConditionDto) condition: CD,
       @RequestQuery() query: ParsedQueryOptions,
     ): Promise<PaginatedResponseDto<E>> {
-      assertRouteEnabled(routeConfigs.getPage);
+      checkRouteEnabled(routeConfigs.getPage);
       const { page = 1, limit = 10, ...findQuery } = query;
       return this.service.getPage(user, condition as QueryCondition<E>, {
         ...(findQuery as FindQuery<E>),
@@ -211,12 +204,12 @@ export function BaseController<
     }
 
     @ApiGet('one', entityType)
-    async findOneByCondition(
+    async getOne(
       @ReqUser() user: IAuthUser,
       @RequestCondition(ConditionDto, true) condition: CD,
       @RequestQuery() query: ParsedQueryOptions,
     ): Promise<E | null> {
-      assertRouteEnabled(routeConfigs.getOne);
+      checkRouteEnabled(routeConfigs.getOne);
       return this.service.getOne(
         user,
         condition as QueryCondition<E>,
@@ -234,12 +227,12 @@ export function BaseController<
       description: 'Not Found',
     })
     @ApiQueryOptions('one')
-    async findEntityById(
+    async getById(
       @ReqUser() user: IAuthUser,
       @Param('id') id: string,
       @RequestQuery() query: ParsedQueryOptions,
     ): Promise<E | null> {
-      assertRouteEnabled(routeConfigs.getById);
+      checkRouteEnabled(routeConfigs.getById);
       return this.service.getById(user, id, query as FindQuery<E>);
     }
 
@@ -255,12 +248,12 @@ export function BaseController<
     @ApiBody({ type: UpdateDto })
     @ApiCondition(true)
     @UsePipes(validationPipes.update)
-    async updateOneByCondition(
+    async updateOne(
       @ReqUser() user: IAuthUser,
       @RequestCondition(ConditionDto, true) condition: CD,
       @Body() update: U,
     ): Promise<E | null> {
-      assertRouteEnabled(routeConfigs.updateOne);
+      checkRouteEnabled(routeConfigs.updateOne);
       return this.service.updateOne(
         user,
         condition as QueryCondition<E>,
@@ -279,12 +272,12 @@ export function BaseController<
     })
     @ApiBody({ type: UpdateDto })
     @UsePipes(validationPipes.update)
-    async updateEntityById(
+    async updateById(
       @ReqUser() user: IAuthUser,
       @Param('id') id: string,
       @Body() body: U,
     ): Promise<E | null> {
-      assertRouteEnabled(routeConfigs.updateById);
+      checkRouteEnabled(routeConfigs.updateById);
       return this.service.updateById(user, id, body as UpdateData<E>);
     }
 
@@ -292,11 +285,11 @@ export function BaseController<
     @ApiOkResponse({ description: 'OK' })
     @ApiBody({ type: UpdateManyIdsDto })
     @UsePipes(validationPipes.updateManyByIds)
-    async updateEntitiesByIds(
+    async updateByIds(
       @ReqUser() user: IAuthUser,
       @Body() body: { ids: string[]; update: U },
     ): Promise<{ affected: number }> {
-      assertRouteEnabled(routeConfigs.updateByIds);
+      checkRouteEnabled(routeConfigs.updateByIds);
       return this.service.updateManyByIds(
         user,
         body.ids,
@@ -315,11 +308,11 @@ export function BaseController<
       description: 'Not Found',
     })
     @ApiCondition(true)
-    async deleteOneByCondition(
+    async deleteOne(
       @ReqUser() user: IAuthUser,
       @RequestCondition(ConditionDto, true) condition: CD,
     ): Promise<void> {
-      assertRouteEnabled(routeConfigs.deleteOne);
+      checkRouteEnabled(routeConfigs.deleteOne);
       await this.service.deleteOne(user, condition as QueryCondition<E>);
     }
 
@@ -333,11 +326,11 @@ export function BaseController<
       status: HttpStatus.NOT_FOUND,
       description: 'Not Found',
     })
-    async deleteEntityById(
+    async deleteById(
       @ReqUser() user: IAuthUser,
       @Param('id') id: string,
     ): Promise<void> {
-      assertRouteEnabled(routeConfigs.deleteById);
+      checkRouteEnabled(routeConfigs.deleteById);
       await this.service.deleteById(user, id);
     }
 
@@ -345,11 +338,11 @@ export function BaseController<
     @ApiOkResponse({ description: 'OK' })
     @ApiBody({ type: DeleteManyByIdsDto })
     @UsePipes(validationPipes.deleteManyByIds)
-    async deleteEntitiesByIds(
+    async deleteByIds(
       @ReqUser() user: IAuthUser,
       @Body() body: DeleteManyByIdsDto,
     ): Promise<{ deleted: number }> {
-      assertRouteEnabled(routeConfigs.deleteByIds);
+      checkRouteEnabled(routeConfigs.deleteByIds);
       return this.service.deleteManyByIds(user, body.ids);
     }
   }

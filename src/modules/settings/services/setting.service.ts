@@ -16,7 +16,7 @@ import {
 import { SettingKey } from '../enums/setting-key.enum';
 
 @Injectable()
-export class SettingService extends BaseService<Setting, EntityManager> {
+export class SettingService extends BaseService<Setting> {
   constructor(
     private readonly settingRepository: SettingRepository,
     @InjectTransaction()
@@ -41,7 +41,7 @@ export class SettingService extends BaseService<Setting, EntityManager> {
     user: User,
     key: T,
     value: SettingValue<T>,
-    query?: FindQuery<Setting, EntityManager>,
+    query?: FindQuery<Setting>,
   ): Promise<Setting> {
     const ValueClass = MAP_SETTING_ENTITY[key];
 

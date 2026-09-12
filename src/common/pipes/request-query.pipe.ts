@@ -20,7 +20,7 @@ const toInt = (val: unknown, name: string, min = 0): number => {
 };
 
 @Injectable()
-export class QueryOptionsPipe implements PipeTransform<
+export class RequestQueryPipe implements PipeTransform<
   Record<string, unknown>,
   ParsedQueryOptions
 > {
@@ -83,3 +83,5 @@ export class QueryOptionsPipe implements PipeTransform<
     return res;
   }
 }
+
+export const QueryOptionsPipe = RequestQueryPipe;

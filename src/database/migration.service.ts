@@ -17,12 +17,12 @@ export class MigrationService implements OnModuleInit {
   }
 
   private async migrate(contextName: string, orm: MikroORM) {
-    const p = `DB_${contextName.toUpperCase()}_`;
+    const prefix = `DB_${contextName.toUpperCase()}_`;
 
     if (
       orm.config.get('driver') !== PostgreSqlDriver ||
       process.env.NODE_ENV === 'production' ||
-      process.env[`${p}AUTO_MIGRATE`] !== 'true'
+      process.env[`${prefix}AUTO_MIGRATE`] !== 'true'
     )
       return;
 

@@ -11,17 +11,17 @@ import type {
 } from './types';
 
 export const ROUTE_DEFINITIONS: BaseRouteDefinition[] = [
-  { route: 'create', handlerName: 'createEntity' },
-  { route: 'getMany', handlerName: 'listEntities' },
-  { route: 'getPage', handlerName: 'paginateEntities' },
-  { route: 'getById', handlerName: 'findEntityById' },
-  { route: 'getOne', handlerName: 'findOneByCondition' },
-  { route: 'updateOne', handlerName: 'updateOneByCondition' },
-  { route: 'updateById', handlerName: 'updateEntityById' },
-  { route: 'updateByIds', handlerName: 'updateEntitiesByIds' },
-  { route: 'deleteOne', handlerName: 'deleteOneByCondition' },
-  { route: 'deleteById', handlerName: 'deleteEntityById' },
-  { route: 'deleteByIds', handlerName: 'deleteEntitiesByIds' },
+  { route: 'create', handlerName: 'create' },
+  { route: 'getMany', handlerName: 'getMany' },
+  { route: 'getPage', handlerName: 'getPage' },
+  { route: 'getById', handlerName: 'getById' },
+  { route: 'getOne', handlerName: 'getOne' },
+  { route: 'updateOne', handlerName: 'updateOne' },
+  { route: 'updateById', handlerName: 'updateById' },
+  { route: 'updateByIds', handlerName: 'updateByIds' },
+  { route: 'deleteOne', handlerName: 'deleteOne' },
+  { route: 'deleteById', handlerName: 'deleteById' },
+  { route: 'deleteByIds', handlerName: 'deleteByIds' },
 ];
 
 const BASE_AUDIT_ACTIONS: Partial<Record<BaseRoute, AuditAction>> = {
@@ -55,7 +55,7 @@ export const getRouteConfigs = (
   deleteByIds: toConfig(routes?.deleteByIds),
 });
 
-export const assertRouteEnabled = (config: RouteConfig): void => {
+export const checkRouteEnabled = (config: RouteConfig): void => {
   if (!config.enabled) {
     throw new NotFoundException('error-route-not-available');
   }

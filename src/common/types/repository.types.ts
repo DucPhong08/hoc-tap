@@ -116,18 +116,18 @@ export type PopulationQuery<E extends object> = [PopulateKey<E>] extends [never]
     }[PopulateKey<E>];
 
 /* ---------- Query options (ORM-Agnostic) ---------- */
-export interface BaseOptions<T = unknown> {
+export interface BaseOptions<T = any> {
   transaction?: T;
   user?: IAuthUser;
 }
 
-export interface QueryOptions<T = unknown> extends BaseOptions<T> {
+export interface QueryOptions<T = any> extends BaseOptions<T> {
   softDelete?: boolean;
 }
 
 export interface FindQuery<
   E extends object = any,
-  TContext = unknown,
+  TContext = any,
 > extends QueryOptions<TContext> {
   select?: Partial<Record<Paths<E>, 1 | 0>>;
   filters?: FilterRule<E>[];

@@ -8,28 +8,30 @@ import type { DatabaseContextDefinition } from '../database.types';
 @Injectable()
 export class DatabaseEnvReader {
   buildOptions(def: DatabaseContextDefinition): Options {
-    const p = `DB_${def.contextName.toUpperCase()}_`;
-    const s = (k: string) => process.env[k]?.trim() || undefined;
-    const n = (k: string) => {
-      const v = s(k);
+    const prefix = `DB_${def.contextName.toUpperCase()}_`;
+    const getStr = (k: string) => process.env[k]?.trim() || undefined;
+    const getNum = (k: string) => {
+      const v = getStr(k);
       return v ? +v : undefined;
     };
-    const b = (k: string) => {
-      const v = s(k);
+    const getBool = (k: string) => {
+      const v = getStr(k);
       return v === 'true' ? true : v === 'false' ? false : undefined;
     };
 
-    const isProd = (s('MODE') ?? s('NODE_ENV')) === 'production';
+    const isProd = (getStr('MODE') ?? getStr('NODE_ENV')) === 'production';
     const driver = this.detectDriver(
-      s(`${p}DRIVER`),
-      s(`${p}PROFILE`),
-      s(`${p}URI`),
-      s(`${p}HOST`),
+      getStr(`${prefix}DRIVER`),
+      getStr(`${prefix}PROFILE`),
+      getStr(`${prefix}URI`),
+      getStr(`${prefix}HOST`),
     );
 
     if (driver === 'postgresql') {
-      const poolMin = n(`${p}POOL_MIN`) ?? def.defaultPoolMinSize ?? 2;
-      const poolMax = n(`${p}POOL_MAX`) ?? def.defaultPoolMaxSize ?? 10;
+      const poolMin =
+        getNum(`${prefix}POOL_MIN`) ?? def.defaultPoolMinSize ?? 2;
+      const poolMax =
+        getNum(`${prefix}POOL_MAX`) ?? def.defaultPoolMaxSize ?? 10;
 
       if (poolMin > poolMax) {
         throw new DatabaseConfigurationError(
@@ -40,19 +42,20 @@ export class DatabaseEnvReader {
       return {
         driver: PostgreSqlDriver,
         entities: def.entities,
-        dbName: s(`${p}DATABASE`) ?? 'mydb',
-        host: s(`${p}HOST`) ?? 'localhost',
-        port: n(`${p}PORT`) ?? 5432,
-        user: s(`${p}USERNAME`),
-        password: s(`${p}PASSWORD`),
-        schema: s(`${p}SCHEMA`),
-        debug: b(`${p}DEBUG`) ?? !isProd,
+        dbName: getStr(`${prefix}DATABASE`) ?? 'mydb',
+        host: getStr(`${prefix}HOST`) ?? 'localhost',
+        port: getNum(`${prefix}PORT`) ?? 5432,
+        user: getStr(`${prefix}USERNAME`),
+        password: getStr(`${prefix}PASSWORD`),
+        schema: getStr(`${prefix}SCHEMA`),
+        debug: getBool(`${prefix}DEBUG`) ?? !isProd,
         useBatchInserts: true,
         useBatchUpdates: true,
         discovery: { disableDynamicFileAccess: true },
         driverOptions: {
           connection: {
-            timezone: s(`${p}TIMEZONE`) ?? def.defaultTimezone ?? '+07:00',
+            timezone:
+              getStr(`${prefix}TIMEZONE`) ?? def.defaultTimezone ?? '+07:00',
           },
         },
         pool: {
@@ -69,13 +72,14 @@ export class DatabaseEnvReader {
       };
     }
 
-    const uri = s(`${p}URI`);
+    const uri = getStr(`${prefix}URI`);
     const parsed = uri ? this.parseMongoUri(def.contextName, uri) : undefined;
-    const host = s(`${p}HOST`) ?? parsed?.host ?? 'localhost';
-    const port = n(`${p}PORT`) ?? parsed?.port ?? 27017;
-    const dbName = s(`${p}DATABASE`) ?? parsed?.databaseName ?? 'test';
-    const username = s(`${p}USERNAME`) ?? parsed?.username;
-    const password = s(`${p}PASSWORD`) ?? parsed?.password;
+    const host = getStr(`${prefix}HOST`) ?? parsed?.host ?? 'localhost';
+    const port = getNum(`${prefix}PORT`) ?? parsed?.port ?? 27017;
+    const dbName =
+      getStr(`${prefix}DATABASE`) ?? parsed?.databaseName ?? 'test';
+    const username = getStr(`${prefix}USERNAME`) ?? parsed?.username;
+    const password = getStr(`${prefix}PASSWORD`) ?? parsed?.password;
     const auth =
       username && password
         ? `${encodeURIComponent(username)}:${encodeURIComponent(password)}@`
@@ -87,7 +91,7 @@ export class DatabaseEnvReader {
       dbName,
       clientUrl:
         parsed?.normalizedUri ?? `mongodb://${auth}${host}:${port}/${dbName}`,
-      debug: b(`${p}DEBUG`) ?? !isProd,
+      debug: getBool(`${prefix}DEBUG`) ?? !isProd,
       discovery: { disableDynamicFileAccess: true },
       driverOptions: {
         maxPoolSize: 10,
@@ -141,26 +145,26 @@ export class DatabaseEnvReader {
   }
 
   private parseMongoUri(contextName: string, uri: string) {
-    let p: URL;
+    let url: URL;
     try {
-      p = new URL(uri);
+      url = new URL(uri);
     } catch {
       throw new DatabaseConfigurationError(
         `Context "${contextName}": invalid MongoDB URI.`,
       );
     }
-    if (p.protocol !== 'mongodb:' && p.protocol !== 'mongodb+srv:') {
+    if (url.protocol !== 'mongodb:' && url.protocol !== 'mongodb+srv:') {
       throw new DatabaseConfigurationError(
         `Context "${contextName}": URI must use mongodb://`,
       );
     }
     return {
-      normalizedUri: p.toString(),
-      host: p.hostname || 'localhost',
-      port: p.port ? +p.port : 27017,
-      databaseName: p.pathname.replace(/^\/+/, '') || undefined,
-      username: p.username ? decodeURIComponent(p.username) : undefined,
-      password: p.password ? decodeURIComponent(p.password) : undefined,
+      normalizedUri: url.toString(),
+      host: url.hostname || 'localhost',
+      port: url.port ? +url.port : 27017,
+      databaseName: url.pathname.replace(/^\/+/, '') || undefined,
+      username: url.username ? decodeURIComponent(url.username) : undefined,
+      password: url.password ? decodeURIComponent(url.password) : undefined,
     };
   }
 }

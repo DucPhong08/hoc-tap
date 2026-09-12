@@ -13,18 +13,7 @@ export type BaseRoute =
   | 'deleteById'
   | 'deleteByIds';
 
-export type BaseHandlerName =
-  | 'createEntity'
-  | 'listEntities'
-  | 'paginateEntities'
-  | 'findOneByCondition'
-  | 'findEntityById'
-  | 'updateOneByCondition'
-  | 'updateEntityById'
-  | 'updateEntitiesByIds'
-  | 'deleteOneByCondition'
-  | 'deleteEntityById'
-  | 'deleteEntitiesByIds';
+export type BaseHandlerName = BaseRoute;
 
 export interface RouteConfig {
   enabled?: boolean;

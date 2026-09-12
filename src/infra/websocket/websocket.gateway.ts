@@ -144,7 +144,7 @@ export class WebsocketGateway
   }
 
   @SubscribeMessage('message')
-  handleMessage(
+  onMessage(
     @MessageBody() data: unknown,
     @ConnectedSocket() client: AuthenticatedSocket,
   ): void {
@@ -155,7 +155,7 @@ export class WebsocketGateway
   }
 
   @SubscribeMessage('join-room')
-  async handleJoinRoom(
+  async onJoinRoom(
     @MessageBody() room: string,
     @ConnectedSocket() client: AuthenticatedSocket,
   ): Promise<void> {
@@ -165,7 +165,7 @@ export class WebsocketGateway
   }
 
   @SubscribeMessage('leave-room')
-  async handleLeaveRoom(
+  async onLeaveRoom(
     @MessageBody() room: string,
     @ConnectedSocket() client: AuthenticatedSocket,
   ): Promise<void> {
@@ -200,22 +200,22 @@ export class WebsocketGateway
   }
 
   // Lấy số lượng sockets của user
-  getUserSocketCount(userId: string): number {
+  userSocketCount(userId: string): number {
     return this.userSockets.get(userId)?.size ?? 0;
   }
 
   // Lấy danh sách IDs của users đang online
-  getOnlineUserIds(): string[] {
+  onlineUserIds(): string[] {
     return Array.from(this.userSockets.keys());
   }
 
   // Lấy số lượng clients đang kết nối
-  getConnectedClientsCount(): number {
+  clientCount(): number {
     return this.connectedClients.size;
   }
 
   // Lấy số lượng users đang online
-  getOnlineUsersCount(): number {
+  onlineCount(): number {
     return this.userSockets.size;
   }
 }

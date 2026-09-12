@@ -37,7 +37,7 @@ function validateFilterRules(rules: unknown[]): void {
 }
 
 @Injectable()
-export class ConditionQueryPipe<T = unknown> implements PipeTransform<
+export class RequestConditionPipe<T = unknown> implements PipeTransform<
   string,
   Promise<T>
 > {
@@ -98,3 +98,5 @@ export class ConditionQueryPipe<T = unknown> implements PipeTransform<
     return instance;
   }
 }
+
+export const ConditionQueryPipe = RequestConditionPipe;
