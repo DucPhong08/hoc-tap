@@ -65,9 +65,9 @@ export class AuditLogService {
     return result.data;
   }
 
-  async cleanupOldLogs(olderThanDays: number): Promise<number> {
+  async cleanup(days: number): Promise<number> {
     const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() - olderThanDays);
+    cutoffDate.setDate(cutoffDate.getDate() - days);
     const result = await this.repository.deleteMany({
       createdAt: { $lt: cutoffDate },
     });

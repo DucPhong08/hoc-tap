@@ -28,11 +28,11 @@ export class UserService extends BaseService<User> {
     return bcrypt.hash(password, rounds);
   }
 
-  private normalizeEmail(email: string): string {
+  private formatEmail(email: string): string {
     return email.toLowerCase().trim();
   }
 
-  private async assertEmailUnique(
+  private async checkUniqueEmail(
     email: string,
     txOptions?: FindQuery<User, EntityManager>,
     currentEmail?: string,
@@ -57,8 +57,8 @@ export class UserService extends BaseService<User> {
       const payload = { ...data };
 
       if (payload.email) {
-        payload.email = this.normalizeEmail(payload.email);
-        await this.assertEmailUnique(payload.email, txOptions);
+        payload.email = this.formatEmail(payload.email);
+        await this.checkUniqueEmail(payload.email, txOptions);
       }
 
       if (payload.password) {
@@ -84,8 +84,8 @@ export class UserService extends BaseService<User> {
       const payload = { ...data };
 
       if (payload.email) {
-        payload.email = this.normalizeEmail(payload.email);
-        await this.assertEmailUnique(
+        payload.email = this.formatEmail(payload.email);
+        await this.checkUniqueEmail(
           payload.email,
           txOptions,
           existingUser.email,

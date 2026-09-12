@@ -12,13 +12,13 @@ export class AuditLogController {
 
   @Get('recent')
   @ApiQuery({ name: 'limit', required: false, type: Number })
-  async getRecentLogs(@Query('limit') limit?: number): Promise<AuditLog[]> {
+  async getRecent(@Query('limit') limit?: number): Promise<AuditLog[]> {
     return this.auditLogService.getRecentActions(limit);
   }
 
   @Get('user/:userId')
   @ApiQuery({ name: 'limit', required: false, type: Number })
-  async getUserLogs(
+  async getByUser(
     @Param('userId') userId: string,
     @Query('limit') limit?: number,
   ): Promise<AuditLog[]> {
@@ -26,7 +26,7 @@ export class AuditLogController {
   }
 
   @Get('entity/:entityType/:entityId')
-  async getEntityHistory(
+  async getByEntity(
     @Param('entityType') entityType: string,
     @Param('entityId') entityId: string,
   ): Promise<AuditLog[]> {
@@ -39,12 +39,8 @@ export class AuditLogController {
     required: true,
     type: Number,
   })
-  async cleanupOldLogs(
-    @Query('days') days: number,
-  ): Promise<{ deleted: number }> {
-    const olderThan = new Date();
-    olderThan.setDate(olderThan.getDate() - days);
-    const deleted = await this.auditLogService.cleanupOldLogs(days);
+  async cleanup(@Query('days') days: number): Promise<{ deleted: number }> {
+    const deleted = await this.auditLogService.cleanup(days);
     return { deleted };
   }
 }

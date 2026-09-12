@@ -117,8 +117,8 @@ export class WebsocketGateway
       client.user = payload;
 
       this.registerClient(client);
-      void client.join(this.getUserRoom(client.userId));
-      this.logConnectionStats(client.userId, client.id);
+      void client.join(this.getUserRoom(payload.sub));
+      this.logConnectionStats(payload.sub, client.id);
 
       client.emit('connected', {
         userId: client.userId,

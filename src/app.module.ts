@@ -28,9 +28,7 @@ import { MonitoringModule } from './infra/monitoring/monitoring.module';
 import { WebsocketModule } from './infra/websocket/websocket.module';
 import { CronModule } from './infra/cron/cron.module';
 import { RequestLoggingMiddleware } from './common/middleware/request-logging.middleware';
-import { RolesModule } from './modules/roles/roles.module';
-// PLOP: IMPORT_MODULE
-
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { BullModule } from '@nestjs/bull';
 import { ConfigService } from '@nestjs/config';
 
@@ -78,12 +76,21 @@ import { ConfigService } from '@nestjs/config';
     UsersModule,
     SettingsModule,
     AuditLogsModule,
-    RolesModule,
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60000,
+        limit: 120,
+      },
+    ]),
     // PLOP: IMPORT_ARRAY
   ],
   controllers: [AppController],
   providers: [
     AppService,
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,

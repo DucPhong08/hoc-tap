@@ -16,7 +16,7 @@ export class SettingController {
 
   @Get('key/:key')
   async getByKey(@Param('key') key: string): Promise<Setting | null> {
-    const setting = await this.settingService.getSettingValue(key as any);
+    const setting = await this.settingService.getValue(key as any);
     if (!setting) return null;
     return { key, value: setting } as any;
   }
@@ -24,13 +24,13 @@ export class SettingController {
   @Put('key/:key/value')
   @Auditable({
     action: AuditAction.UPDATE,
-    description: 'Update setting value',
+    description: 'Cập nhật giá trị cấu hình',
   })
-  async updateValueByKey(
+  async updateByKey(
     @ReqUser() user: User,
     @Param('key') key: string,
     @Body('value') value: any,
   ): Promise<Setting> {
-    return this.settingService.setSettingValue(user, key as any, value);
+    return this.settingService.setValue(user, key as any, value);
   }
 }

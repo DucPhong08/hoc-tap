@@ -25,5 +25,5 @@
     "strictBindCallApply": false,
     "noFallthroughCasesInSwitch": false
   },
-  "include": ["src", "plopfile.js", "test"]
+  "include": ["src", "plopfile.js", "test", "mikro"]
 }

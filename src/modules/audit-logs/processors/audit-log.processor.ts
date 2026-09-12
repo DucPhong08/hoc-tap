@@ -54,7 +54,7 @@ export class AuditLogProcessor {
 
   @Process(AuditLogJob.PROCESS_BATCH)
   @CreateRequestContext((processor: AuditLogProcessor) => processor.logsOrm)
-  async handleProcessLog(job: Job<AuditLogJobPayload>): Promise<void> {
+  async processLog(job: Job<AuditLogJobPayload>): Promise<void> {
     const { log } = job.data;
     if (!log) return;
     await this.auditLogService.log(log);

@@ -49,7 +49,6 @@ import type {
   ControllerOptions,
   RouteConfig,
 } from './helpers/types';
-import { SystemRole } from '@/modules/roles/enums/system-role.enum';
 
 export type {
   BaseRoute,
@@ -362,7 +361,7 @@ export function BaseController<
   applyRouteMetadata(
     BaseControllerHost,
     routeConfigs,
-    controllerOptions?.defaultRoles ?? [SystemRole.ADMIN],
+    controllerOptions?.defaultRoles,
   );
 
   return BaseControllerHost;

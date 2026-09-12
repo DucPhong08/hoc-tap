@@ -62,11 +62,44 @@ export interface FilterRule<E = any> {
 export type QueryCondition<E> = WhereCondition<E> | FilterRule<E>[];
 
 /* ---------- Population ---------- */
-type Target<E, P> = P extends keyof E ? NonNullable<E[P]> : any;
+type Unwrap<T> = T extends { getItems(): (infer U)[] }
+  ? NonNullable<U>
+  : T extends (infer U)[]
+    ? NonNullable<U>
+    : T extends ReadonlyArray<infer U>
+      ? NonNullable<U>
+      : T extends { unwrap(): infer U }
+        ? NonNullable<U>
+        : T extends { getEntity(): infer U }
+          ? NonNullable<U>
+          : NonNullable<T>;
+
+type IsPopulateTarget<T> = T extends object
+  ? T extends
+      | Date
+      | RegExp
+      | Uint8Array
+      | { toHexString(): string }
+      | ((...args: any[]) => any)
+    ? false
+    : true
+  : false;
+
+export type PopulateKey<E> = [keyof E] extends [never]
+  ? string
+  : string extends keyof E
+    ? string
+    : {
+        [K in keyof E & string]: IsPopulateTarget<Unwrap<E[K]>> extends true
+          ? K
+          : never;
+      }[keyof E & string];
+
+export type Target<E, P> = P extends keyof E ? Unwrap<E[P]> : any;
 
 export interface PopulationOptions<
   E extends object,
-  P extends Paths<E> = Paths<E>,
+  P extends string = PopulateKey<E>,
 > {
   path: P;
   select?: Partial<Record<Paths<Target<E, P>>, 1 | 0>>;
@@ -76,9 +109,11 @@ export interface PopulationOptions<
   population?: PopulationQuery<Target<E, P>>[];
 }
 
-export type PopulationQuery<E extends object> = {
-  [P in Paths<E>]: PopulationOptions<E, P>;
-}[Paths<E>];
+export type PopulationQuery<E extends object> = [PopulateKey<E>] extends [never]
+  ? never
+  : {
+      [P in PopulateKey<E>]: PopulationOptions<E, P>;
+    }[PopulateKey<E>];
 
 /* ---------- Query options (ORM-Agnostic) ---------- */
 export interface BaseOptions<T = unknown> {

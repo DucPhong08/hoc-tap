@@ -47,7 +47,7 @@ export class AuditInterceptor implements NestInterceptor {
 
     return next.handle().pipe(
       tap((result) => {
-        this.logAuditSuccess(
+        this.logSuccess(
           auditOptions,
           context,
           user,
@@ -59,7 +59,7 @@ export class AuditInterceptor implements NestInterceptor {
         );
       }),
       catchError((error) => {
-        this.logFailedOperation(
+        this.logFailure(
           auditOptions,
           context,
           user,
@@ -73,7 +73,7 @@ export class AuditInterceptor implements NestInterceptor {
     );
   }
 
-  private logAuditSuccess(
+  private logSuccess(
     auditOptions: AuditableOptions,
     context: ExecutionContext,
     user: any,
@@ -104,7 +104,7 @@ export class AuditInterceptor implements NestInterceptor {
     }
   }
 
-  private logFailedOperation(
+  private logFailure(
     options: AuditableOptions,
     context: ExecutionContext,
     user: any,

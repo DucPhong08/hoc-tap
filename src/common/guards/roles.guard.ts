@@ -1,9 +1,9 @@
 import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { Request } from 'express';
-import { ROLES_KEY } from '../decorators/roles.decorator';
+import { ROLES_KEY } from '../decorators/authorize.decorator';
+import { Role } from '@/common/enums/role.enum';
 import type { IAuthUser } from '@/common/interfaces/auth-user.interface';
-import { SystemRole } from '@/modules/roles/enums/system-role.enum';
 
 interface RequestWithUser extends Omit<Request, 'user'> {
   user?: IAuthUser;
@@ -19,15 +19,23 @@ export class RolesGuard implements CanActivate {
       [context.getHandler(), context.getClass()],
     );
 
-    if (!requiredRoles?.length) {
+    if (!requiredRoles || requiredRoles.length === 0) {
       return true;
     }
 
     const request = context.switchToHttp().getRequest<RequestWithUser>();
     const user = request.user;
-    if (user?.roles?.includes(SystemRole.ADMIN)) {
+    if (!user) {
+      return false;
+    }
+
+    const userRoles = user.roles ?? [];
+
+    // Superuser ADMIN bypasses all checks
+    if (userRoles.includes(Role.ADMIN)) {
       return true;
     }
-    return requiredRoles.some((role) => user?.roles?.includes(role));
+
+    return requiredRoles.some((role) => userRoles.includes(role));
   }
 }

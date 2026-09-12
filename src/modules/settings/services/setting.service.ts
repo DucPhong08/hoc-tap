@@ -27,7 +27,7 @@ export class SettingService extends BaseService<Setting, EntityManager> {
     });
   }
 
-  async getSettingValue<T extends SettingKey>(
+  async getValue<T extends SettingKey>(
     key: T,
   ): Promise<SettingValue<T> | null> {
     const setting = await this.settingRepository.getOne({ key });
@@ -37,10 +37,7 @@ export class SettingService extends BaseService<Setting, EntityManager> {
     return setting.value as SettingValue<T>;
   }
 
-  /**
-   * Set giá trị setting với validation
-   */
-  async setSettingValue<T extends SettingKey>(
+  async setValue<T extends SettingKey>(
     user: User,
     key: T,
     value: SettingValue<T>,
@@ -85,7 +82,7 @@ export class SettingService extends BaseService<Setting, EntityManager> {
     });
   }
 
-  async getSettingValues(keys: SettingKey[]): Promise<Record<string, any>> {
+  async getValues(keys: SettingKey[]): Promise<Record<string, any>> {
     if (!keys.length) return {};
 
     const settings = await this.settingRepository.getMany({

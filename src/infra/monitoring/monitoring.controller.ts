@@ -2,14 +2,16 @@ import { Controller, Get } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
 import { Public } from '@/common/decorators/public.decorator';
-import { Authorization } from '@/common/decorators/authorize.decorator';
-import { Roles } from '@/common/decorators/roles.decorator';
-import { SystemRole } from '@/modules/roles/enums/system-role.enum';
+import {
+  Authorize,
+  Authorization,
+} from '@/common/decorators/authorize.decorator';
+import { Role } from '@/common/enums/role.enum';
 import { ApiTags } from '@nestjs/swagger';
 
 @ApiTags('monitoring')
 @Controller('monitoring')
-@Authorization()
+@Authorization(Role.ADMIN)
 export class MonitoringController {
   @Get('health')
   @Public()
@@ -48,7 +50,7 @@ export class MonitoringController {
   }
 
   @Get('logs/recent')
-  @Roles(SystemRole.ADMIN)
+  @Authorize(Role.ADMIN)
   async getRecentLogs() {
     try {
       const logPath = path.join('logs', 'app.log');
@@ -70,7 +72,7 @@ export class MonitoringController {
   }
 
   @Get('logs/errors')
-  @Roles(SystemRole.ADMIN)
+  @Authorize(Role.ADMIN)
   async getErrorLogs() {
     try {
       const logPath = path.join('logs', 'error.log');
@@ -92,7 +94,7 @@ export class MonitoringController {
   }
 
   @Get('stats')
-  @Roles(SystemRole.ADMIN)
+  @Authorize(Role.ADMIN)
   getStats() {
     const memUsage = process.memoryUsage();
     const cpuUsage = process.cpuUsage();

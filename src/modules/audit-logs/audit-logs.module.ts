@@ -32,6 +32,11 @@ import { AuditLogProcessor } from './processors/audit-log.processor';
       useExisting: AuditInterceptor,
     },
   ],
-  exports: [AuditInterceptor, AuditLogQueueService, BullModule],
+  exports: [
+    AuditInterceptor,
+    AuditLogQueueService,
+    AuditLogService,
+    BullModule,
+  ],
 })
 export class AuditLogsModule {}
