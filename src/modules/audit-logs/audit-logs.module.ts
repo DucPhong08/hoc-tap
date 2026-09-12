@@ -11,20 +11,26 @@ import { BullModule } from '@nestjs/bull';
 import { QueueName } from '@/common/constants/queue.constant';
 import { AuditLogProcessor } from './processors/audit-log.processor';
 
+const hasRedis = Boolean(process.env.REDIS_HOST);
+
 @Global()
 @Module({
   imports: [
     ScheduleModule.forRoot(),
-    BullModule.registerQueue({
-      name: QueueName.AUDIT_LOG,
-    }),
+    ...(hasRedis
+      ? [
+          BullModule.registerQueue({
+            name: QueueName.AUDIT_LOG,
+          }),
+        ]
+      : []),
   ],
   controllers: [AuditLogController],
   providers: [
     AuditLogRepository,
     AuditLogService,
     AuditLogQueueService,
-    AuditLogProcessor,
+    ...(hasRedis ? [AuditLogProcessor] : []),
     AuditCleanupService,
     AuditInterceptor,
     {
@@ -36,7 +42,7 @@ import { AuditLogProcessor } from './processors/audit-log.processor';
     AuditInterceptor,
     AuditLogQueueService,
     AuditLogService,
-    BullModule,
+    ...(hasRedis ? [BullModule] : []),
   ],
 })
 export class AuditLogsModule {}
