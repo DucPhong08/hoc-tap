@@ -1,9 +1,11 @@
-import { Global, Injectable, Module } from '@nestjs/common';
+import { Global, Injectable, Module, NestMiddleware } from '@nestjs/common';
 import {
   MikroOrmModule,
   MikroOrmModuleOptions,
   MikroOrmOptionsFactory,
+  InjectMikroORM,
 } from '@mikro-orm/nestjs';
+import { RequestContext, MikroORM } from '@mikro-orm/core';
 import { MigrationService } from './migration.service';
 import { DB_CONTEXTS } from '@/database/database.constants';
 import { DatabaseEnvReader } from './env/database-env';
@@ -18,9 +20,22 @@ class DatabaseConfigFactory implements MikroOrmOptionsFactory {
   createMikroOrmOptions(contextName?: string): MikroOrmModuleOptions {
     return {
       ...this.env.buildOptions(this.registry.get(contextName!)),
+      contextName,
       autoLoadEntities: false,
       registerRequestContext: false,
     };
+  }
+}
+
+@Injectable()
+export class MultiOrmMiddleware implements NestMiddleware {
+  constructor(
+    @InjectMikroORM(DB_CONTEXTS.MAIN) private readonly mainOrm: MikroORM,
+    @InjectMikroORM(DB_CONTEXTS.LOGS) private readonly logsOrm: MikroORM,
+  ) {}
+
+  use(req: any, res: any, next: () => void) {
+    RequestContext.create([this.mainOrm.em, this.logsOrm.em], next);
   }
 }
 
@@ -47,15 +62,16 @@ const logsEntitiesFeature = MikroOrmModule.forFeature({
     }),
     mainEntitiesFeature,
     logsEntitiesFeature,
-    MikroOrmModule.forMiddleware(),
   ],
   providers: [
     MigrationService,
+    MultiOrmMiddleware,
     ...(mainEntitiesFeature.providers ?? []),
     ...(logsEntitiesFeature.providers ?? []),
   ],
   exports: [
     MigrationService,
+    MultiOrmMiddleware,
     MikroOrmModule,
     ...(mainEntitiesFeature.exports ?? []),
     ...(logsEntitiesFeature.exports ?? []),

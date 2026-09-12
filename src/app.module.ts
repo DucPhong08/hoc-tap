@@ -22,7 +22,10 @@ import { AuditLogsModule } from './modules/audit-logs/audit-logs.module';
 import { SettingsModule } from './modules/settings/settings.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
-import { MikroOrmDatabaseModule } from './database/mikro-orm.module';
+import {
+  MikroOrmDatabaseModule,
+  MultiOrmMiddleware,
+} from './database/mikro-orm.module';
 import { CacheModule } from './infra/cache/cache.module';
 import { MonitoringModule } from './infra/monitoring/monitoring.module';
 import { WebsocketModule } from './infra/websocket/websocket.module';
@@ -103,7 +106,7 @@ import { ConfigService } from '@nestjs/config';
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer.apply(RequestLoggingMiddleware).forRoutes({
+    consumer.apply(MultiOrmMiddleware, RequestLoggingMiddleware).forRoutes({
       path: '{*path}',
       method: RequestMethod.ALL,
     });

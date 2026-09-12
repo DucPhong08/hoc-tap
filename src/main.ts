@@ -14,6 +14,16 @@ const SWAGGER_TITLE = 'API Documentation';
 const SWAGGER_DESCRIPTION = 'API Documentation';
 const SWAGGER_VERSION = '1.0';
 
+process.on('unhandledRejection', (reason: any) => {
+  if (
+    reason?.code === 'ECONNREFUSED' &&
+    (reason?.port === 6379 || reason?.syscall === 'connect')
+  ) {
+    return;
+  }
+  console.error('Unhandled Rejection:', reason);
+});
+
 export async function bootstrap() {
   const isProduction =
     process.env.NODE_ENV === 'production' || process.env.MODE === 'production';

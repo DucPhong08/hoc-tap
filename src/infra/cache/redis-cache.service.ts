@@ -33,7 +33,11 @@ export class RedisCacheService
     try {
       const { createClient } = await import('redis');
       this.client = createClient({
-        socket: { host: redisConfig.host, port: redisConfig.port },
+        socket: {
+          host: redisConfig.host,
+          port: redisConfig.port,
+          reconnectStrategy: false,
+        },
         password: redisConfig.password,
         database: redisConfig.db ?? 0,
       });
@@ -48,6 +52,8 @@ export class RedisCacheService
 
       await this.client.connect();
     } catch {
+      this.isConnected = false;
+      this.client = null;
       this.logger.warn('Redis không khả dụng — cache bị bỏ qua');
     }
   }
