@@ -10,7 +10,6 @@ import type { BaseTransaction } from '@/infra/transaction/base-transaction.inter
 import { InjectTransaction } from '@/infra/transaction/transaction.provider';
 import type { IAuthUser } from '@/common/interfaces/auth-user.interface';
 import type { AuthConfig } from '@/config/configuration';
-
 import type { UpdateProfileDto } from '../dto/update-user.dto';
 
 @Injectable()

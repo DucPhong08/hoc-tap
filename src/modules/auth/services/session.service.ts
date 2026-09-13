@@ -10,6 +10,7 @@ import { SessionEntity } from '../entities/session.entity';
 import { TokenService } from './token.service';
 import { User } from '@/modules/users/entities/user.entity';
 import { AuditLogService } from '@/modules/audit-logs/services/audit-log.service';
+import { RedisCacheService } from '@/infra/cache/redis-cache.service';
 import type { AuthConfig } from '@/config/configuration';
 import { TokenPair } from '../types/auth-result.type';
 
@@ -17,12 +18,14 @@ import { TokenPair } from '../types/auth-result.type';
 export class SessionService {
   private readonly logger = new Logger(SessionService.name);
   private readonly gracePeriodMs: number;
+  private readonly sessionCachePrefix = 'auth:session:';
 
   constructor(
     private readonly sessionRepository: SessionRepository,
     private readonly tokenService: TokenService,
     private readonly configService: ConfigService,
     @Optional() private readonly auditLogService?: AuditLogService,
+    @Optional() private readonly redisCacheService?: RedisCacheService,
   ) {
     const authConfig = this.configService.get<AuthConfig>('auth');
     const graceSeconds = authConfig?.refreshGracePeriodSeconds ?? 15;
@@ -63,12 +66,54 @@ export class SessionService {
 
   // Xác thực phiên còn hợp lệ và chưa bị thu hồi
   async validate(sessionId: string): Promise<SessionEntity | null> {
+    const cacheKey = `${this.sessionCachePrefix}${sessionId}`;
+    if (this.redisCacheService) {
+      const cached = await this.redisCacheService.get<SessionEntity>(cacheKey);
+      if (cached) {
+        if (cached.isRevoked || new Date(cached.expiresAt) <= new Date()) {
+          return null;
+        }
+        return cached;
+      }
+    }
+
     const session = await this.sessionRepository.getById(sessionId, {
       population: [{ path: 'user' }],
     });
 
     if (!session || session.isRevoked || session.expiresAt <= new Date()) {
       return null;
+    }
+
+    if (this.redisCacheService && session.user) {
+      const sessionCachePayload: any = {
+        id: session.id,
+        isRevoked: session.isRevoked,
+        expiresAt: session.expiresAt,
+        user: {
+          id: session.user.id,
+          email: session.user.email,
+          roles: session.user.roles ?? [session.user.role],
+          isActive: session.user.isActive,
+          firstName: session.user.firstName,
+          lastName: session.user.lastName,
+          avatar: session.user.avatar,
+        },
+      };
+      const ttlSeconds = Math.min(
+        Math.max(
+          1,
+          Math.floor(
+            (new Date(session.expiresAt).getTime() - Date.now()) / 1000,
+          ),
+        ),
+        300,
+      );
+      void this.redisCacheService.set(
+        cacheKey,
+        sessionCachePayload,
+        ttlSeconds,
+      );
     }
 
     return session;
@@ -117,6 +162,12 @@ export class SessionService {
         userAgent: userAgent ?? session.userAgent,
       });
 
+      if (this.redisCacheService) {
+        void this.redisCacheService.del(
+          `${this.sessionCachePrefix}${session.id}`,
+        );
+      }
+
       const newAccessToken = this.tokenService.signAccess(
         session.user.id,
         session.id,
@@ -164,6 +215,12 @@ export class SessionService {
         revokedAt: new Date(),
       });
 
+      if (this.redisCacheService) {
+        void this.redisCacheService.del(
+          `${this.sessionCachePrefix}${session.id}`,
+        );
+      }
+
       if (this.auditLogService) {
         void this.auditLogService
           .log({
@@ -192,6 +249,11 @@ export class SessionService {
       isRevoked: true,
       revokedAt: new Date(),
     });
+
+    if (this.redisCacheService) {
+      void this.redisCacheService.del(`${this.sessionCachePrefix}${sessionId}`);
+    }
+
     return !!updated;
   }
 
@@ -209,6 +271,10 @@ export class SessionService {
       isRevoked: true,
       revokedAt: new Date(),
     });
+
+    if (this.redisCacheService) {
+      void this.redisCacheService.delByPattern(`${this.sessionCachePrefix}*`);
+    }
 
     return result.affected;
   }

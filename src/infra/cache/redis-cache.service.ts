@@ -36,7 +36,13 @@ export class RedisCacheService
         socket: {
           host: redisConfig.host,
           port: redisConfig.port,
-          reconnectStrategy: false,
+          reconnectStrategy: (retries: number) => {
+            if (retries > 10) {
+              this.logger.error('Redis kết nối lại thất bại quá 10 lần.');
+              return new Error('Redis connection retry limit reached');
+            }
+            return Math.min(retries * 200, 3000);
+          },
         },
         password: redisConfig.password,
         database: redisConfig.db ?? 0,
@@ -118,43 +124,48 @@ export class RedisCacheService
   }
 
   async del(key: string): Promise<void> {
-    if (!this.isConnected) return;
+    if (!this.isConnected || !this.client) return;
     try {
-      await this.client!.del(this.key(key));
+      await this.client.unlink(this.key(key));
     } catch {
       /* bỏ qua */
     }
   }
 
   async delByPattern(pattern: string): Promise<void> {
-    if (!this.isConnected) return;
+    if (!this.isConnected || !this.client) return;
     try {
-      const keys: string[] = [];
-      for await (const key of this.client!.scanIterator({
+      const BATCH_SIZE = 500;
+      let batch: string[] = [];
+      for await (const key of this.client.scanIterator({
         MATCH: this.key(pattern),
         COUNT: 100,
       })) {
-        keys.push(key);
+        batch.push(key);
+        if (batch.length >= BATCH_SIZE) {
+          await this.client.unlink(batch);
+          batch = [];
+        }
       }
-      if (keys.length) {
-        await this.client!.del(keys);
+      if (batch.length > 0) {
+        await this.client.unlink(batch);
       }
-    } catch {
-      /* bỏ qua */
+    } catch (err) {
+      this.logger.warn(`Lỗi delByPattern: ${(err as Error).message}`);
     }
   }
 
   async delByTags(tags: string[]): Promise<void> {
-    if (!this.isConnected) return;
+    if (!this.isConnected || !this.client) return;
     try {
       for (const tag of tags) {
         const tagKey = this.key(`${this.tagPrefix}${tag}`);
-        const keys = await this.client!.sMembers(tagKey);
-        if (keys.length) await this.client!.del(keys);
-        await this.client!.del(tagKey);
+        const keys = await this.client.sMembers(tagKey);
+        if (keys.length) await this.client.unlink(keys);
+        await this.client.unlink(tagKey);
       }
-    } catch {
-      /* bỏ qua */
+    } catch (err) {
+      this.logger.warn(`Lỗi delByTags: ${(err as Error).message}`);
     }
   }
 

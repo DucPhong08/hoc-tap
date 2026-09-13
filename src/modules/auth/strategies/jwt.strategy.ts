@@ -42,8 +42,9 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       throw new UnauthorizedException('error-session-revoked');
     }
 
-    // Kiểm tra người dùng tồn tại và đang hoạt động
-    const user = await this.userRepository.getById(payload.sub);
+    // Ưu tiên dùng user đã được nạp sẵn từ session để giảm bớt 1 query vào DB mỗi request
+    const user =
+      session.user ?? (await this.userRepository.getById(payload.sub));
 
     if (!user) {
       throw new UnauthorizedException('error-user-not-found');

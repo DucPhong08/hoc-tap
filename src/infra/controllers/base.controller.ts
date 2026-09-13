@@ -281,7 +281,7 @@ export function BaseController<
       return this.service.updateById(user, id, body as UpdateData<E>);
     }
 
-    @Put('many/ids')
+    @Put('bulk')
     @ApiOkResponse({ description: 'OK' })
     @ApiBody({ type: UpdateManyIdsDto })
     @UsePipes(validationPipes.updateManyByIds)
@@ -334,7 +334,7 @@ export function BaseController<
       await this.service.deleteById(user, id);
     }
 
-    @Delete('many/ids')
+    @Delete('bulk')
     @ApiOkResponse({ description: 'OK' })
     @ApiBody({ type: DeleteManyByIdsDto })
     @UsePipes(validationPipes.deleteManyByIds)

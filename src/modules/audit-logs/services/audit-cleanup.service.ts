@@ -1,5 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { CreateRequestContext, MikroORM } from '@mikro-orm/core';
+import { InjectMikroORM } from '@mikro-orm/nestjs';
+import { DB_CONTEXTS } from '@/database/database.constants';
 import { AuditLogService } from './audit-log.service';
 
 @Injectable()
@@ -7,9 +10,13 @@ export class AuditCleanupService {
   private readonly logger = new Logger(AuditCleanupService.name);
   private readonly DEFAULT_RETENTION_DAYS = 90;
 
-  constructor(private readonly auditLogService: AuditLogService) {}
+  constructor(
+    private readonly auditLogService: AuditLogService,
+    @InjectMikroORM(DB_CONTEXTS.LOGS) private readonly logsOrm: MikroORM,
+  ) {}
 
   @Cron(CronExpression.EVERY_DAY_AT_2AM)
+  @CreateRequestContext((service: AuditCleanupService) => service.logsOrm)
   async dailyCleanup() {
     this.logger.log('Starting scheduled audit log cleanup...');
 
@@ -27,6 +34,7 @@ export class AuditCleanupService {
   }
 
   @Cron(CronExpression.EVERY_WEEK)
+  @CreateRequestContext((service: AuditCleanupService) => service.logsOrm)
   async weeklyDeepCleanup() {
     this.logger.log('Starting weekly deep cleanup...');
 
@@ -41,6 +49,7 @@ export class AuditCleanupService {
     }
   }
 
+  @CreateRequestContext((service: AuditCleanupService) => service.logsOrm)
   async cleanup(retentionDays: number): Promise<number> {
     this.logger.log(
       `Running manual cleanup (${retentionDays} days retention)...`,

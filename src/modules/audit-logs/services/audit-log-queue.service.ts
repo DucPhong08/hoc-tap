@@ -35,7 +35,11 @@ export class AuditLogQueueService {
           this.logger.error('Failed to push audit log to Bull Queue:', error);
         });
     } else {
-      void this.auditLogService.log(data);
+      this.auditLogService.log(data).catch((error) => {
+        this.logger.error(
+          `Ghi audit log trực tiếp thất bại: ${(error as Error).message}`,
+        );
+      });
     }
   }
 }

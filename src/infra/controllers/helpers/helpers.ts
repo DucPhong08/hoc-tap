@@ -1,4 +1,5 @@
 import { NotFoundException, Type } from '@nestjs/common';
+import { ApiExcludeEndpoint } from '@nestjs/swagger';
 import { Authorize } from '@/common/decorators/authorize.decorator';
 import { Auditable } from '@/common/decorators/auditable.decorator';
 import { AuditAction } from '@/modules/audit-logs/enums/audit-action.enum';
@@ -108,6 +109,19 @@ export function setupAudit(
   });
 }
 
+export function setupSwaggerExclusion(
+  controllerClass: Type<object>,
+  routeDefinitions: BaseRouteDefinition[] = ROUTE_DEFINITIONS,
+  routeConfigs: Record<BaseRoute, Required<RouteConfig>>,
+): void {
+  routeDefinitions.forEach(({ route, handlerName }) => {
+    const routeConfig = routeConfigs[route];
+    if (!routeConfig.enabled) {
+      decorate(controllerClass, handlerName, ApiExcludeEndpoint());
+    }
+  });
+}
+
 export function applyRouteMetadata(
   controllerClass: Type<object>,
   routeConfigs: Record<BaseRoute, Required<RouteConfig>>,
@@ -120,4 +134,5 @@ export function applyRouteMetadata(
     defaultRoles,
   );
   setupAudit(controllerClass, ROUTE_DEFINITIONS, routeConfigs);
+  setupSwaggerExclusion(controllerClass, ROUTE_DEFINITIONS, routeConfigs);
 }

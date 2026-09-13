@@ -34,7 +34,6 @@ export class WebsocketGateway
   server: Server;
 
   private readonly logger = new Logger(WebsocketGateway.name);
-  private readonly connectedClients = new Map<string, AuthenticatedSocket>();
   private readonly userSockets = new Map<string, Set<string>>();
 
   constructor(private readonly jwtService: JwtService) {}
@@ -67,16 +66,12 @@ export class WebsocketGateway
       return;
     }
 
-    this.connectedClients.set(client.id, client);
-
     const sockets = this.userSockets.get(userId) ?? new Set<string>();
     sockets.add(client.id);
     this.userSockets.set(userId, sockets);
   }
 
   private unregisterClient(client: AuthenticatedSocket): void {
-    this.connectedClients.delete(client.id);
-
     if (!client.userId) {
       return;
     }
@@ -98,7 +93,7 @@ export class WebsocketGateway
     socketId: string,
   ): void {
     this.logger.log(`User ${userId} đã kết nối (socket: ${socketId})`);
-    this.logger.log(`Tổng số clients: ${this.connectedClients.size}`);
+    this.logger.log(`Tổng số clients: ${this.clientCount()}`);
   }
 
   async handleConnection(client: AuthenticatedSocket) {
@@ -140,7 +135,7 @@ export class WebsocketGateway
     this.unregisterClient(client);
 
     this.logger.log(`User ${userId} đã ngắt kết nối (socket: ${client.id})`);
-    this.logger.log(`Tổng số clients: ${this.connectedClients.size}`);
+    this.logger.log(`Tổng số clients: ${this.clientCount()}`);
   }
 
   @SubscribeMessage('message')
@@ -191,7 +186,7 @@ export class WebsocketGateway
 
   // Gửi tới socket cụ thể
   sendToSocket(socketId: string, event: string, data: unknown): void {
-    this.connectedClients.get(socketId)?.emit(event, data);
+    this.server.to(socketId).emit(event, data);
   }
 
   // Kiểm tra user có online không
@@ -211,7 +206,11 @@ export class WebsocketGateway
 
   // Lấy số lượng clients đang kết nối
   clientCount(): number {
-    return this.connectedClients.size;
+    return (
+      this.server?.engine?.clientsCount ??
+      this.server?.sockets?.sockets?.size ??
+      0
+    );
   }
 
   // Lấy số lượng users đang online
