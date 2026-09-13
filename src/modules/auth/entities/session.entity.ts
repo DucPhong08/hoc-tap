@@ -12,12 +12,6 @@ export class SessionEntity extends BaseEntity {
   @Property({ length: 128 })
   refreshTokenHash!: string;
 
-  @Property({ length: 128, nullable: true })
-  previousRefreshTokenHash?: string;
-
-  @Property({ nullable: true })
-  rotatedAt?: Date;
-
   @Property({ default: false })
   isRevoked: boolean = false;
 

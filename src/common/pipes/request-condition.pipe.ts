@@ -1,38 +1,20 @@
 import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
 import type { Type } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
-import { getMetadataStorage, validate } from 'class-validator';
+import { validate } from 'class-validator';
 import { OperatorType } from '@/common/enums/operator-type.enum';
 
 const VALID_OPERATORS = new Set(Object.values(OperatorType));
 
-function validateFilterRules(rules: unknown[]): void {
-  for (const [index, item] of rules.entries()) {
-    if (!item || typeof item !== 'object') {
-      throw new BadRequestException(
-        `Filter rule tại vị trí [${index}] phải là một object`,
-      );
-    }
-    const rule = item as Record<string, unknown>;
-    if (!rule.field || typeof rule.field !== 'string') {
-      throw new BadRequestException(
-        `Trường 'field' tại rule [${index}] không hợp lệ`,
-      );
-    }
-    if (
-      rule.field.includes('__proto__') ||
-      rule.field.includes('prototype') ||
-      rule.field.includes('constructor')
-    ) {
-      throw new BadRequestException(
-        `Trường 'field' tại rule [${index}] chứa ký tự không được phép`,
-      );
-    }
-    if (!rule.operator || !VALID_OPERATORS.has(rule.operator as OperatorType)) {
-      throw new BadRequestException(
-        `Operator '${String(rule.operator)}' tại rule [${index}] không hợp lệ.`,
-      );
-    }
+function assertSafeKey(key: string, location: string): void {
+  if (
+    key.includes('__proto__') ||
+    key.includes('prototype') ||
+    key.includes('constructor')
+  ) {
+    throw new BadRequestException(
+      `Khóa '${key}' tại ${location} không được phép sử dụng.`,
+    );
   }
 }
 
@@ -46,43 +28,11 @@ export class RequestConditionPipe<T = unknown> implements PipeTransform<
     private readonly required = false,
   ) {}
 
-  private validateAllowedFields(rules: unknown[]): void {
-    if (!this.schema) return;
-
-    const metadatas = getMetadataStorage().getTargetValidationMetadatas(
-      this.schema,
-      '',
-      false,
-      false,
-    );
-    const allowedFields = new Set(metadatas.map((m) => m.propertyName));
-
-    if (allowedFields.size === 0) {
-      try {
-        const sample = new (this.schema as any)();
-        Object.keys(sample).forEach((k) => allowedFields.add(k));
-      } catch {
-        // bỏ qua nếu schema không khởi tạo trực tiếp được
-      }
-    }
-
-    if (allowedFields.size > 0) {
-      for (const item of rules) {
-        const rule = item as Record<string, unknown>;
-        const field = String(rule.field);
-        if (!allowedFields.has(field)) {
-          throw new BadRequestException(
-            `Trường '${field}' không được phép dùng làm điều kiện lọc`,
-          );
-        }
-      }
-    }
-  }
-
   async transform(value: string | undefined): Promise<T> {
     if (!value) {
-      if (this.required)
+      if (this.required) {
         throw new BadRequestException('Condition không được để trống');
+      }
       return {} as T;
     }
 
@@ -97,14 +47,43 @@ export class RequestConditionPipe<T = unknown> implements PipeTransform<
       throw new BadRequestException('Condition phải là JSON object hoặc array');
     }
 
-    // Mảng filter rules nâng cao
+    // Trường hợp mảng FilterRule[]
     if (Array.isArray(parsed)) {
-      validateFilterRules(parsed);
-      this.validateAllowedFields(parsed);
       if (this.required && parsed.length === 0) {
         throw new BadRequestException('Condition không được để rỗng');
       }
+      for (const [index, item] of parsed.entries()) {
+        if (!item || typeof item !== 'object') {
+          throw new BadRequestException(
+            `Filter rule tại vị trí [${index}] phải là một object`,
+          );
+        }
+        const rule = item as Record<string, unknown>;
+        if (!rule.field || typeof rule.field !== 'string') {
+          throw new BadRequestException(
+            `Trường 'field' tại rule [${index}] không hợp lệ`,
+          );
+        }
+        assertSafeKey(rule.field, `rule [${index}]`);
+        if (
+          !rule.operator ||
+          !VALID_OPERATORS.has(rule.operator as OperatorType)
+        ) {
+          throw new BadRequestException(
+            `Operator '${String(rule.operator)}' tại rule [${index}] không hợp lệ.`,
+          );
+        }
+      }
       return parsed as unknown as T;
+    }
+
+    // Kiểm tra prototype pollution cho object keys
+    for (const key of Object.keys(parsed)) {
+      assertSafeKey(key, 'condition');
+    }
+
+    if (!this.schema) {
+      return parsed as T;
     }
 
     const instance = plainToInstance(this.schema, parsed, {
