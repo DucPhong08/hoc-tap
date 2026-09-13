@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { EntityManager, TransactionOptions } from '@mikro-orm/core';
+import type { EntityManager } from '@mikro-orm/core';
 import type {
   QueryCondition,
   PaginationResult,
@@ -9,13 +9,7 @@ import type {
 } from '@/common/interfaces/repository.interface';
 import type { IBaseRepository } from '@/common/interfaces/repository.interface';
 import { BaseEntity } from '@/common/entity/base.entity';
-import { BaseTransaction } from '../transaction/base-transaction.interface';
 import type { IAuthUser } from '@/common/interfaces/auth-user.interface';
-
-export interface BaseServiceConfig<TContext = EntityManager> {
-  notFoundMessage?: string;
-  transaction?: BaseTransaction<TContext>;
-}
 
 @Injectable()
 export abstract class BaseService<
@@ -25,25 +19,14 @@ export abstract class BaseService<
   TUpdate = UpdateData<E>,
   TCondition = QueryCondition<E>,
 > {
-  public readonly notFoundMessage?: string;
-  protected readonly transaction?: BaseTransaction<TContext>;
-
-  constructor(
-    protected readonly repository: IBaseRepository<E, TContext>,
-    config?: BaseServiceConfig<TContext>,
-  ) {
-    this.notFoundMessage = config?.notFoundMessage ?? 'Không tìm thấy dữ liệu';
-    this.transaction = config?.transaction;
-  }
+  constructor(protected readonly repository: IBaseRepository<E, TContext>) {}
 
   async create(
     user: IAuthUser,
     dto: TCreate,
     query?: FindQuery<E, TContext>,
   ): Promise<E> {
-    return this.executeWithTransaction(query, (txOptions) =>
-      this.repository.create(dto as Partial<E>, txOptions),
-    );
+    return this.repository.create(dto as Partial<E>, query);
   }
 
   async insertMany(
@@ -51,9 +34,7 @@ export abstract class BaseService<
     dtos: TCreate[],
     query?: FindQuery<E, TContext>,
   ): Promise<{ n: number }> {
-    return this.executeWithTransaction(query, (txOptions) =>
-      this.repository.insertMany(dtos as Partial<E>[], txOptions),
-    );
+    return this.repository.insertMany(dtos as Partial<E>[], query);
   }
 
   async getById(
@@ -94,9 +75,7 @@ export abstract class BaseService<
     update: TUpdate,
     query?: FindQuery<E, TContext>,
   ): Promise<E | null> {
-    return this.executeWithTransaction(query, async (txOptions) => {
-      return this.repository.updateById(id, update as UpdateData<E>, txOptions);
-    });
+    return this.repository.updateById(id, update as UpdateData<E>, query);
   }
 
   async updateOne(
@@ -105,13 +84,11 @@ export abstract class BaseService<
     update: TUpdate,
     query?: FindQuery<E, TContext>,
   ): Promise<E | null> {
-    return this.executeWithTransaction(query, async (txOptions) => {
-      return this.repository.updateOne(
-        condition as QueryCondition<E>,
-        update as UpdateData<E>,
-        txOptions,
-      );
-    });
+    return this.repository.updateOne(
+      condition as QueryCondition<E>,
+      update as UpdateData<E>,
+      query,
+    );
   }
 
   async updateMany(
@@ -120,12 +97,10 @@ export abstract class BaseService<
     update: TUpdate,
     query?: FindQuery<E, TContext>,
   ): Promise<{ affected: number }> {
-    return this.executeWithTransaction(query, (txOptions) =>
-      this.repository.updateMany(
-        condition as QueryCondition<E>,
-        update as UpdateData<E>,
-        txOptions,
-      ),
+    return this.repository.updateMany(
+      condition as QueryCondition<E>,
+      update as UpdateData<E>,
+      query,
     );
   }
 
@@ -148,9 +123,7 @@ export abstract class BaseService<
     id: string,
     query?: FindQuery<E, TContext>,
   ): Promise<E | null> {
-    return this.executeWithTransaction(query, async (txOptions) => {
-      return this.repository.deleteById(id, txOptions);
-    });
+    return this.repository.deleteById(id, query);
   }
 
   async deleteOne(
@@ -158,12 +131,7 @@ export abstract class BaseService<
     condition: TCondition,
     query?: FindQuery<E, TContext>,
   ): Promise<E | null> {
-    return this.executeWithTransaction(query, async (txOptions) => {
-      return this.repository.deleteOne(
-        condition as QueryCondition<E>,
-        txOptions,
-      );
-    });
+    return this.repository.deleteOne(condition as QueryCondition<E>, query);
   }
 
   async deleteMany(
@@ -171,9 +139,7 @@ export abstract class BaseService<
     condition: TCondition,
     query?: FindQuery<E, TContext>,
   ): Promise<{ deleted: number }> {
-    return this.executeWithTransaction(query, (txOptions) =>
-      this.repository.deleteMany(condition as QueryCondition<E>, txOptions),
-    );
+    return this.repository.deleteMany(condition as QueryCondition<E>, query);
   }
 
   async deleteManyByIds(
@@ -202,29 +168,5 @@ export abstract class BaseService<
     query?: QueryOptions<TContext>,
   ): Promise<boolean> {
     return this.repository.exists(condition as QueryCondition<E>, query);
-  }
-
-  protected async executeWithTransaction<
-    TResult,
-    TOptions extends { transaction?: TContext },
-  >(
-    options: TOptions | undefined,
-    callback: (txOptions: TOptions) => Promise<TResult>,
-    transactionOptions?: TransactionOptions,
-  ): Promise<TResult> {
-    const txOptions = { ...(options ?? {}) } as TOptions;
-
-    if (txOptions.transaction || !this.transaction) {
-      return callback(txOptions);
-    }
-
-    return this.transaction.execute(
-      async (transaction) =>
-        callback({
-          ...txOptions,
-          transaction,
-        } as TOptions),
-      transactionOptions,
-    );
   }
 }

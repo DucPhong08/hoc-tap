@@ -1,4 +1,3 @@
-import { EntityManager } from '@mikro-orm/core';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { plainToClass } from 'class-transformer';
 import { validate } from 'class-validator';
@@ -7,8 +6,6 @@ import { Setting } from '../entities/setting.entity';
 import { SettingRepository } from '../repositories/setting.repository';
 import type { FindQuery } from '@/common/interfaces/repository.interface';
 import type { User } from '@/modules/users/entities/user.entity';
-import type { BaseTransaction } from '@/infra/transaction/base-transaction.interface';
-import { InjectTransaction } from '@/infra/transaction/transaction.provider';
 import {
   MAP_SETTING_ENTITY,
   SettingValue,
@@ -17,14 +14,8 @@ import { SettingKey } from '../enums/setting-key.enum';
 
 @Injectable()
 export class SettingService extends BaseService<Setting> {
-  constructor(
-    private readonly settingRepository: SettingRepository,
-    @InjectTransaction()
-    transaction: BaseTransaction<EntityManager>,
-  ) {
-    super(settingRepository, {
-      transaction,
-    });
+  constructor(private readonly settingRepository: SettingRepository) {
+    super(settingRepository);
   }
 
   async getValue<T extends SettingKey>(
@@ -58,28 +49,26 @@ export class SettingService extends BaseService<Setting> {
       }
     }
 
-    return this.executeWithTransaction(query, async (txOptions) => {
-      const existing = await this.settingRepository.getOne({ key }, txOptions);
+    const existing = await this.settingRepository.getOne({ key }, query);
 
-      if (existing) {
-        const updated = await super.updateById(
-          user,
-          existing.id,
-          { value: value as any },
-          txOptions,
-        );
-        return updated!;
-      }
-
-      return super.create(
+    if (existing) {
+      const updated = await super.updateById(
         user,
-        {
-          key,
-          value: value as any,
-        },
-        txOptions,
+        existing.id,
+        { value: value as any },
+        query,
       );
-    });
+      return updated!;
+    }
+
+    return super.create(
+      user,
+      {
+        key,
+        value: value as any,
+      },
+      query,
+    );
   }
 
   async getValues(keys: SettingKey[]): Promise<Record<string, any>> {

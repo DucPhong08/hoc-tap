@@ -1,6 +1,5 @@
 import { Global, Module } from '@nestjs/common';
 import { APP_INTERCEPTOR } from '@nestjs/core';
-import { ScheduleModule } from '@nestjs/schedule';
 import { AuditLogRepository } from './repositories/audit-log.repository';
 import { AuditLogService } from './services/audit-log.service';
 import { AuditCleanupService } from './services/audit-cleanup.service';
@@ -16,7 +15,6 @@ const hasRedis = Boolean(process.env.REDIS_HOST);
 @Global()
 @Module({
   imports: [
-    ScheduleModule.forRoot(),
     ...(hasRedis
       ? [
           BullModule.registerQueue({

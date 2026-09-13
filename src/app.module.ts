@@ -13,8 +13,6 @@ import {
   HeaderResolver,
 } from 'nestjs-i18n';
 import * as path from 'path';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
 import configuration from './config/configuration';
 import { UsersModule } from './modules/users/users.module';
 import { AuthModule } from './modules/auth/auth.module';
@@ -29,7 +27,7 @@ import {
 import { CacheModule } from './infra/cache/cache.module';
 import { MonitoringModule } from './infra/monitoring/monitoring.module';
 import { WebsocketModule } from './infra/websocket/websocket.module';
-import { CronModule } from './infra/cron/cron.module';
+import { ScheduleModule } from '@nestjs/schedule';
 import { RequestLoggingMiddleware } from './common/middleware/request-logging.middleware';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { BullModule } from '@nestjs/bull';
@@ -83,7 +81,7 @@ const hasRedis = Boolean(process.env.REDIS_HOST);
     CacheModule,
     MonitoringModule,
     WebsocketModule,
-    CronModule,
+    ScheduleModule.forRoot(),
     AuthModule,
     UsersModule,
     SettingsModule,
@@ -96,9 +94,8 @@ const hasRedis = Boolean(process.env.REDIS_HOST);
     ]),
     // PLOP: IMPORT_ARRAY
   ],
-  controllers: [AppController],
+  controllers: [],
   providers: [
-    AppService,
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,

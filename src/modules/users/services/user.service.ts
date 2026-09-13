@@ -1,4 +1,3 @@
-import { EntityManager } from '@mikro-orm/core';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
@@ -6,8 +5,6 @@ import { BaseService } from '@/infra/services/base.service';
 import { User } from '../entities/user.entity';
 import { UserRepository } from '../repositories/user.repository';
 import type { FindQuery } from '@/common/interfaces/repository.interface';
-import type { BaseTransaction } from '@/infra/transaction/base-transaction.interface';
-import { InjectTransaction } from '@/infra/transaction/transaction.provider';
 import type { IAuthUser } from '@/common/interfaces/auth-user.interface';
 import type { AuthConfig } from '@/config/configuration';
 import type { UpdateProfileDto } from '../dto/update-user.dto';
@@ -16,11 +13,9 @@ import type { UpdateProfileDto } from '../dto/update-user.dto';
 export class UserService extends BaseService<User> {
   constructor(
     private readonly userRepository: UserRepository,
-    @InjectTransaction()
-    transaction: BaseTransaction<EntityManager>,
     private readonly configService: ConfigService,
   ) {
-    super(userRepository, { transaction });
+    super(userRepository);
   }
 
   private async hashPassword(password: string): Promise<string> {
@@ -35,14 +30,14 @@ export class UserService extends BaseService<User> {
 
   private async checkUniqueEmail(
     email: string,
-    txOptions?: FindQuery<User>,
+    query?: FindQuery<User>,
     currentEmail?: string,
   ): Promise<void> {
     if (currentEmail && email === currentEmail) {
       return;
     }
 
-    const emailExists = await this.userRepository.exists({ email }, txOptions);
+    const emailExists = await this.userRepository.exists({ email }, query);
 
     if (emailExists) {
       throw new BadRequestException('error-user-exist');
@@ -54,20 +49,18 @@ export class UserService extends BaseService<User> {
     data: Partial<User>,
     query?: FindQuery<User>,
   ): Promise<User> {
-    return this.executeWithTransaction(query, async (txOptions) => {
-      const payload = { ...data };
+    const payload = { ...data };
 
-      if (payload.email) {
-        payload.email = this.formatEmail(payload.email);
-        await this.checkUniqueEmail(payload.email, txOptions);
-      }
+    if (payload.email) {
+      payload.email = this.formatEmail(payload.email);
+      await this.checkUniqueEmail(payload.email, query);
+    }
 
-      if (payload.password) {
-        payload.password = await this.hashPassword(payload.password);
-      }
+    if (payload.password) {
+      payload.password = await this.hashPassword(payload.password);
+    }
 
-      return super.create(user, payload, txOptions);
-    });
+    return super.create(user, payload, query);
   }
 
   async updateById(
@@ -76,29 +69,23 @@ export class UserService extends BaseService<User> {
     data: Partial<User>,
     query?: FindQuery<User>,
   ): Promise<User | null> {
-    return this.executeWithTransaction(query, async (txOptions) => {
-      const existingUser = await this.getById(user, id, txOptions);
-      if (!existingUser) {
-        return null;
-      }
+    const existingUser = await this.getById(user, id, query);
+    if (!existingUser) {
+      return null;
+    }
 
-      const payload = { ...data };
+    const payload = { ...data };
 
-      if (payload.email) {
-        payload.email = this.formatEmail(payload.email);
-        await this.checkUniqueEmail(
-          payload.email,
-          txOptions,
-          existingUser.email,
-        );
-      }
+    if (payload.email) {
+      payload.email = this.formatEmail(payload.email);
+      await this.checkUniqueEmail(payload.email, query, existingUser.email);
+    }
 
-      if (payload.password) {
-        payload.password = await this.hashPassword(payload.password);
-      }
+    if (payload.password) {
+      payload.password = await this.hashPassword(payload.password);
+    }
 
-      return super.updateById(user, id, payload, txOptions);
-    });
+    return super.updateById(user, id, payload, query);
   }
 
   async updateProfile(
@@ -109,13 +96,11 @@ export class UserService extends BaseService<User> {
       throw new BadRequestException('error-invalid-user-id');
     }
 
-    return this.executeWithTransaction(undefined, async (txOptions) => {
-      const payload: Partial<User> = {};
-      if (dto.firstName !== undefined) payload.firstName = dto.firstName;
-      if (dto.lastName !== undefined) payload.lastName = dto.lastName;
-      if (dto.avatar !== undefined) payload.avatar = dto.avatar;
+    const payload: Partial<User> = {};
+    if (dto.firstName !== undefined) payload.firstName = dto.firstName;
+    if (dto.lastName !== undefined) payload.lastName = dto.lastName;
+    if (dto.avatar !== undefined) payload.avatar = dto.avatar;
 
-      return super.updateById(user, user.id!, payload, txOptions);
-    });
+    return super.updateById(user, user.id, payload);
   }
 }

@@ -3,7 +3,6 @@ export interface CacheStrategy {
   set<T>(key: string, value: T, ttl?: number): Promise<void>;
   del(key: string): Promise<void>;
   delByPattern(pattern: string): Promise<void>;
-  delByTags(tags: string[]): Promise<void>;
   clear(): Promise<void>;
   has(key: string): Promise<boolean>;
 }

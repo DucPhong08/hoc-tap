@@ -16,7 +16,6 @@ export class RedisCacheService
   private client: RedisClientType | null = null;
   private readonly logger = new Logger(RedisCacheService.name);
   private readonly config: CacheConfig;
-  private readonly tagPrefix = 'tag:';
   private isConnected = false;
 
   constructor(private readonly configService: ConfigService) {
@@ -58,66 +57,38 @@ export class RedisCacheService
 
       await this.client.connect();
     } catch {
-      this.isConnected = false;
-      this.client = null;
-      this.logger.warn('Redis không khả dụng — cache bị bỏ qua');
+      this.logger.warn('Không thể kết nối Redis, chuyển sang chạy không cache');
     }
   }
 
   async onModuleDestroy() {
     if (this.client && this.isConnected) {
-      try {
-        await this.client.quit();
-      } catch {
-        /* bỏ qua */
-      }
+      await this.client.quit();
     }
   }
 
-  private key(k: string) {
+  private key(k: string): string {
     return `${this.config.prefix}:${k}`;
   }
 
   async get<T>(key: string): Promise<T | null> {
-    if (!this.isConnected) return null;
+    if (!this.isConnected || !this.client) return null;
     try {
-      const data = await this.client!.get(this.key(key));
-      return data ? JSON.parse(data) : null;
+      const raw = await this.client.get(this.key(key));
+      return raw ? (JSON.parse(raw) as T) : null;
     } catch {
       return null;
     }
   }
 
   async set<T>(key: string, value: T, ttl?: number): Promise<void> {
-    if (!this.isConnected) return;
+    if (!this.isConnected || !this.client) return;
     try {
-      await this.client!.setEx(
+      await this.client.setEx(
         this.key(key),
         ttl ?? this.config.ttl,
         JSON.stringify(value),
       );
-    } catch {
-      /* bỏ qua */
-    }
-  }
-
-  async setWithTags<T>(
-    key: string,
-    value: T,
-    tags: string[],
-    ttl?: number,
-  ): Promise<void> {
-    await this.set(key, value, ttl);
-    if (!this.isConnected) return;
-    try {
-      const effectiveTtl = ttl ?? this.config.ttl;
-      for (const tag of tags) {
-        const tagKey = this.key(`${this.tagPrefix}${tag}`);
-        await this.client!.sAdd(tagKey, this.key(key));
-        if (effectiveTtl) {
-          await this.client!.expire(tagKey, effectiveTtl * 2);
-        }
-      }
     } catch {
       /* bỏ qua */
     }
@@ -155,33 +126,19 @@ export class RedisCacheService
     }
   }
 
-  async delByTags(tags: string[]): Promise<void> {
+  async clear(): Promise<void> {
     if (!this.isConnected || !this.client) return;
     try {
-      for (const tag of tags) {
-        const tagKey = this.key(`${this.tagPrefix}${tag}`);
-        const keys = await this.client.sMembers(tagKey);
-        if (keys.length) await this.client.unlink(keys);
-        await this.client.unlink(tagKey);
-      }
-    } catch (err) {
-      this.logger.warn(`Lỗi delByTags: ${(err as Error).message}`);
-    }
-  }
-
-  async clear(): Promise<void> {
-    if (!this.isConnected) return;
-    try {
-      await this.client!.flushDb();
+      await this.client.flushDb();
     } catch {
       /* bỏ qua */
     }
   }
 
   async has(key: string): Promise<boolean> {
-    if (!this.isConnected) return false;
+    if (!this.isConnected || !this.client) return false;
     try {
-      return (await this.client!.exists(this.key(key))) > 0;
+      return (await this.client.exists(this.key(key))) > 0;
     } catch {
       return false;
     }

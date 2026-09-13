@@ -9,7 +9,7 @@ import { DatabaseErrorInterceptor } from './common/interceptors/database-error.i
 import { TimeoutInterceptor } from './common/interceptors/timeout.interceptor';
 import type { HostConfig } from './config/configuration';
 
-const API_PREFIX = 'api';
+const SWAGGER_PATH = 'api';
 const SWAGGER_TITLE = 'API Documentation';
 const SWAGGER_DESCRIPTION = 'API Documentation';
 const SWAGGER_VERSION = '1.0';
@@ -50,9 +50,6 @@ export async function bootstrap() {
     }
   }
 
-  // App config
-  app.setGlobalPrefix(API_PREFIX);
-
   // CORS
   app.enableCors({
     origin: true,
@@ -88,7 +85,7 @@ export async function bootstrap() {
     .addBearerAuth()
     .build();
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup(API_PREFIX, app, document, {
+  SwaggerModule.setup(SWAGGER_PATH, app, document, {
     swaggerOptions: {
       defaultModelsExpandDepth: -1,
     },
@@ -99,7 +96,9 @@ export async function bootstrap() {
 
   await app.listen(port);
   console.log(`Application is running on: http://localhost:${port}`);
-  console.log(`Swagger documentation: http://localhost:${port}/${API_PREFIX}`);
+  console.log(
+    `Swagger documentation: http://localhost:${port}/${SWAGGER_PATH}`,
+  );
 }
 
 if (require.main === module) {

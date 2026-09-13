@@ -26,7 +26,6 @@ import {
   populateEntity,
 } from './mikro-orm/helpers';
 import type { RepositoryConfig } from '@/common/types/repository.types';
-import { mergeMethodOptions } from './mikro-orm/populate-config';
 
 export abstract class MikroOrmBaseRepository<
   E extends BaseEntity,
@@ -39,6 +38,18 @@ export abstract class MikroOrmBaseRepository<
 
   protected get em(): EntityManager {
     return this.repository.getEntityManager();
+  }
+
+  private mergeQuery(
+    method: 'getById' | 'getOne' | 'getMany' | 'getPage',
+    query?: FindQuery<E, TContext>,
+  ): FindQuery<E, TContext> | undefined {
+    const defaultPopulate = this.config?.populate?.[method];
+    if (!defaultPopulate) return query;
+    return {
+      ...(query ?? {}),
+      population: query?.population ?? defaultPopulate,
+    } as FindQuery<E, TContext>;
   }
 
   // ===========================================================================
@@ -79,7 +90,7 @@ export abstract class MikroOrmBaseRepository<
   // ===========================================================================
 
   async getById(id: string, query?: FindQuery<E, TContext>): Promise<E | null> {
-    const mergedQuery = mergeMethodOptions(this.config, 'getById', query);
+    const mergedQuery = this.mergeQuery('getById', query);
     const { repository } = resolveContext(
       this.em,
       this.repository,
@@ -98,7 +109,7 @@ export abstract class MikroOrmBaseRepository<
     condition: QueryCondition<E>,
     query?: FindQuery<E, TContext>,
   ): Promise<E | null> {
-    const mergedQuery = mergeMethodOptions(this.config, 'getOne', query);
+    const mergedQuery = this.mergeQuery('getOne', query);
     const { repository } = resolveContext(
       this.em,
       this.repository,
@@ -117,7 +128,7 @@ export abstract class MikroOrmBaseRepository<
     condition?: QueryCondition<E>,
     query?: FindQuery<E, TContext>,
   ): Promise<E[]> {
-    const mergedQuery = mergeMethodOptions(this.config, 'getMany', query);
+    const mergedQuery = this.mergeQuery('getMany', query);
     const { repository } = resolveContext(
       this.em,
       this.repository,
@@ -136,7 +147,7 @@ export abstract class MikroOrmBaseRepository<
     condition?: QueryCondition<E>,
     query?: FindQuery<E, TContext>,
   ): Promise<PaginationResult<E>> {
-    const mergedQuery = mergeMethodOptions(this.config, 'getPage', query) ?? {};
+    const mergedQuery = this.mergeQuery('getPage', query) ?? {};
     const page = mergedQuery.page ?? 1;
     const limit = mergedQuery.limit ?? 10;
     const sort = mergedQuery.sort ?? { createdAt: -1 };
