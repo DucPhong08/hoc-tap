@@ -1,19 +1,19 @@
 import { Controller, Get } from '@nestjs/common';
-import * as fs from 'fs';
-import * as path from 'path';
-import { Public } from '../../common/decorators/public.decorator';
-import { Authorization } from '../../common/decorators/authorization.decorator';
-import { Roles } from '../../common/decorators/roles.decorator';
-import { SystemRole } from '../../modules/roles/enums/system-role.enum';
+import { Public } from '@/common/decorators/public.decorator';
+import {
+  Authorize,
+  Authorization,
+} from '@/common/decorators/authorize.decorator';
+import { Role } from '@/common/constants/role.constant';
 import { ApiTags } from '@nestjs/swagger';
 
 @ApiTags('monitoring')
 @Controller('monitoring')
-@Authorization()
+@Authorization(Role.ADMIN)
 export class MonitoringController {
   @Get('health')
   @Public()
-  getHealth() {
+  health() {
     return {
       status: 'ok',
       workerId: process.pid,
@@ -23,73 +23,9 @@ export class MonitoringController {
     };
   }
 
-  @Get('worker-info')
-  @Roles(SystemRole.ADMIN)
-  getWorkerInfo() {
-    return {
-      workerId: process.pid,
-      memory: {
-        rss: `${Math.round(process.memoryUsage().rss / 1024 / 1024)}MB`,
-        heapTotal: `${Math.round(process.memoryUsage().heapTotal / 1024 / 1024)}MB`,
-        heapUsed: `${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`,
-        external: `${Math.round(process.memoryUsage().external / 1024 / 1024)}MB`,
-      },
-      cpu: process.cpuUsage(),
-      uptime: `${Math.round(process.uptime())}s`,
-      platform: process.platform,
-      nodeVersion: process.version,
-    };
-  }
-
-  @Get('logs/recent')
-  @Roles(SystemRole.ADMIN)
-  async getRecentLogs() {
-    try {
-      const logPath = path.join('logs', 'app.log');
-      if (!fs.existsSync(logPath)) {
-        return { logs: [], message: 'No logs found' };
-      }
-
-      const content = await fs.promises.readFile(logPath, 'utf-8');
-      const lines = content.split('\n').filter((line) => line.trim());
-      const recent = lines.slice(-50); // Last 50 lines
-
-      return {
-        total: lines.length,
-        recent: recent.length,
-        logs: recent,
-      };
-    } catch (error) {
-      return { error: 'Failed to read logs', message: error.message };
-    }
-  }
-
-  @Get('logs/errors')
-  @Roles(SystemRole.ADMIN)
-  async getErrorLogs() {
-    try {
-      const logPath = path.join('logs', 'error.log');
-      if (!fs.existsSync(logPath)) {
-        return { logs: [], message: 'No error logs found' };
-      }
-
-      const content = await fs.promises.readFile(logPath, 'utf-8');
-      const lines = content.split('\n').filter((line) => line.trim());
-      const recent = lines.slice(-20); // Last 20 errors
-
-      return {
-        total: lines.length,
-        recent: recent.length,
-        logs: recent,
-      };
-    } catch (error) {
-      return { error: 'Failed to read error logs', message: error.message };
-    }
-  }
-
   @Get('stats')
-  @Roles(SystemRole.ADMIN)
-  getStats() {
+  @Authorize(Role.ADMIN)
+  stats() {
     const memUsage = process.memoryUsage();
     const cpuUsage = process.cpuUsage();
 

@@ -3,14 +3,13 @@ import {
   EntityRepository,
   type Populate,
 } from '@mikro-orm/core';
-import { BaseEntity } from '../../../common/entity/base.entity';
+import { BaseEntity } from '@/common/entity/base.entity';
 import { Sort } from './sort';
 import { parseFilterRules } from './filter';
-import type { PopulationQuery } from '../../../common/types/repository/populate.types';
 import type {
+  PopulationQuery,
   FindQuery,
-  CommandOptions,
-} from '../../../common/types/repository/options.types';
+} from '@/common/types/repository.types';
 
 export const resolveContext = <E extends BaseEntity>(
   em: EntityManager,
@@ -29,15 +28,11 @@ export const resolveContext = <E extends BaseEntity>(
 };
 
 export const parseFields = (
-  select?: string[] | Record<string, any>,
+  select?: Record<string, any>,
   prefix = '',
 ): string[] => {
   if (!select) return [];
-  const fields = Array.isArray(select)
-    ? select
-    : Object.entries(select)
-        .filter(([, v]) => v === 1 || v === '1' || v === true)
-        .map(([k]) => k);
+  const fields = Object.keys(select).filter((k) => select[k]);
   return prefix ? fields.map((f) => `${prefix}.${f}`) : fields;
 };
 
@@ -45,93 +40,61 @@ export function parsePopulation(
   population?: PopulationQuery<any>[],
   prefix = '',
 ): { populate: unknown[]; extraFields: string[] } {
-  if (!Array.isArray(population)) return { populate: [], extraFields: [] };
+  if (!population?.length) return { populate: [], extraFields: [] };
 
   const populate: unknown[] = [];
   const extraFields: string[] = [];
 
   for (const item of population) {
-    if (typeof item === 'string') {
-      populate.push(item);
-    } else if (item?.path) {
-      const {
-        path,
-        filters,
-        sort,
-        limit,
-        select,
-        population: nestedPop,
-      } = item;
-      const currPrefix = prefix ? `${prefix}.${path}` : path;
-      const option: {
-        field: string;
-        where?: unknown;
-        orderBy?: unknown;
-        limit?: number;
-        children?: unknown[];
-      } = { field: path };
+    const { path, filters, sort, limit, select, population: nestedPop } = item;
+    const currPrefix = prefix ? `${prefix}.${path}` : path;
+    const option: Record<string, any> = { field: path };
 
-      if (filters)
-        option.where = Array.isArray(filters)
-          ? parseFilterRules(filters)
-          : filters;
-      if (sort) option.orderBy = Sort(sort);
-      if (limit) option.limit = limit;
-      if (select) extraFields.push(...parseFields(select, currPrefix));
+    if (filters?.length) option.where = parseFilterRules(filters);
+    if (sort) option.orderBy = Sort(sort);
+    if (limit) option.limit = limit;
+    if (select) extraFields.push(...parseFields(select, currPrefix));
 
-      if (Array.isArray(nestedPop)) {
-        const child = parsePopulation(nestedPop, currPrefix);
-        if (child.populate.length > 0) option.children = child.populate;
-        extraFields.push(...child.extraFields);
-      }
-      populate.push(option);
+    if (nestedPop?.length) {
+      const child = parsePopulation(nestedPop, currPrefix);
+      if (child.populate.length) option.children = child.populate;
+      extraFields.push(...child.extraFields);
     }
+    populate.push(option);
   }
   return { populate, extraFields };
 }
 
 export function findOptions(query?: FindQuery<any>): Record<string, any> {
   if (!query) return {};
-  const { select, population, sort, limit, offset } = query;
-  const rest = { ...query };
-  [
-    'select',
-    'population',
-    'sort',
-    'limit',
-    'offset',
-    'transaction',
-    'softDelete',
-    'refresh',
-  ].forEach((k) => delete rest[k]);
 
-  const { populate: parsedPopulate, extraFields } = parsePopulation(population);
-  const parsedFields = [...parseFields(select), ...extraFields];
+  const options: Record<string, any> = {};
 
-  const raw = {
-    fields: parsedFields.length > 0 ? parsedFields : undefined,
-    populate: parsedPopulate.length > 0 ? parsedPopulate : undefined,
-    orderBy: Sort(sort),
-    limit,
-    offset,
-    ...rest,
-  };
-  return Object.fromEntries(
-    Object.entries(raw).filter(([, v]) => v !== undefined),
-  );
+  if (query.population?.length) {
+    const { populate, extraFields } = parsePopulation(query.population);
+    if (populate.length) options.populate = populate;
+    const fields = [...parseFields(query.select), ...extraFields];
+    if (fields.length) options.fields = fields;
+  } else if (query.select) {
+    options.fields = parseFields(query.select);
+  }
+
+  if (query.sort) options.orderBy = Sort(query.sort);
+  if (query.limit) options.limit = query.limit;
+  if (query.offset != null) options.offset = query.offset;
+
+  return options;
 }
 
 export async function populateEntity<E extends BaseEntity>(
   em: EntityManager,
-  entity: E | null,
-  opts?: CommandOptions<EntityManager, E>,
-): Promise<E | null> {
-  if (!entity) return null;
-  if (opts?.population) {
-    const { populate } = parsePopulation(opts.population);
-    if (populate.length > 0)
-      await em.populate(entity, populate as unknown as Populate<E>);
+  entity: E,
+  opts?: FindQuery<E, EntityManager>,
+): Promise<E> {
+  if (!opts?.population?.length) return entity;
+  const { populate } = parsePopulation(opts.population);
+  if (populate.length) {
+    await em.populate(entity, populate as unknown as Populate<E>);
   }
-  if (opts?.refresh) await em.refresh(entity);
   return entity;
 }

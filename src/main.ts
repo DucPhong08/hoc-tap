@@ -1,5 +1,5 @@
-import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { NestFactory, Reflector } from '@nestjs/core';
+import { ClassSerializerInterceptor, ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
@@ -7,9 +7,9 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import { DatabaseErrorInterceptor } from './common/interceptors/database-error.interceptor';
 import { TimeoutInterceptor } from './common/interceptors/timeout.interceptor';
-import type { HostConfig } from './config/configuration.types';
+import type { HostConfig } from './config/configuration';
 
-const API_PREFIX = 'api';
+const SWAGGER_PATH = 'api';
 const SWAGGER_TITLE = 'API Documentation';
 const SWAGGER_DESCRIPTION = 'API Documentation';
 const SWAGGER_VERSION = '1.0';
@@ -50,14 +50,9 @@ export async function bootstrap() {
     }
   }
 
-  // App config
-  app.setGlobalPrefix(API_PREFIX);
-
   // CORS
-  const allowedOrigins =
-    configService.get<string[]>('cors.allowedOrigins') || [];
   app.enableCors({
-    origin: allowedOrigins,
+    origin: true,
     credentials: true,
   });
 
@@ -73,10 +68,13 @@ export async function bootstrap() {
   // Global filters - chỉ dùng AllExceptionsFilter
   app.useGlobalFilters(new AllExceptionsFilter());
 
+  const reflector = app.get(Reflector);
+
   app.useGlobalInterceptors(
     new DatabaseErrorInterceptor(),
     new TimeoutInterceptor(),
-    new TransformInterceptor(), // Transform response first
+    new ClassSerializerInterceptor(reflector),
+    new TransformInterceptor(), // Transform response
   );
 
   // Swagger
@@ -87,18 +85,20 @@ export async function bootstrap() {
     .addBearerAuth()
     .build();
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup(API_PREFIX, app, document, {
+  SwaggerModule.setup(SWAGGER_PATH, app, document, {
     swaggerOptions: {
       defaultModelsExpandDepth: -1,
     },
   });
 
   const host = configService.get<HostConfig>('host');
-  const port = host?.port || 3000;
+  const port = host?.port ?? 3000;
 
   await app.listen(port);
   console.log(`Application is running on: http://localhost:${port}`);
-  console.log(`Swagger documentation: http://localhost:${port}/${API_PREFIX}`);
+  console.log(
+    `Swagger documentation: http://localhost:${port}/${SWAGGER_PATH}`,
+  );
 }
 
 if (require.main === module) {

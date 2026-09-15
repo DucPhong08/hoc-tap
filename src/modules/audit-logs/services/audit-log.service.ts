@@ -22,25 +22,21 @@ export class AuditLogService {
     });
   }
 
-  async logMany(dataArray: LogActionData[]): Promise<AuditLog[]> {
-    const entities = dataArray.map((data) => ({
-      action: data.action,
-      entityType: data.entityType,
-      entityId: data.entityId,
-      userId: data.userId,
-      userEmail: data.userEmail,
-      ipAddress: data.ipAddress,
-      userAgent: data.userAgent,
-      endpoint: data.endpoint,
-      method: data.method,
-      description: data.description,
-    }));
-
-    const result: AuditLog[] = [];
-    for (const entity of entities) {
-      result.push(await this.repository.create(entity));
-    }
-    return result;
+  async logMany(dataArray: LogActionData[]): Promise<{ n: number }> {
+    return this.repository.insertMany(
+      dataArray.map((data) => ({
+        action: data.action,
+        entityType: data.entityType,
+        entityId: data.entityId,
+        userId: data.userId,
+        userEmail: data.userEmail,
+        ipAddress: data.ipAddress,
+        userAgent: data.userAgent,
+        endpoint: data.endpoint,
+        method: data.method,
+        description: data.description,
+      })),
+    );
   }
 
   async getUserActions(userId: string, limit = 100): Promise<AuditLog[]> {
@@ -69,9 +65,9 @@ export class AuditLogService {
     return result.data;
   }
 
-  async cleanupOldLogs(olderThanDays: number): Promise<number> {
+  async cleanup(days: number): Promise<number> {
     const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() - olderThanDays);
+    cutoffDate.setDate(cutoffDate.getDate() - days);
     const result = await this.repository.deleteMany({
       createdAt: { $lt: cutoffDate },
     });

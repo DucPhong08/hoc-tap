@@ -1,68 +1,108 @@
-import {
-  readBooleanValue,
-  readNumberValue,
-  readStringValue,
-} from './configuration.helpers';
-import { ApplicationConfiguration } from './configuration.types';
+import type { CacheConfig } from '@/infra/cache/cache.interface';
 
-export default function configuration(): ApplicationConfiguration {
-  const environment = process.env;
-  const resolvedMode =
-    readStringValue(environment.MODE) ??
-    readStringValue(environment.NODE_ENV, 'development');
-  const mode: ApplicationConfiguration['mode'] =
-    resolvedMode === 'production' || resolvedMode === 'test'
-      ? resolvedMode
-      : 'development';
+export interface HostConfig {
+  host: string;
+  port: number;
+}
 
-  const config = {
+export interface AppConfig {
+  mode: 'development' | 'production' | 'test';
+  host: string;
+  port: number;
+}
+
+export interface AuthConfig {
+  jwtSecret: string;
+  jwtExpiresIn: string;
+  jwtRefreshSecret: string;
+  jwtRefreshExpiresIn: string;
+  jwtIssuer: string;
+  jwtAudience: string;
+  bcryptRounds: number;
+  refreshGracePeriodSeconds: number;
+}
+
+export interface GoogleOAuthConfig {
+  clientId: string;
+  clientSecret: string;
+  callbackUrl: string;
+}
+
+export interface FacebookOAuthConfig {
+  appId: string;
+  appSecret: string;
+  callbackUrl: string;
+}
+
+export interface OAuthConfig {
+  google: GoogleOAuthConfig;
+  facebook: FacebookOAuthConfig;
+}
+
+export interface AppConfiguration {
+  mode: string;
+  app: AppConfig;
+  host: HostConfig;
+  auth: AuthConfig;
+  cache: CacheConfig;
+  oauth: OAuthConfig;
+}
+
+export default (): AppConfiguration => {
+  const mode =
+    process.env.NODE_ENV === 'production' || process.env.MODE === 'production'
+      ? 'production'
+      : (process.env.NODE_ENV as 'development' | 'production' | 'test') ||
+        'development';
+
+  const host = process.env.HOST || '0.0.0.0';
+  const port = Number(process.env.PORT) || 3000;
+
+  return {
     mode,
-    host: {
-      host: readStringValue(environment.HOST, '0.0.0.0'),
-      port: readNumberValue(environment.PORT, 3000),
+    app: {
+      mode,
+      host,
+      port,
     },
-    cors: {
-      allowedOrigins: readStringValue(
-        environment.CORS_ALLOWED_ORIGINS,
-        'http://localhost:3000,http://localhost:3001',
-      )
-        .split(',')
-        .map((origin) => origin.trim()),
+    host: {
+      host,
+      port,
     },
     auth: {
-      jwtSecret: readStringValue(environment.JWT_SECRET, 'your-secret-key'),
-      jwtExpiresIn: readStringValue(environment.JWT_EXPIRES_IN, '1d'),
-      jwtRefreshSecret: readStringValue(
-        environment.JWT_REFRESH_SECRET,
-        'your-refresh-secret',
-      ),
-      jwtRefreshExpiresIn: readStringValue(
-        environment.JWT_REFRESH_EXPIRES_IN,
-        '7d',
-      ),
-      bcryptRounds: readNumberValue(environment.BCRYPT_ROUNDS, 10),
+      jwtSecret: process.env.JWT_SECRET || 'your-secret-key',
+      jwtExpiresIn: process.env.JWT_EXPIRES_IN || '15m',
+      jwtRefreshSecret: process.env.JWT_REFRESH_SECRET || 'your-refresh-secret',
+      jwtRefreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
+      jwtIssuer: process.env.JWT_ISSUER || 'hoc-tap-auth',
+      jwtAudience: process.env.JWT_AUDIENCE || 'hoc-tap-client',
+      bcryptRounds: Number(process.env.BCRYPT_ROUNDS) || 10,
+      refreshGracePeriodSeconds:
+        Number(process.env.REFRESH_GRACE_PERIOD_SECONDS) || 15,
     },
     cache: {
-      enabled: readBooleanValue(environment.CACHE_ENABLED, false),
-      ttl: readNumberValue(environment.CACHE_TTL, 300),
-      prefix: readStringValue(environment.CACHE_PREFIX, 'app'),
-      redis: {
-        host: readStringValue(environment.REDIS_HOST, 'localhost'),
-        port: readNumberValue(environment.REDIS_PORT, 6379),
-        password: readStringValue(environment.REDIS_PASSWORD),
-        db: readNumberValue(environment.REDIS_DB, 0),
+      ttl: Number(process.env.CACHE_TTL) || 300,
+      prefix: process.env.CACHE_PREFIX || 'app',
+      redis: process.env.REDIS_HOST
+        ? {
+            host: process.env.REDIS_HOST,
+            port: Number(process.env.REDIS_PORT) || 6379,
+            password: process.env.REDIS_PASSWORD || undefined,
+            db: Number(process.env.REDIS_DB) || 0,
+          }
+        : undefined,
+    },
+    oauth: {
+      google: {
+        clientId: process.env.GOOGLE_CLIENT_ID || '',
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+        callbackUrl: process.env.GOOGLE_CALLBACK_URL || '',
+      },
+      facebook: {
+        appId: process.env.FACEBOOK_APP_ID || '',
+        appSecret: process.env.FACEBOOK_APP_SECRET || '',
+        callbackUrl: process.env.FACEBOOK_CALLBACK_URL || '',
       },
     },
-    GOOGLE_CLIENT_ID: readStringValue(environment.GOOGLE_CLIENT_ID, ''),
-    GOOGLE_CLIENT_SECRET: readStringValue(environment.GOOGLE_CLIENT_SECRET, ''),
-    GOOGLE_CALLBACK_URL: readStringValue(environment.GOOGLE_CALLBACK_URL, ''),
-    FACEBOOK_APP_ID: readStringValue(environment.FACEBOOK_APP_ID, ''),
-    FACEBOOK_APP_SECRET: readStringValue(environment.FACEBOOK_APP_SECRET, ''),
-    FACEBOOK_CALLBACK_URL: readStringValue(
-      environment.FACEBOOK_CALLBACK_URL,
-      '',
-    ),
   };
-
-  return config;
-}
+};

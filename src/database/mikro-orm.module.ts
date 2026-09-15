@@ -1,44 +1,80 @@
-import { Global, Module } from '@nestjs/common';
-import { MikroOrmModule } from '@mikro-orm/nestjs';
+import { Global, Injectable, Module, NestMiddleware } from '@nestjs/common';
+import {
+  MikroOrmModule,
+  MikroOrmModuleOptions,
+  MikroOrmOptionsFactory,
+  InjectMikroORM,
+} from '@mikro-orm/nestjs';
+import { RequestContext, MikroORM } from '@mikro-orm/core';
 import { MigrationService } from './migration.service';
-import { DB_CONTEXTS } from 'src/database/database.constants';
+import { DB_CONTEXTS } from '@/database/database.constants';
+import { DatabaseEnvReader } from './env/database-env';
 import { DatabaseContextRegistry } from './registration/database-context.registry';
-import { DatabaseEnvironmentReader } from './env/database-environment.reader';
-import { DatabaseEnvironmentValidator } from './env/database-environment.validator';
-import { DatabaseContextConfigService } from './runtime/database-context-config.service';
-import { PostgreSqlOptionsStrategy } from './options/postgresql-options.strategy';
-import { MongoDbOptionsStrategy } from './options/mongodb-options.strategy';
-import { DatabaseOptionsFactory } from './options/database-options.factory';
-import { MainMikroOrmOptionsFactory } from './runtime/main-mikro-orm-options.factory';
-import { LogsMikroOrmOptionsFactory } from './runtime/logs-mikro-orm-options.factory';
+import { getEntitiesByContext } from './entity-registry.helper';
+
+@Injectable()
+class DatabaseConfigFactory implements MikroOrmOptionsFactory {
+  private readonly env = new DatabaseEnvReader();
+  private readonly registry = new DatabaseContextRegistry();
+
+  createMikroOrmOptions(contextName?: string): MikroOrmModuleOptions {
+    return {
+      ...this.env.buildOptions(this.registry.get(contextName!)),
+      contextName,
+      autoLoadEntities: false,
+      registerRequestContext: false,
+    };
+  }
+}
+
+@Injectable()
+export class MultiOrmMiddleware implements NestMiddleware {
+  constructor(
+    @InjectMikroORM(DB_CONTEXTS.MAIN) private readonly mainOrm: MikroORM,
+    @InjectMikroORM(DB_CONTEXTS.LOGS) private readonly logsOrm: MikroORM,
+  ) {}
+
+  use(req: any, res: any, next: () => void) {
+    RequestContext.create([this.mainOrm.em, this.logsOrm.em], next);
+  }
+}
+
+const mainEntitiesFeature = MikroOrmModule.forFeature({
+  entities: getEntitiesByContext(DB_CONTEXTS.MAIN),
+  contextName: DB_CONTEXTS.MAIN,
+});
+
+const logsEntitiesFeature = MikroOrmModule.forFeature({
+  entities: getEntitiesByContext(DB_CONTEXTS.LOGS),
+  contextName: DB_CONTEXTS.LOGS,
+});
 
 @Global()
 @Module({
   imports: [
-    // ── MAIN database ─────────────────────────────────────────────────
     MikroOrmModule.forRootAsync({
-      useClass: MainMikroOrmOptionsFactory,
+      useClass: DatabaseConfigFactory,
       contextName: DB_CONTEXTS.MAIN,
     }),
-
-    // ── LOGS database ─────────────────────────────────────────────────
     MikroOrmModule.forRootAsync({
-      useClass: LogsMikroOrmOptionsFactory,
+      useClass: DatabaseConfigFactory,
       contextName: DB_CONTEXTS.LOGS,
     }),
+    mainEntitiesFeature,
+    logsEntitiesFeature,
   ],
   providers: [
-    DatabaseContextRegistry,
-    DatabaseEnvironmentReader,
-    DatabaseEnvironmentValidator,
-    DatabaseContextConfigService,
-    PostgreSqlOptionsStrategy,
-    MongoDbOptionsStrategy,
-    DatabaseOptionsFactory,
-    MainMikroOrmOptionsFactory,
-    LogsMikroOrmOptionsFactory,
     MigrationService,
+    MultiOrmMiddleware,
+    ...(mainEntitiesFeature.providers ?? []),
+    ...(logsEntitiesFeature.providers ?? []),
   ],
-  exports: [DatabaseContextConfigService, DatabaseOptionsFactory],
+  exports: [
+    MigrationService,
+    MultiOrmMiddleware,
+    MikroOrmModule,
+    ...(mainEntitiesFeature.exports ?? []),
+    ...(logsEntitiesFeature.exports ?? []),
+  ],
 })
 export class MikroOrmDatabaseModule {}

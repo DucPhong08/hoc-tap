@@ -13,8 +13,6 @@ import {
   HeaderResolver,
 } from 'nestjs-i18n';
 import * as path from 'path';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
 import configuration from './config/configuration';
 import { UsersModule } from './modules/users/users.module';
 import { AuthModule } from './modules/auth/auth.module';
@@ -22,14 +20,20 @@ import { AuditLogsModule } from './modules/audit-logs/audit-logs.module';
 import { SettingsModule } from './modules/settings/settings.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
-import { MikroOrmDatabaseModule } from './database/mikro-orm.module';
+import {
+  MikroOrmDatabaseModule,
+  MultiOrmMiddleware,
+} from './database/mikro-orm.module';
 import { CacheModule } from './infra/cache/cache.module';
 import { MonitoringModule } from './infra/monitoring/monitoring.module';
 import { WebsocketModule } from './infra/websocket/websocket.module';
-import { CronModule } from './infra/cron/cron.module';
+import { ScheduleModule } from '@nestjs/schedule';
 import { RequestLoggingMiddleware } from './common/middleware/request-logging.middleware';
-import { RolesModule } from './modules/roles/roles.module';
-// PLOP: IMPORT_MODULE
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { BullModule } from '@nestjs/bull';
+import { ConfigService } from '@nestjs/config';
+
+const hasRedis = Boolean(process.env.REDIS_HOST);
 
 @Module({
   imports: [
@@ -38,6 +42,28 @@ import { RolesModule } from './modules/roles/roles.module';
       load: [configuration],
       ignoreEnvFile: false,
     }),
+    ...(hasRedis
+      ? [
+          BullModule.forRootAsync({
+            imports: [ConfigModule],
+            inject: [ConfigService],
+            useFactory: (configService: ConfigService) => ({
+              redis: {
+                host: configService.get<string>(
+                  'cache.redis.host',
+                  'localhost',
+                ),
+                port: configService.get<number>('cache.redis.port', 6379),
+                password:
+                  configService.get<string>('cache.redis.password') ||
+                  undefined,
+                db: configService.get<number>('cache.redis.db', 0),
+                maxRetriesPerRequest: null,
+              },
+            }),
+          }),
+        ]
+      : []),
     I18nModule.forRoot({
       fallbackLanguage: 'vi',
       loaderOptions: {
@@ -54,17 +80,25 @@ import { RolesModule } from './modules/roles/roles.module';
     CacheModule,
     MonitoringModule,
     WebsocketModule,
-    CronModule,
+    ScheduleModule.forRoot(),
     AuthModule,
     UsersModule,
     SettingsModule,
     AuditLogsModule,
-    RolesModule,
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60000,
+        limit: 120,
+      },
+    ]),
     // PLOP: IMPORT_ARRAY
   ],
-  controllers: [AppController],
+  controllers: [],
   providers: [
-    AppService,
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,
@@ -77,7 +111,7 @@ import { RolesModule } from './modules/roles/roles.module';
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer.apply(RequestLoggingMiddleware).forRoutes({
+    consumer.apply(MultiOrmMiddleware, RequestLoggingMiddleware).forRoutes({
       path: '{*path}',
       method: RequestMethod.ALL,
     });

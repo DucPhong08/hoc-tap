@@ -1,14 +1,11 @@
-import { EntityManager } from '@mikro-orm/core';
-import { Injectable, Optional } from '@nestjs/common';
-import { ApiError } from '../../../common/exceptions/api-error';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { plainToClass } from 'class-transformer';
 import { validate } from 'class-validator';
-import { BaseCrudService } from '../../../infra/services/base-crud.service';
+import { BaseService } from '@/infra/services/base.service';
 import { Setting } from '../entities/setting.entity';
 import { SettingRepository } from '../repositories/setting.repository';
-import type { User } from '../../users/entities/user.entity';
-import type { BaseTransaction } from '../../../infra/transaction/base-transaction.interface';
-import { InjectTransaction } from '../../../infra/transaction/transaction.provider';
+import type { FindQuery } from '@/common/interfaces/repository.interface';
+import type { User } from '@/modules/users/entities/user.entity';
 import {
   MAP_SETTING_ENTITY,
   SettingValue,
@@ -16,19 +13,12 @@ import {
 import { SettingKey } from '../enums/setting-key.enum';
 
 @Injectable()
-export class SettingService extends BaseCrudService<Setting, EntityManager> {
-  constructor(
-    private readonly settingRepository: SettingRepository,
-    @Optional()
-    @InjectTransaction()
-    transaction?: BaseTransaction<EntityManager>,
-  ) {
-    super(settingRepository, {
-      transaction,
-    });
+export class SettingService extends BaseService<Setting> {
+  constructor(private readonly settingRepository: SettingRepository) {
+    super(settingRepository);
   }
 
-  async getSettingValue<T extends SettingKey>(
+  async getValue<T extends SettingKey>(
     key: T,
   ): Promise<SettingValue<T> | null> {
     const setting = await this.settingRepository.getOne({ key });
@@ -38,13 +28,11 @@ export class SettingService extends BaseCrudService<Setting, EntityManager> {
     return setting.value as SettingValue<T>;
   }
 
-  /**
-   * Set giá trị setting với validation
-   */
-  async setSettingValue<T extends SettingKey>(
-    user: User | null,
+  async setValue<T extends SettingKey>(
+    user: User,
     key: T,
     value: SettingValue<T>,
+    query?: FindQuery<Setting>,
   ): Promise<Setting> {
     const ValueClass = MAP_SETTING_ENTITY[key];
 
@@ -57,48 +45,44 @@ export class SettingService extends BaseCrudService<Setting, EntityManager> {
 
       if (validateResult.length > 0) {
         console.error('Setting validation failed:', validateResult);
-        throw ApiError.BadReq('error-setting-invalid');
+        throw new BadRequestException('error-setting-invalid');
       }
     }
 
-    return this.executeWithTransaction(undefined, async (txOptions) => {
-      const existing = await this.settingRepository.getOne({ key }, txOptions);
+    const existing = await this.settingRepository.getOne({ key }, query);
 
-      if (existing) {
-        return super.updateById(
-          user,
-          existing.id,
-          { value: value as any },
-          txOptions,
-        );
-      }
-
-      return super.create(
+    if (existing) {
+      const updated = await super.updateById(
         user,
-        {
-          key,
-          value: value as any,
-        },
-        txOptions,
+        existing.id,
+        { value: value as any },
+        query,
       );
-    });
+      return updated!;
+    }
+
+    return super.create(
+      user,
+      {
+        key,
+        value: value as any,
+      },
+      query,
+    );
   }
 
-  async getSettingValues(keys: SettingKey[]): Promise<Record<string, any>> {
-    const settings = await Promise.all(
-      keys.map(async (key) => {
-        try {
-          const value = await this.getSettingValue(key as any);
-          return { key, value };
-        } catch {
-          return { key, value: null };
-        }
-      }),
-    );
+  async getValues(keys: SettingKey[]): Promise<Record<string, any>> {
+    if (!keys.length) return {};
 
-    return settings.reduce(
-      (acc, { key, value }) => {
-        acc[key] = value;
+    const settings = await this.settingRepository.getMany({
+      key: { $in: keys },
+    });
+
+    const settingMap = new Map(settings.map((s) => [s.key, s.value]));
+
+    return keys.reduce(
+      (acc, key) => {
+        acc[key] = settingMap.get(key) ?? null;
         return acc;
       },
       {} as Record<string, any>,

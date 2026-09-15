@@ -2,24 +2,23 @@ import { Controller, Get, Query, Param, Delete } from '@nestjs/common';
 import { ApiTags, ApiQuery } from '@nestjs/swagger';
 import { AuditLogService } from '../services/audit-log.service';
 import { AuditLog } from '../entities/audit-log.entity';
-import { Roles } from '../../../common/decorators/roles.decorator';
-import { SystemRole } from '../../roles/enums/system-role.enum';
+import { Authorization } from '@/common/decorators/authorize.decorator';
 
 @ApiTags('audit-logs')
 @Controller('audit-logs')
-@Roles(SystemRole.ADMIN)
+@Authorization()
 export class AuditLogController {
   constructor(private readonly auditLogService: AuditLogService) {}
 
   @Get('recent')
   @ApiQuery({ name: 'limit', required: false, type: Number })
-  async getRecentLogs(@Query('limit') limit?: number): Promise<AuditLog[]> {
-    return this.auditLogService.getRecentActions(limit || 50);
+  async getRecent(@Query('limit') limit?: number): Promise<AuditLog[]> {
+    return this.auditLogService.getRecentActions(limit);
   }
 
   @Get('user/:userId')
   @ApiQuery({ name: 'limit', required: false, type: Number })
-  async getUserLogs(
+  async getByUser(
     @Param('userId') userId: string,
     @Query('limit') limit?: number,
   ): Promise<AuditLog[]> {
@@ -27,7 +26,7 @@ export class AuditLogController {
   }
 
   @Get('entity/:entityType/:entityId')
-  async getEntityHistory(
+  async getByEntity(
     @Param('entityType') entityType: string,
     @Param('entityId') entityId: string,
   ): Promise<AuditLog[]> {
@@ -40,12 +39,8 @@ export class AuditLogController {
     required: true,
     type: Number,
   })
-  async cleanupOldLogs(
-    @Query('days') days: number,
-  ): Promise<{ deleted: number }> {
-    const olderThan = new Date();
-    olderThan.setDate(olderThan.getDate() - days);
-    const deleted = await this.auditLogService.cleanupOldLogs(days);
+  async cleanup(@Query('days') days: number): Promise<{ deleted: number }> {
+    const deleted = await this.auditLogService.cleanup(days);
     return { deleted };
   }
 }

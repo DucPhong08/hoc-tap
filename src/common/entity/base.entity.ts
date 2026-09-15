@@ -1,17 +1,29 @@
-import { Entity, Property } from '@mikro-orm/core';
-import { SmartPrimaryKey } from '../decorators/smart-primary-key.decorator';
+import { Entity, PrimaryKey, Property, OptionalProps } from '@mikro-orm/core';
+import { IsOptional } from 'class-validator';
+import { v4 as uuidv4 } from 'uuid';
+
+const isMongo = !process.env.DB_MAIN_DRIVER?.toLowerCase().includes('postgres');
 
 @Entity({ abstract: true })
 export abstract class BaseEntity {
-  @SmartPrimaryKey()
+  [OptionalProps]?: 'createdAt' | 'updatedAt' | 'deletedAt';
+
+  @PrimaryKey({
+    type: 'string',
+    ...(isMongo ? { fieldName: '_id' } : {}),
+    onCreate: () => uuidv4(),
+  })
   id!: string;
 
-  @Property({ onCreate: () => new Date(), nullable: true })
-  createdAt?: Date;
+  @Property({ onCreate: () => new Date() })
+  @IsOptional()
+  createdAt: Date = new Date();
 
-  @Property({ onUpdate: () => new Date(), nullable: true })
-  updatedAt?: Date;
+  @Property({ onCreate: () => new Date(), onUpdate: () => new Date() })
+  @IsOptional()
+  updatedAt: Date = new Date();
 
   @Property({ nullable: true, default: null })
+  @IsOptional()
   deletedAt?: Date | null;
 }

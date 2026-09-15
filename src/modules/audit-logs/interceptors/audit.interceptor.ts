@@ -5,19 +5,20 @@ import {
   CallHandler,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import type { Request } from 'express';
 import { Observable, throwError } from 'rxjs';
 import { tap, catchError } from 'rxjs/operators';
-import { AuditLogService } from '../services/audit-log.service';
+import { AuditLogQueueService } from '../services/audit-log-queue.service';
 import {
   AUDITABLE_KEY,
   AuditableOptions,
-} from '../../../common/decorators/auditable.decorator';
+} from '@/common/decorators/auditable.decorator';
 
 @Injectable()
 export class AuditInterceptor implements NestInterceptor {
   constructor(
     private readonly reflector: Reflector,
-    private readonly auditLogService: AuditLogService,
+    private readonly auditLogQueueService: AuditLogQueueService,
   ) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
@@ -40,14 +41,13 @@ export class AuditInterceptor implements NestInterceptor {
     }
 
     const ipAddress = this.getClientIp(request);
-    const userAgent = (request.headers as any)['user-agent'] as string;
-    const endpoint = (request as any).url as string;
-    const method = (request as any).method as string;
+    const userAgent = (request.headers['user-agent'] as string) || '';
+    const endpoint = request.url;
+    const method = request.method;
 
     return next.handle().pipe(
       tap((result) => {
-        // Fire and forget - không await
-        void this.logAuditSuccess(
+        this.logSuccess(
           auditOptions,
           context,
           user,
@@ -59,7 +59,7 @@ export class AuditInterceptor implements NestInterceptor {
         );
       }),
       catchError((error) => {
-        void this.logFailedOperation(
+        this.logFailure(
           auditOptions,
           context,
           user,
@@ -73,7 +73,7 @@ export class AuditInterceptor implements NestInterceptor {
     );
   }
 
-  private async logAuditSuccess(
+  private logSuccess(
     auditOptions: AuditableOptions,
     context: ExecutionContext,
     user: any,
@@ -82,16 +82,16 @@ export class AuditInterceptor implements NestInterceptor {
     endpoint: string,
     method: string,
     result?: any,
-  ): Promise<void> {
+  ): void {
     try {
       const entityId = this.extractEntityId(context, result);
       const entityType = this.extractEntityType(context);
 
-      await this.auditLogService.log({
+      this.auditLogQueueService.push({
         action: auditOptions.action,
         entityType,
         entityId,
-        userId: (user.id || user.sub) as string,
+        userId: (user.id ?? user.sub) as string,
         userEmail: user.email as string,
         ipAddress,
         userAgent,
@@ -100,11 +100,11 @@ export class AuditInterceptor implements NestInterceptor {
         description: auditOptions.description,
       });
     } catch (error) {
-      console.error('Audit logging failed:', error);
+      console.error('Audit logging push failed:', error);
     }
   }
 
-  private async logFailedOperation(
+  private logFailure(
     options: AuditableOptions,
     context: ExecutionContext,
     user: any,
@@ -112,16 +112,16 @@ export class AuditInterceptor implements NestInterceptor {
     userAgent: string,
     endpoint: string,
     method: string,
-  ): Promise<void> {
+  ): void {
     try {
       const entityId = this.extractEntityId(context);
       const entityType = this.extractEntityType(context);
 
-      await this.auditLogService.log({
+      this.auditLogQueueService.push({
         action: options.action,
         entityType,
         entityId,
-        userId: (user.id || user.sub) as string,
+        userId: (user.id ?? user.sub) as string,
         userEmail: user.email as string,
         ipAddress,
         userAgent,
@@ -130,13 +130,12 @@ export class AuditInterceptor implements NestInterceptor {
         description: options.description,
       });
     } catch (error) {
-      console.error('Failed operation audit logging failed:', error);
+      console.error('Failed operation audit logging push failed:', error);
     }
   }
 
   private extractEntityId(context: ExecutionContext, result?: any): string {
     const request = context.switchToHttp().getRequest<any>();
-    const args = context.getArgs().slice(2);
 
     // 1. Từ URL params (:id)
     if (request.params?.id) {
@@ -160,19 +159,6 @@ export class AuditInterceptor implements NestInterceptor {
 
     if (result?.email) {
       return String(result.email);
-    }
-
-    // 5. Argument đầu tiên
-    if (args[0]) {
-      if (typeof args[0] === 'string') {
-        return args[0];
-      }
-      if (args[0].id) {
-        return String(args[0].id);
-      }
-      if (args[0].email) {
-        return String(args[0].email);
-      }
     }
 
     return 'unknown';

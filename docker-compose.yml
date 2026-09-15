@@ -1,0 +1,51 @@
+services:
+  app:
+    image: ${DOCKER_IMAGE:-hoc-tap:latest}
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hoc_tap_backend
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3000}:3000"
+    env_file:
+      - .env
+    depends_on:
+      - mongo
+      - redis
+    networks:
+      - app_network
+
+  mongo:
+    image: mongo:7.0
+    container_name: hoc_tap_mongo
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:27017:27017" # Chỉ bind localhost trên server để đảm bảo an toàn
+    env_file:
+      - .env
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - app_network
+
+  redis:
+    image: redis:7-alpine
+    container_name: hoc_tap_redis
+    restart: unless-stopped
+    # Không cần map port ra ngoài host để tránh xung đột cổng 6379, app vẫn gọi redis:6379 nội bộ bình thường
+    # ports:
+    #   - "127.0.0.1:6379:6379"
+    command: redis-server --maxmemory 100mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    networks:
+      - app_network
+
+volumes:
+  mongo_data:
+  redis_data:
+
+networks:
+  app_network:
+    driver: bridge

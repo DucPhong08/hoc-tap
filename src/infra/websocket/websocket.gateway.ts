@@ -11,7 +11,7 @@ import {
 import { Server, Socket } from 'socket.io';
 import { Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { JwtPayload } from '../../modules/auth/strategies/jwt.strategy';
+import { JwtPayload } from '@/modules/auth/strategies/jwt.strategy';
 
 interface AuthenticatedSocket extends Socket {
   userId?: string;
@@ -22,25 +22,7 @@ const USER_ROOM_PREFIX = 'user:';
 
 @WebSocketGateway({
   cors: {
-    origin: (
-      requestOrigin: string | undefined,
-      callback: (err: Error | null, allow?: boolean) => void,
-    ) => {
-      const envOrigins = process.env.CORS_ALLOWED_ORIGINS;
-      const allowed = envOrigins
-        ? envOrigins.split(',').map((o) => o.trim())
-        : ['http://localhost:3000', 'http://localhost:3001'];
-
-      if (
-        !requestOrigin ||
-        allowed.includes(requestOrigin) ||
-        allowed.includes('*')
-      ) {
-        callback(null, true);
-      } else {
-        callback(new Error('Not allowed by CORS'));
-      }
-    },
+    origin: true,
     credentials: true,
   },
   namespace: '/',
@@ -52,7 +34,6 @@ export class WebsocketGateway
   server: Server;
 
   private readonly logger = new Logger(WebsocketGateway.name);
-  private readonly connectedClients = new Map<string, AuthenticatedSocket>();
   private readonly userSockets = new Map<string, Set<string>>();
 
   constructor(private readonly jwtService: JwtService) {}
@@ -85,16 +66,12 @@ export class WebsocketGateway
       return;
     }
 
-    this.connectedClients.set(client.id, client);
-
     const sockets = this.userSockets.get(userId) ?? new Set<string>();
     sockets.add(client.id);
     this.userSockets.set(userId, sockets);
   }
 
   private unregisterClient(client: AuthenticatedSocket): void {
-    this.connectedClients.delete(client.id);
-
     if (!client.userId) {
       return;
     }
@@ -116,7 +93,7 @@ export class WebsocketGateway
     socketId: string,
   ): void {
     this.logger.log(`User ${userId} đã kết nối (socket: ${socketId})`);
-    this.logger.log(`Tổng số clients: ${this.connectedClients.size}`);
+    this.logger.log(`Tổng số clients: ${this.clientCount()}`);
   }
 
   async handleConnection(client: AuthenticatedSocket) {
@@ -135,8 +112,8 @@ export class WebsocketGateway
       client.user = payload;
 
       this.registerClient(client);
-      void client.join(this.getUserRoom(client.userId));
-      this.logConnectionStats(client.userId, client.id);
+      void client.join(this.getUserRoom(payload.sub));
+      this.logConnectionStats(payload.sub, client.id);
 
       client.emit('connected', {
         userId: client.userId,
@@ -158,11 +135,11 @@ export class WebsocketGateway
     this.unregisterClient(client);
 
     this.logger.log(`User ${userId} đã ngắt kết nối (socket: ${client.id})`);
-    this.logger.log(`Tổng số clients: ${this.connectedClients.size}`);
+    this.logger.log(`Tổng số clients: ${this.clientCount()}`);
   }
 
   @SubscribeMessage('message')
-  handleMessage(
+  onMessage(
     @MessageBody() data: unknown,
     @ConnectedSocket() client: AuthenticatedSocket,
   ): void {
@@ -173,7 +150,7 @@ export class WebsocketGateway
   }
 
   @SubscribeMessage('join-room')
-  async handleJoinRoom(
+  async onJoinRoom(
     @MessageBody() room: string,
     @ConnectedSocket() client: AuthenticatedSocket,
   ): Promise<void> {
@@ -183,7 +160,7 @@ export class WebsocketGateway
   }
 
   @SubscribeMessage('leave-room')
-  async handleLeaveRoom(
+  async onLeaveRoom(
     @MessageBody() room: string,
     @ConnectedSocket() client: AuthenticatedSocket,
   ): Promise<void> {
@@ -209,10 +186,7 @@ export class WebsocketGateway
 
   // Gửi tới socket cụ thể
   sendToSocket(socketId: string, event: string, data: unknown): void {
-    const client = this.connectedClients.get(socketId);
-    if (client) {
-      client.emit(event, data);
-    }
+    this.server.to(socketId).emit(event, data);
   }
 
   // Kiểm tra user có online không
@@ -221,22 +195,26 @@ export class WebsocketGateway
   }
 
   // Lấy số lượng sockets của user
-  getUserSocketCount(userId: string): number {
+  userSocketCount(userId: string): number {
     return this.userSockets.get(userId)?.size ?? 0;
   }
 
   // Lấy danh sách IDs của users đang online
-  getOnlineUserIds(): string[] {
+  onlineUserIds(): string[] {
     return Array.from(this.userSockets.keys());
   }
 
   // Lấy số lượng clients đang kết nối
-  getConnectedClientsCount(): number {
-    return this.connectedClients.size;
+  clientCount(): number {
+    return (
+      this.server?.engine?.clientsCount ??
+      this.server?.sockets?.sockets?.size ??
+      0
+    );
   }
 
   // Lấy số lượng users đang online
-  getOnlineUsersCount(): number {
+  onlineCount(): number {
     return this.userSockets.size;
   }
 }

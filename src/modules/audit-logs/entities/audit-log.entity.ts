@@ -1,6 +1,6 @@
 import { Entity, Property, Index } from '@mikro-orm/core';
 import { IsString, Allow } from 'class-validator';
-import { BaseEntity } from '../../../common/entity/base.entity';
+import { BaseEntity } from '@/common/entity/base.entity';
 
 @Entity({ tableName: 'audit_logs' })
 @Index({ properties: ['userId', 'createdAt'] })

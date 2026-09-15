@@ -1,94 +1,106 @@
-import { EntityManager } from '@mikro-orm/core';
-import { Injectable, Optional } from '@nestjs/common';
-import { ApiError } from '../../../common/exceptions/api-error';
-import { BaseCrudService } from '../../../infra/services/base-crud.service';
+import { BadRequestException, Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import * as bcrypt from 'bcrypt';
+import { BaseService } from '@/infra/services/base.service';
 import { User } from '../entities/user.entity';
-import { UserPolicy } from '../policies/user.policy';
 import { UserRepository } from '../repositories/user.repository';
-import type {
-  DeleteCommand,
-  CommandOptions,
-} from '../../../common/interfaces/repository.interface';
-import type { BaseTransaction } from '../../../infra/transaction/base-transaction.interface';
-import { InjectTransaction } from '../../../infra/transaction/transaction.provider';
+import type { FindQuery } from '@/common/interfaces/repository.interface';
+import type { IAuthUser } from '@/common/interfaces/auth-user.interface';
+import type { AuthConfig } from '@/config/configuration';
+import type { UpdateProfileDto } from '../dto/update-user.dto';
 
 @Injectable()
-export class UserService extends BaseCrudService<User> {
+export class UserService extends BaseService<User> {
   constructor(
     private readonly userRepository: UserRepository,
-    @Optional()
-    @InjectTransaction()
-    transaction?: BaseTransaction<EntityManager>,
+    private readonly configService: ConfigService,
   ) {
-    super(userRepository, { transaction });
+    super(userRepository);
+  }
+
+  private async hashPassword(password: string): Promise<string> {
+    const rounds =
+      this.configService.get<AuthConfig>('auth')?.bcryptRounds ?? 10;
+    return bcrypt.hash(password, rounds);
+  }
+
+  private formatEmail(email: string): string {
+    return email.toLowerCase().trim();
+  }
+
+  private async checkUniqueEmail(
+    email: string,
+    query?: FindQuery<User>,
+    currentEmail?: string,
+  ): Promise<void> {
+    if (currentEmail && email === currentEmail) {
+      return;
+    }
+
+    const emailExists = await this.userRepository.exists({ email }, query);
+
+    if (emailExists) {
+      throw new BadRequestException('error-user-exist');
+    }
   }
 
   async create(
-    user: User | null,
+    user: IAuthUser,
     data: Partial<User>,
-    query?: CommandOptions<EntityManager, User>,
+    query?: FindQuery<User>,
   ): Promise<User> {
-    return this.executeWithTransaction(query, async (txOptions) => {
-      if (data.email) {
-        const existingUser = await this.userRepository.getOne(
-          { email: data.email },
-          txOptions,
-        );
+    const payload = { ...data };
 
-        if (existingUser) {
-          throw ApiError.BadReq('error-user-exist');
-        }
-      }
+    if (payload.email) {
+      payload.email = this.formatEmail(payload.email);
+      await this.checkUniqueEmail(payload.email, query);
+    }
 
-      const userEntity = await super.create(user, data, txOptions);
+    if (payload.password) {
+      payload.password = await this.hashPassword(payload.password);
+    }
 
-      return userEntity;
-    });
+    return super.create(user, payload, query);
   }
 
   async updateById(
-    user: User | null,
+    user: IAuthUser,
     id: string,
     data: Partial<User>,
-    query?: CommandOptions<EntityManager, User>,
-  ): Promise<User> {
-    return this.executeWithTransaction(query, async (txOptions) => {
-      const existingUser = await this.getByIdOrNull(user, id, txOptions);
+    query?: FindQuery<User>,
+  ): Promise<User | null> {
+    const existingUser = await this.getById(user, id, query);
+    if (!existingUser) {
+      return null;
+    }
 
-      if (data.email) {
-        if (existingUser && data.email !== existingUser.email) {
-          if (!UserPolicy.canUpdateEmail(existingUser)) {
-            throw ApiError.BadReq('error-email-update-limit');
-          }
-        }
+    const payload = { ...data };
 
-        const emailExists = await this.userRepository.getOne(
-          { email: data.email },
-          txOptions,
-        );
+    if (payload.email) {
+      payload.email = this.formatEmail(payload.email);
+      await this.checkUniqueEmail(payload.email, query, existingUser.email);
+    }
 
-        if (emailExists && emailExists.id !== existingUser?.id) {
-          throw ApiError.BadReq('error-user-exist');
-        }
-      }
+    if (payload.password) {
+      payload.password = await this.hashPassword(payload.password);
+    }
 
-      return super.updateById(user, id, data, txOptions);
-    });
+    return super.updateById(user, id, payload, query);
   }
 
-  async deleteById(
-    user: User | null,
-    id: string,
-    query?: DeleteCommand & CommandOptions<EntityManager, User>,
-  ): Promise<User> {
-    return this.executeWithTransaction(query, async (txOptions) => {
-      const userEntity = await this.getById(user, id, txOptions);
+  async updateProfile(
+    user: IAuthUser,
+    dto: UpdateProfileDto,
+  ): Promise<User | null> {
+    if (!user.id) {
+      throw new BadRequestException('error-invalid-user-id');
+    }
 
-      if (!UserPolicy.canDelete(userEntity)) {
-        throw ApiError.BadReq('error-user-delete-limit');
-      }
+    const payload: Partial<User> = {};
+    if (dto.firstName !== undefined) payload.firstName = dto.firstName;
+    if (dto.lastName !== undefined) payload.lastName = dto.lastName;
+    if (dto.avatar !== undefined) payload.avatar = dto.avatar;
 
-      return super.deleteById(user, id, txOptions);
-    });
+    return super.updateById(user, user.id, payload);
   }
 }

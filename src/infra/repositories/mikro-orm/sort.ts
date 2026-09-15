@@ -1,25 +1,11 @@
-export function Sort(sort: unknown): unknown {
+export function Sort(
+  sort?: Record<string, any>,
+): Record<string, 'asc' | 'desc'> | undefined {
   if (!sort) return undefined;
 
-  const resolveSortItem = (item: unknown): unknown => {
-    if (typeof item === 'object' && item !== null && !Array.isArray(item)) {
-      const resolved: Record<string, unknown> = {};
-      for (const [key, val] of Object.entries(
-        item as Record<string, unknown>,
-      )) {
-        if (val === -1 || val === '-1') {
-          resolved[key] = 'desc';
-        } else if (val === 1 || val === '1') {
-          resolved[key] = 'asc';
-        }
-      }
-      return resolved;
-    }
-    return item;
-  };
-
-  if (Array.isArray(sort)) {
-    return sort.map(resolveSortItem);
+  const res: Record<string, 'asc' | 'desc'> = {};
+  for (const [k, v] of Object.entries(sort)) {
+    res[k] = v === -1 || v === 'desc' ? 'desc' : 'asc';
   }
-  return resolveSortItem(sort);
+  return res;
 }

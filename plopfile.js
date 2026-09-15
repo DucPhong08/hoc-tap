@@ -37,8 +37,13 @@ module.exports = function (plop) {
       },
       {
         type: 'add',
-        path: 'src/modules/{{kebabCase (pluralize name)}}/entities/{{kebabCase (singularize name)}}.entity.ts',
-        templateFile: 'nest-templates/module/entity.ts.hbs',
+        path: 'src/modules/{{kebabCase (pluralize name)}}/dto/create-{{kebabCase (singularize name)}}.dto.ts',
+        templateFile: 'nest-templates/module/create-dto.ts.hbs',
+      },
+      {
+        type: 'add',
+        path: 'src/modules/{{kebabCase (pluralize name)}}/dto/update-{{kebabCase (singularize name)}}.dto.ts',
+        templateFile: 'nest-templates/module/update-dto.ts.hbs',
       },
       {
         type: 'add',
@@ -47,13 +52,8 @@ module.exports = function (plop) {
       },
       {
         type: 'add',
-        path: 'src/modules/{{kebabCase (pluralize name)}}/dto/create-{{kebabCase (singularize name)}}.dto.ts',
-        templateFile: 'nest-templates/module/create-dto.ts.hbs',
-      },
-      {
-        type: 'add',
-        path: 'src/modules/{{kebabCase (pluralize name)}}/dto/update-{{kebabCase (singularize name)}}.dto.ts',
-        templateFile: 'nest-templates/module/update-dto.ts.hbs',
+        path: 'src/modules/{{kebabCase (pluralize name)}}/entities/{{kebabCase (singularize name)}}.entity.ts',
+        templateFile: 'nest-templates/module/entity.ts.hbs',
       },
       {
         type: 'modify',
@@ -70,14 +70,14 @@ module.exports = function (plop) {
       },
       {
         type: 'modify',
-        path: 'src/modules/mikro/entity-registry.ts',
+        path: 'src/database/entity-registry.ts',
         pattern: /(\/\/ PLOP: IMPORT_ENTITY)/,
         template:
-          "import { {{pascalCase (singularize name)}} } from '../{{kebabCase (pluralize name)}}/entities/{{kebabCase (singularize name)}}.entity';\n$1",
+          "import { {{pascalCase (singularize name)}} } from '@/modules/{{kebabCase (pluralize name)}}/entities/{{kebabCase (singularize name)}}.entity';\n$1",
       },
       {
         type: 'modify',
-        path: 'src/modules/mikro/entity-registry.ts',
+        path: 'src/database/entity-registry.ts',
         pattern: /(\/\/ PLOP: ADD_MAIN_ENTITY)/,
         template: '{{pascalCase (singularize name)}},\n    $1',
       },

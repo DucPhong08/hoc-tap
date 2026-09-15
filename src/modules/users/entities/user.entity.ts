@@ -3,9 +3,9 @@ import {
   Property,
   BeforeCreate,
   BeforeUpdate,
-  ManyToOne,
+  OneToMany,
+  Collection,
 } from '@mikro-orm/core';
-import * as bcrypt from 'bcrypt';
 import {
   IsEmail,
   IsString,
@@ -15,16 +15,18 @@ import {
   IsEnum,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { BaseEntity } from '../../../common/entity/base.entity';
-import { AuthProvider } from '../../auth/enums/auth-provider.enum';
-import { Role as RoleEntity } from '../../roles/entities/role.entity';
+import { Exclude } from 'class-transformer';
+import { BaseEntity } from '@/common/entity/base.entity';
+import { AuthProvider } from '@/modules/auth/enums/auth-provider.enum';
+import { Role } from '@/common/constants/role.constant';
+import type { SessionEntity } from '@/modules/auth/entities/session.entity';
 
 @Entity({ tableName: 'users' })
 export class User extends BaseEntity {
   @ApiProperty()
   @IsEmail()
   @MaxLength(150)
-  @Property({})
+  @Property({ unique: true })
   email!: string;
 
   @ApiProperty()
@@ -42,33 +44,9 @@ export class User extends BaseEntity {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
-  @Property({ nullable: true })
+  @Exclude()
+  @Property({ nullable: true, hidden: true })
   password?: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsBoolean()
-  @Property({ default: true })
-  isActive: boolean;
-
-  @ManyToOne({
-    entity: () => RoleEntity,
-    nullable: true,
-  })
-  role?: RoleEntity;
-
-  get roleCode(): string {
-    return this.role ? this.role.code : 'user';
-  }
-
-  get roles(): string[] {
-    return [this.roleCode];
-  }
-
-  @ApiProperty()
-  @IsEnum(AuthProvider)
-  @Property({ default: AuthProvider.LOCAL })
-  provider: AuthProvider;
 
   @ApiPropertyOptional()
   @IsOptional()
@@ -76,6 +54,42 @@ export class User extends BaseEntity {
   @Property({ nullable: true })
   avatar?: string;
 
+  @ApiProperty({ enum: Role })
+  @IsEnum(Role)
+  @Property({ default: Role.USER })
+  role: Role = Role.USER;
+
+  @ApiProperty()
+  @IsEnum(AuthProvider)
+  @Property({ default: AuthProvider.LOCAL })
+  provider: AuthProvider = AuthProvider.LOCAL;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  @Property({ default: true })
+  isActive = true;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Property({ nullable: true, default: 0 })
+  failedLoginAttempts = 0;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Property({ nullable: true })
+  lockedUntil?: Date;
+
+  // --- Relations ---
+  @Exclude()
+  @OneToMany('SessionEntity', (session: SessionEntity) => session.user)
+  sessions = new Collection<SessionEntity>(this);
+
+  // --- Runtime Property ---
+  @Exclude()
+  sessionId?: string;
+
+  // --- Lifecycle Hooks ---
   @BeforeCreate()
   @BeforeUpdate()
   normalizeEmail(): void {
@@ -84,28 +98,12 @@ export class User extends BaseEntity {
     }
   }
 
-  @BeforeCreate()
-  async hashPassword(): Promise<void> {
-    if (
-      this.password &&
-      !this.password.startsWith('$2b$') &&
-      !this.password.startsWith('$2a$')
-    ) {
-      this.password = await bcrypt.hash(this.password, 10);
-    }
+  // --- Computed Getters ---
+  get roleCode(): string {
+    return this.role;
   }
 
-  @BeforeUpdate()
-  async hashPasswordUpdate(args: {
-    changeSet?: { payload: { password?: string } };
-  }): Promise<void> {
-    if (this.password && args.changeSet?.payload?.password) {
-      if (
-        !this.password.startsWith('$2b$') &&
-        !this.password.startsWith('$2a$')
-      ) {
-        this.password = await bcrypt.hash(this.password, 10);
-      }
-    }
+  get roles(): string[] {
+    return [this.role];
   }
 }

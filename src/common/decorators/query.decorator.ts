@@ -1,6 +1,7 @@
 import { Query, Type } from '@nestjs/common';
-import { ConditionQueryPipe, QueryOptionsPipe } from '../pipes';
+import { RequestConditionPipe } from '../pipes/request-condition.pipe';
+import { RequestQueryPipe } from '../pipes/request-query.pipe';
 
-export const RequestQuery = () => Query(new QueryOptionsPipe());
-export const RequestCondition = <T>(schema: Type<T>) =>
-  Query('condition', new ConditionQueryPipe<T>(schema));
+export const RequestQuery = () => Query(new RequestQueryPipe());
+export const RequestCondition = <T>(schema: Type<T>, required = false) =>
+  Query('condition', new RequestConditionPipe<T>(schema, required));
