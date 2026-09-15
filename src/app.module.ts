@@ -58,8 +58,7 @@ const hasRedis = Boolean(process.env.REDIS_HOST);
                   configService.get<string>('cache.redis.password') ||
                   undefined,
                 db: configService.get<number>('cache.redis.db', 0),
-                maxRetriesPerRequest: 0,
-                enableOfflineQueue: false,
+                maxRetriesPerRequest: null,
               },
             }),
           }),
