@@ -1,0 +1,54 @@
+services:
+  app:
+    image: ${DOCKER_IMAGE:-hoc-tap:latest}
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hoc_tap_backend
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3000}:3000"
+    env_file:
+      - .env
+    # Các biến bên dưới chỉ đóng vai trò fallback (mặc định) nếu trong file .env trên server chưa khai báo
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - DB_MAIN_URI=${DB_MAIN_URI:-mongodb://mongo:27017/hoc-tap}
+      - DB_LOGS_URI=${DB_LOGS_URI:-mongodb://mongo:27017/hoc-tap-logs}
+      - REDIS_HOST=${REDIS_HOST:-redis}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+    depends_on:
+      - mongo
+      - redis
+    networks:
+      - app_network
+
+  mongo:
+    image: mongo:7.0
+    container_name: hoc_tap_mongo
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:27017:27017" # Chỉ bind localhost trên server để đảm bảo an toàn
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - app_network
+
+  redis:
+    image: redis:7-alpine
+    container_name: hoc_tap_redis
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:6379:6379" # Chỉ bind localhost trên server để tránh scan mở port
+    volumes:
+      - redis_data:/data
+    networks:
+      - app_network
+
+volumes:
+  mongo_data:
+  redis_data:
+
+networks:
+  app_network:
+    driver: bridge
