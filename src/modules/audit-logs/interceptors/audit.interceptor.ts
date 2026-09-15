@@ -3,6 +3,7 @@ import {
   NestInterceptor,
   ExecutionContext,
   CallHandler,
+  Logger,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
@@ -13,9 +14,13 @@ import {
   AUDITABLE_KEY,
   AuditableOptions,
 } from '@/common/decorators/auditable.decorator';
+import type { LogActionData } from '../constants/audit-log.constant';
 
 @Injectable()
 export class AuditInterceptor implements NestInterceptor {
+  private readonly logger = new Logger(AuditInterceptor.name);
+  private static readonly entityTypeCache = new Map<string, string>();
+
   constructor(
     private readonly reflector: Reflector,
     private readonly auditLogQueueService: AuditLogQueueService,
@@ -47,7 +52,7 @@ export class AuditInterceptor implements NestInterceptor {
 
     return next.handle().pipe(
       tap((result) => {
-        this.logSuccess(
+        this.emitAuditLog(
           auditOptions,
           context,
           user,
@@ -59,7 +64,7 @@ export class AuditInterceptor implements NestInterceptor {
         );
       }),
       catchError((error) => {
-        this.logFailure(
+        this.emitAuditLog(
           auditOptions,
           context,
           user,
@@ -73,7 +78,7 @@ export class AuditInterceptor implements NestInterceptor {
     );
   }
 
-  private logSuccess(
+  private emitAuditLog(
     auditOptions: AuditableOptions,
     context: ExecutionContext,
     user: any,
@@ -84,27 +89,23 @@ export class AuditInterceptor implements NestInterceptor {
     result?: any,
   ): void {
     try {
-      const entityId = this.extractEntityId(context, result);
-      const entityType = this.extractEntityType(context);
-
-      this.auditLogQueueService.push({
-        action: auditOptions.action,
-        entityType,
-        entityId,
-        userId: (user.id ?? user.sub) as string,
-        userEmail: user.email as string,
+      const payload = this.buildLogPayload(
+        auditOptions,
+        context,
+        user,
         ipAddress,
         userAgent,
         endpoint,
         method,
-        description: auditOptions.description,
-      });
+        result,
+      );
+      this.auditLogQueueService.push(payload);
     } catch (error) {
-      console.error('Audit logging push failed:', error);
+      this.logger.error('Audit logging push failed', error);
     }
   }
 
-  private logFailure(
+  private buildLogPayload(
     options: AuditableOptions,
     context: ExecutionContext,
     user: any,
@@ -112,26 +113,20 @@ export class AuditInterceptor implements NestInterceptor {
     userAgent: string,
     endpoint: string,
     method: string,
-  ): void {
-    try {
-      const entityId = this.extractEntityId(context);
-      const entityType = this.extractEntityType(context);
-
-      this.auditLogQueueService.push({
-        action: options.action,
-        entityType,
-        entityId,
-        userId: (user.id ?? user.sub) as string,
-        userEmail: user.email as string,
-        ipAddress,
-        userAgent,
-        endpoint,
-        method,
-        description: options.description,
-      });
-    } catch (error) {
-      console.error('Failed operation audit logging push failed:', error);
-    }
+    result?: any,
+  ): LogActionData {
+    return {
+      action: options.action,
+      entityType: this.extractEntityType(context),
+      entityId: this.extractEntityId(context, result),
+      userId: String(user.id ?? user.sub ?? 'unknown'),
+      userEmail: user.email as string | undefined,
+      ipAddress,
+      userAgent,
+      endpoint,
+      method,
+      description: options.description,
+    };
   }
 
   private extractEntityId(context: ExecutionContext, result?: any): string {
@@ -166,11 +161,16 @@ export class AuditInterceptor implements NestInterceptor {
 
   private extractEntityType(context: ExecutionContext): string {
     const className = context.getClass().name;
-    return className
-      .replace(/Controller$/, '')
-      .replace(/([A-Z])/g, (match, p1, offset) =>
-        offset > 0 ? '-' + p1.toLowerCase() : p1.toLowerCase(),
-      );
+    let entityType = AuditInterceptor.entityTypeCache.get(className);
+    if (!entityType) {
+      entityType = className
+        .replace(/Controller$/, '')
+        .replace(/([A-Z])/g, (match, p1, offset) =>
+          offset > 0 ? '-' + p1.toLowerCase() : p1.toLowerCase(),
+        );
+      AuditInterceptor.entityTypeCache.set(className, entityType);
+    }
+    return entityType;
   }
 
   private getClientIp(request: any): string {

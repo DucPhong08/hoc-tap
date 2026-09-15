@@ -1,36 +1,36 @@
-import { Controller, Get, Query, Param, Delete } from '@nestjs/common';
-import { ApiTags, ApiQuery } from '@nestjs/swagger';
-import { AuditLogService } from '../services/audit-log.service';
+import {
+  Controller,
+  Delete,
+  HttpStatus,
+  ParseIntPipe,
+  Query,
+} from '@nestjs/common';
+import { ApiQuery, ApiTags } from '@nestjs/swagger';
+import { BaseController } from '@/infra/controllers/base.controller';
+import { Role } from '@/common/constants/role.constant';
 import { AuditLog } from '../entities/audit-log.entity';
-import { Authorization } from '@/common/decorators/authorize.decorator';
+import { AuditLogService } from '../services/audit-log.service';
+import { AuditCleanupService } from '../services/audit-cleanup.service';
 
 @ApiTags('audit-logs')
 @Controller('audit-logs')
-@Authorization()
-export class AuditLogController {
-  constructor(private readonly auditLogService: AuditLogService) {}
-
-  @Get('recent')
-  @ApiQuery({ name: 'limit', required: false, type: Number })
-  async getRecent(@Query('limit') limit?: number): Promise<AuditLog[]> {
-    return this.auditLogService.getRecentActions(limit);
-  }
-
-  @Get('user/:userId')
-  @ApiQuery({ name: 'limit', required: false, type: Number })
-  async getByUser(
-    @Param('userId') userId: string,
-    @Query('limit') limit?: number,
-  ): Promise<AuditLog[]> {
-    return this.auditLogService.getUserActions(userId, limit);
-  }
-
-  @Get('entity/:entityType/:entityId')
-  async getByEntity(
-    @Param('entityType') entityType: string,
-    @Param('entityId') entityId: string,
-  ): Promise<AuditLog[]> {
-    return this.auditLogService.getEntityHistory(entityType, entityId);
+export class AuditLogController extends BaseController(AuditLog, {
+  defaultRoles: [Role.ADMIN],
+  routes: {
+    create: { enabled: false },
+    updateOne: { enabled: false },
+    updateById: { enabled: false },
+    updateByIds: { enabled: false },
+    deleteOne: { enabled: false },
+    deleteById: { enabled: false },
+    deleteByIds: { enabled: false },
+  },
+}) {
+  constructor(
+    private readonly auditLogService: AuditLogService,
+    private readonly auditCleanupService: AuditCleanupService,
+  ) {
+    super(auditLogService);
   }
 
   @Delete('cleanup')
@@ -39,8 +39,16 @@ export class AuditLogController {
     required: true,
     type: Number,
   })
-  async cleanup(@Query('days') days: number): Promise<{ deleted: number }> {
-    const deleted = await this.auditLogService.cleanup(days);
+  async cleanup(
+    @Query(
+      'days',
+      new ParseIntPipe({
+        errorHttpStatusCode: HttpStatus.BAD_REQUEST,
+      }),
+    )
+    days: number,
+  ): Promise<{ deleted: number }> {
+    const deleted = await this.auditCleanupService.cleanup(days);
     return { deleted };
   }
 }

@@ -1,11 +1,16 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
+import { BaseService } from '@/infra/services/base.service';
 import { AuditLogRepository } from '../repositories/audit-log.repository';
 import { AuditLog } from '../entities/audit-log.entity';
 import type { LogActionData } from '../constants/audit-log.constant';
 
 @Injectable()
-export class AuditLogService {
-  constructor(private readonly repository: AuditLogRepository) {}
+export class AuditLogService extends BaseService<AuditLog> {
+  private static readonly MAX_QUERY_LIMIT = 100;
+
+  constructor(protected readonly repository: AuditLogRepository) {
+    super(repository);
+  }
 
   async log(data: LogActionData): Promise<AuditLog> {
     return this.repository.create({
@@ -23,6 +28,10 @@ export class AuditLogService {
   }
 
   async logMany(dataArray: LogActionData[]): Promise<{ n: number }> {
+    if (!dataArray || dataArray.length === 0) {
+      return { n: 0 };
+    }
+
     return this.repository.insertMany(
       dataArray.map((data) => ({
         action: data.action,
@@ -40,9 +49,10 @@ export class AuditLogService {
   }
 
   async getUserActions(userId: string, limit = 100): Promise<AuditLog[]> {
+    const safeLimit = this.clampLimit(limit, 100);
     const result = await this.repository.getPage(
       { userId },
-      { limit, page: 1, sort: { createdAt: -1 } },
+      { limit: safeLimit, page: 1, sort: { createdAt: -1 } },
     );
     return result.data;
   }
@@ -58,19 +68,37 @@ export class AuditLogService {
   }
 
   async getRecentActions(limit = 50): Promise<AuditLog[]> {
+    const safeLimit = this.clampLimit(limit, 50);
     const result = await this.repository.getPage(
       {},
-      { limit, page: 1, sort: { createdAt: -1 } },
+      { limit: safeLimit, page: 1, sort: { createdAt: -1 } },
     );
     return result.data;
   }
 
   async cleanup(days: number): Promise<number> {
+    if (!days || days < 1) {
+      throw new BadRequestException(
+        'Số ngày lưu trữ (retention days) phải lớn hơn hoặc bằng 1',
+      );
+    }
+
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - days);
-    const result = await this.repository.deleteMany({
-      createdAt: { $lt: cutoffDate },
-    });
+    const result = await this.repository.deleteMany(
+      {
+        createdAt: { $lt: cutoffDate },
+      },
+      { soft: false },
+    );
     return result.deleted;
+  }
+
+  private clampLimit(limit: number, defaultLimit: number): number {
+    const parsed = Number(limit);
+    if (!Number.isFinite(parsed) || parsed < 1) {
+      return defaultLimit;
+    }
+    return Math.min(parsed, AuditLogService.MAX_QUERY_LIMIT);
   }
 }

@@ -33,22 +33,6 @@ export class AuditCleanupService {
     }
   }
 
-  @Cron(CronExpression.EVERY_WEEK)
-  @CreateRequestContext((service: AuditCleanupService) => service.logsOrm)
-  async weeklyDeepCleanup() {
-    this.logger.log('Starting weekly deep cleanup...');
-
-    try {
-      const deleted = await this.auditLogService.cleanup(180);
-
-      this.logger.log(
-        `Weekly deep cleanup completed. Deleted ${deleted} very old records.`,
-      );
-    } catch (error) {
-      this.logger.error('Failed to run weekly cleanup', error);
-    }
-  }
-
   @CreateRequestContext((service: AuditCleanupService) => service.logsOrm)
   async cleanup(retentionDays: number): Promise<number> {
     this.logger.log(

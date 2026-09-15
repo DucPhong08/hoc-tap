@@ -5,6 +5,7 @@ import {
   BeforeUpdate,
   OneToMany,
   Collection,
+  type Opt,
 } from '@mikro-orm/core';
 import {
   IsEmail,
@@ -73,7 +74,7 @@ export class User extends BaseEntity {
   @ApiPropertyOptional()
   @IsOptional()
   @Property({ nullable: true, default: 0 })
-  failedLoginAttempts = 0;
+  failedLoginAttempts? = 0;
 
   @ApiPropertyOptional()
   @IsOptional()
@@ -99,11 +100,13 @@ export class User extends BaseEntity {
   }
 
   // --- Computed Getters ---
-  get roleCode(): string {
+  @Property({ persist: false })
+  get roleCode(): Opt<string> {
     return this.role;
   }
 
-  get roles(): string[] {
+  @Property({ persist: false })
+  get roles(): Opt<string[]> {
     return [this.role];
   }
 }

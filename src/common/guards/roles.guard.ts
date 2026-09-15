@@ -40,7 +40,7 @@ export class RolesGuard implements CanActivate {
       return false;
     }
 
-    const userRoles = user.roles ?? [];
+    const userRoles = user.roles ?? (user.role ? [user.role] : []);
 
     // Superuser ADMIN bypasses all checks
     if (userRoles.includes(Role.ADMIN)) {
