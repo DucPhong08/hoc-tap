@@ -1,15 +1,11 @@
 import { Controller, Get } from '@nestjs/common';
 import { Public } from '@/common/decorators/public.decorator';
-import {
-  Authorize,
-  Authorization,
-} from '@/common/decorators/authorize.decorator';
+import { Authorize } from '@/common/decorators/authorize.decorator';
 import { Role } from '@/common/constants/role.constant';
 import { ApiTags } from '@nestjs/swagger';
 
 @ApiTags('monitoring')
 @Controller('monitoring')
-@Authorization(Role.ADMIN)
 export class MonitoringController {
   @Get('health')
   @Public()
