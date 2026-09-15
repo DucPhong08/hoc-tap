@@ -10,13 +10,6 @@ services:
       - "${PORT:-3000}:3000"
     env_file:
       - .env
-    # Các biến bên dưới chỉ đóng vai trò fallback (mặc định) nếu trong file .env trên server chưa khai báo
-    environment:
-      - NODE_ENV=${NODE_ENV:-production}
-      - DB_MAIN_URI=${DB_MAIN_URI:-mongodb://mongo:27017/hoc-tap}
-      - DB_LOGS_URI=${DB_LOGS_URI:-mongodb://mongo:27017/hoc-tap-logs}
-      - REDIS_HOST=${REDIS_HOST:-redis}
-      - REDIS_PORT=${REDIS_PORT:-6379}
     depends_on:
       - mongo
       - redis
@@ -29,6 +22,8 @@ services:
     restart: unless-stopped
     ports:
       - "127.0.0.1:27017:27017" # Chỉ bind localhost trên server để đảm bảo an toàn
+    env_file:
+      - .env
     volumes:
       - mongo_data:/data/db
     networks:
@@ -38,8 +33,10 @@ services:
     image: redis:7-alpine
     container_name: hoc_tap_redis
     restart: unless-stopped
-    ports:
-      - "127.0.0.1:6379:6379" # Chỉ bind localhost trên server để tránh scan mở port
+    # Không cần map port ra ngoài host để tránh xung đột cổng 6379, app vẫn gọi redis:6379 nội bộ bình thường
+    # ports:
+    #   - "127.0.0.1:6379:6379"
+    command: redis-server --maxmemory 100mb --maxmemory-policy allkeys-lru
     volumes:
       - redis_data:/data
     networks:
