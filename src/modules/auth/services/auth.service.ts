@@ -2,7 +2,6 @@ import {
   BadRequestException,
   Injectable,
   UnauthorizedException,
-  Optional,
   Logger,
 } from '@nestjs/common';
 import { UserService } from '@/modules/users/services/user.service';
@@ -15,7 +14,7 @@ import {
 } from '../interfaces/oauth-profile.interface';
 import { AuthProvider } from '../enums/auth-provider.enum';
 import { Role } from '@/common/constants/role.constant';
-import { AuditLogService } from '@/modules/audit-logs/services/audit-log.service';
+import { AuditLogQueueService } from '@/modules/audit-logs/services/audit-log-queue.service';
 import { AuthResult, TokenPair } from '../types/auth-result.type';
 import type { IAuthUser } from '@/common/interfaces/auth-user.interface';
 
@@ -34,10 +33,11 @@ export class AuthService {
     private readonly userService: UserService,
     private readonly passwordService: PasswordService,
     private readonly sessionService: SessionService,
-    @Optional() private readonly auditLogService?: AuditLogService,
+    private readonly auditLogQueueService: AuditLogQueueService,
   ) {}
 
-  // Đăng ký tài khoản mới bằng email và mật khẩu
+  // ──────────────────────────────── Public API ────────────────────────────────
+
   async register(
     email: string,
     password: string,
@@ -61,106 +61,43 @@ export class AuthService {
       role: Role.USER,
     });
 
-    const { tokens } = await this.sessionService.create(
+    const result = await this.createAuthSession(
       user,
       ipAddress,
       userAgent,
+      'USER_REGISTERED',
+      'Đăng ký tài khoản mới thành công',
     );
-
-    this.emitAuditLog({
-      action: 'USER_REGISTERED',
-      entityType: 'User',
-      entityId: user.id,
-      userId: user.id,
-      userEmail: user.email,
-      ipAddress,
-      userAgent,
-      description: 'Đăng ký tài khoản mới thành công',
-    });
-
-    return { ...tokens, user: this.formatUser(user) };
+    return result;
   }
 
-  // Đăng nhập tài khoản, kiểm tra khóa tài khoản và sinh phiên
   async login(
     email: string,
     password: string,
     ipAddress?: string,
     userAgent?: string,
   ): Promise<AuthResult> {
-    const user = await this.userService.getOne(SYSTEM_USER, {
-      email: email.toLowerCase().trim(),
-    });
-
-    // Tránh user enumeration: luôn trả lỗi chung nếu không tìm thấy hoặc sai provider
-    if (!user?.password || user.provider !== AuthProvider.LOCAL) {
-      this.emitFailedLoginLog(email, ipAddress, userAgent);
-      throw new UnauthorizedException('error-invalid-credentials');
-    }
-
-    // Kiểm tra nếu tài khoản đang bị tạm khóa
-    if (user.lockedUntil && new Date(user.lockedUntil) > new Date()) {
-      const remainingMinutes = Math.max(
-        1,
-        Math.ceil(
-          (new Date(user.lockedUntil).getTime() - Date.now()) / (60 * 1000),
-        ),
-      );
-      throw new UnauthorizedException(
-        `error-account-locked-try-again-in-${remainingMinutes}-minutes`,
-      );
-    }
-
-    const isPasswordValid = await this.passwordService.compare(
+    const user = await this.findLocalUser(email, ipAddress, userAgent);
+    this.assertNotLocked(user);
+    await this.verifyPasswordOrLock(
+      user,
       password,
-      user.password,
+      email,
+      ipAddress,
+      userAgent,
     );
+    this.assertActive(user);
+    await this.resetFailedAttempts(user);
 
-    // Xử lý đếm số lần sai mật khẩu để khóa 15 phút nếu sai quá 5 lần
-    if (!isPasswordValid) {
-      const attempts = (user.failedLoginAttempts || 0) + 1;
-      const updatePayload: Partial<User> = { failedLoginAttempts: attempts };
-      if (attempts >= 5) {
-        updatePayload.lockedUntil = new Date(Date.now() + 15 * 60 * 1000);
-      }
-      await this.userService.updateById(SYSTEM_USER, user.id, updatePayload);
-      this.emitFailedLoginLog(email, ipAddress, userAgent, user.id);
-      throw new UnauthorizedException('error-invalid-credentials');
-    }
-
-    if (!user.isActive) {
-      throw new UnauthorizedException('error-user-disabled');
-    }
-
-    // Reset bộ đếm số lần đăng nhập sai khi thành công
-    if ((user.failedLoginAttempts ?? 0) > 0 || user.lockedUntil) {
-      await this.userService.updateById(SYSTEM_USER, user.id, {
-        failedLoginAttempts: 0,
-        lockedUntil: undefined,
-      });
-    }
-
-    const { tokens } = await this.sessionService.create(
+    return this.createAuthSession(
       user,
       ipAddress,
       userAgent,
+      'LOGIN_SUCCESS',
+      'Đăng nhập thành công',
     );
-
-    this.emitAuditLog({
-      action: 'LOGIN_SUCCESS',
-      entityType: 'User',
-      entityId: user.id,
-      userId: user.id,
-      userEmail: user.email,
-      ipAddress,
-      userAgent,
-      description: 'Đăng nhập thành công',
-    });
-
-    return { ...tokens, user: this.formatUser(user) };
   }
 
-  // Làm mới access token từ refresh token
   async refreshToken(
     refreshToken: string,
     ipAddress?: string,
@@ -169,7 +106,6 @@ export class AuthService {
     return this.sessionService.rotate(refreshToken, ipAddress, userAgent);
   }
 
-  // Đăng xuất phiên hiện tại
   async logout(
     sessionId: string,
     userId: string,
@@ -178,7 +114,7 @@ export class AuthService {
   ): Promise<{ success: boolean }> {
     await this.sessionService.revoke(sessionId);
 
-    this.emitAuditLog({
+    this.dispatchAuditLog({
       action: 'LOGOUT',
       entityType: 'Session',
       entityId: sessionId,
@@ -191,7 +127,6 @@ export class AuthService {
     return { success: true };
   }
 
-  // Đăng xuất khỏi toàn bộ các thiết bị
   async logoutAll(
     userId: string,
     currentSessionId?: string,
@@ -200,7 +135,7 @@ export class AuthService {
   ): Promise<{ success: boolean; revokedCount: number }> {
     const count = await this.sessionService.revokeAll(userId, currentSessionId);
 
-    this.emitAuditLog({
+    this.dispatchAuditLog({
       action: 'ALL_SESSIONS_REVOKED',
       entityType: 'User',
       entityId: userId,
@@ -213,7 +148,6 @@ export class AuthService {
     return { success: true, revokedCount: count };
   }
 
-  // Lấy thông tin người dùng từ id
   async getUser(userId: string): Promise<AuthUserProfile> {
     const user = await this.userService.getById(SYSTEM_USER, userId);
 
@@ -224,7 +158,6 @@ export class AuthService {
     return this.formatUser(user);
   }
 
-  // Đăng nhập hoặc tạo mới người dùng qua OAuth (Google/Facebook)
   async validateOAuthUser(
     profile: OAuthProfile,
     ipAddress?: string,
@@ -259,8 +192,121 @@ export class AuthService {
     return { ...tokens, user: this.formatUser(user) };
   }
 
-  // Chuẩn hóa dữ liệu user trả về client
-  formatUser(user: User): AuthUserProfile {
+  // ──────────────────────── Login — Private Helpers ───────────────────────────
+
+  /**
+   * Tìm user local theo email.
+   * Tránh user enumeration: trả lỗi chung nếu không tìm thấy hoặc sai provider.
+   */
+  private async findLocalUser(
+    email: string,
+    ipAddress?: string,
+    userAgent?: string,
+  ): Promise<User> {
+    const user = await this.userService.getOne(SYSTEM_USER, {
+      email: email.toLowerCase().trim(),
+    });
+
+    if (!user?.password || user.provider !== AuthProvider.LOCAL) {
+      this.dispatchFailedLoginLog(email, ipAddress, userAgent);
+      throw new UnauthorizedException('error-invalid-credentials');
+    }
+
+    return user;
+  }
+
+  /** Kiểm tra tài khoản có đang bị tạm khóa không. */
+  private assertNotLocked(user: User): void {
+    if (!user.lockedUntil || new Date(user.lockedUntil) <= new Date()) return;
+
+    const remainingMinutes = Math.max(
+      1,
+      Math.ceil(
+        (new Date(user.lockedUntil).getTime() - Date.now()) / (60 * 1000),
+      ),
+    );
+    throw new UnauthorizedException(
+      `error-account-locked-try-again-in-${remainingMinutes}-minutes`,
+    );
+  }
+
+  /**
+   * Verify password — nếu sai thì đếm failed attempts.
+   * Khóa tài khoản 15 phút khi sai quá 5 lần.
+   */
+  private async verifyPasswordOrLock(
+    user: User,
+    password: string,
+    email: string,
+    ipAddress?: string,
+    userAgent?: string,
+  ): Promise<void> {
+    const isValid = await this.passwordService.compare(
+      password,
+      user.password!,
+    );
+
+    if (isValid) return;
+
+    const attempts = (user.failedLoginAttempts || 0) + 1;
+    const updatePayload: Partial<User> = { failedLoginAttempts: attempts };
+    if (attempts >= 5) {
+      updatePayload.lockedUntil = new Date(Date.now() + 15 * 60 * 1000);
+    }
+    await this.userService.updateById(SYSTEM_USER, user.id, updatePayload);
+    this.dispatchFailedLoginLog(email, ipAddress, userAgent, user.id);
+    throw new UnauthorizedException('error-invalid-credentials');
+  }
+
+  /** Kiểm tra tài khoản có đang active không. */
+  private assertActive(user: User): void {
+    if (!user.isActive) {
+      throw new UnauthorizedException('error-user-disabled');
+    }
+  }
+
+  /** Reset bộ đếm failed attempts khi login thành công. */
+  private async resetFailedAttempts(user: User): Promise<void> {
+    if ((user.failedLoginAttempts ?? 0) > 0 || user.lockedUntil) {
+      await this.userService.updateById(SYSTEM_USER, user.id, {
+        failedLoginAttempts: 0,
+        lockedUntil: undefined,
+      });
+    }
+  }
+
+  /** Tạo session mới + emit audit log + trả kết quả. */
+  private async createAuthSession(
+    user: User,
+    ipAddress: string | undefined,
+    userAgent: string | undefined,
+    action: string,
+    description: string,
+  ): Promise<AuthResult> {
+    const { tokens } = await this.sessionService.create(
+      user,
+      ipAddress,
+      userAgent,
+    );
+
+    this.dispatchAuditLog({
+      action,
+      entityType: 'User',
+      entityId: user.id,
+      userId: user.id,
+      userEmail: user.email,
+      ipAddress,
+      userAgent,
+      description,
+    });
+
+    return { ...tokens, user: this.formatUser(user) };
+  }
+
+  // ──────────────────────────── Shared Helpers ────────────────────────────────
+
+  /** Chuẩn hóa dữ liệu user trả về client. */
+  private formatUser(user: User): AuthUserProfile {
     return {
       id: user.id,
       email: user.email,
@@ -273,24 +319,20 @@ export class AuthService {
     };
   }
 
-  // Đẩy audit log fire-and-forget
-  private emitAuditLog(data: Parameters<AuditLogService['log']>[0]): void {
-    if (!this.auditLogService) return;
-    void this.auditLogService
-      .log(data)
-      .catch((err: Error) =>
-        this.logger.error(`Lỗi audit log: ${err.message}`),
-      );
+  /** Đẩy audit log qua queue (fire-and-forget). */
+  private dispatchAuditLog(
+    data: Parameters<AuditLogQueueService['dispatch']>[0],
+  ): void {
+    this.auditLogQueueService.dispatch(data);
   }
 
-  // Ghi log đăng nhập thất bại
-  private emitFailedLoginLog(
+  private dispatchFailedLoginLog(
     email: string,
     ipAddress?: string,
     userAgent?: string,
     userId?: string,
   ): void {
-    this.emitAuditLog({
+    this.dispatchAuditLog({
       action: 'LOGIN_FAILED',
       entityType: 'User',
       entityId: userId ?? 'unknown',

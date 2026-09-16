@@ -17,7 +17,7 @@ export class AuditLogQueueService {
     private readonly auditQueue?: Queue<AuditLogJobPayload>,
   ) {}
 
-  push(data: LogActionData): void {
+  dispatch(data: LogActionData): void {
     if (this.auditQueue) {
       this.auditQueue
         .add(
@@ -31,12 +31,12 @@ export class AuditLogQueueService {
           },
         )
         .catch((error) => {
-          this.logger.error('Failed to push audit log to Bull Queue:', error);
+          this.logger.error('Failed to dispatch audit log to queue:', error);
         });
     } else {
       this.auditLogService.log(data).catch((error) => {
         this.logger.error(
-          `Ghi audit log trực tiếp thất bại: ${(error as Error).message}`,
+          `Direct audit log write failed: ${(error as Error).message}`,
         );
       });
     }

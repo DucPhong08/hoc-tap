@@ -1,21 +1,5 @@
-/**
- * @file base.controller.ts
- *
- * ## Mixin Pattern — tại sao không dùng `abstract class` thuần?
- *
- * NestJS resolve decorator metadata (Swagger `@ApiBody`, `@UsePipes`, v.v.)
- * **tại thời điểm decoration**, không phải lúc runtime. Generic type param
- * của TypeScript bị xoá sau khi compile (type erasure), nên `abstract class
- * BaseController<C>` không thể truyền `CreateDto` vào `@ApiBody({ type: CreateDto })`
- * một cách dynamic.
- *
- * Mixin factory là pattern chuẩn NestJS cho trường hợp này, nhất quán với
- * cách NestJS docs hướng dẫn (https://docs.nestjs.com/techniques/mvc#class-inheritance).
- * `BaseService` và `MikroOrmBaseRepository` dùng `abstract class` vì chúng
- * không cần bind decorator metadata với concrete DTO.
- */
-
 import {
+  applyDecorators,
   Body,
   Delete,
   Get,
@@ -74,6 +58,13 @@ export type {
   RouteConfig,
 };
 
+const ApiNoContent = () =>
+  applyDecorators(
+    HttpCode(HttpStatus.NO_CONTENT),
+    ApiResponse({ status: HttpStatus.NO_CONTENT, description: 'No Content' }),
+    ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Not Found' }),
+  );
+
 /** Contract của mọi controller được tạo bởi BaseController mixin. */
 export interface IBaseController<
   E extends BaseEntity,
@@ -103,40 +94,19 @@ export interface IBaseController<
     query: ParsedQueryOptions,
   ): Promise<E | null>;
   updateOne(user: IAuthUser, condition: CD, update: U): Promise<E | null>;
-  updateById(user: IAuthUser, id: string, body: U): Promise<E | null>;
   updateByIds(
     user: IAuthUser,
     body: { ids: string[]; update: U },
   ): Promise<{ affected: number }>;
+  updateById(user: IAuthUser, id: string, body: U): Promise<E | null>;
   deleteOne(user: IAuthUser, condition: CD): Promise<void>;
-  deleteById(user: IAuthUser, id: string): Promise<void>;
   deleteByIds(
     user: IAuthUser,
     body: DeleteManyByIdsDto,
   ): Promise<{ deleted: number }>;
+  deleteById(user: IAuthUser, id: string): Promise<void>;
 }
 
-/**
- * Tạo base controller class với đầy đủ CRUD routes, Swagger docs, và
- * role-based access control được cấu hình sẵn.
- *
- * @example
- * ```ts
- * @ApiTags('users')
- * @Controller('users')
- * export class UserController extends BaseController(
- *   User,
- *   CreateUserDto,
- *   UpdateUserDto,
- *   UserConditionDto,
- *   { defaultRoles: [Role.ADMIN] },
- * ) {
- *   constructor(private readonly userService: UserService) {
- *     super(userService);
- *   }
- * }
- * ```
- */
 export function BaseController<
   E extends BaseEntity,
   C = Partial<E>,
@@ -149,10 +119,6 @@ export function BaseController<
   conditionDto?: Type<CD>,
   options: BaseControllerOptions<C, U, CD> = {},
 ): Type<IBaseController<E, C, U, CD>> {
-  createDto = createDto ?? options.dtos?.create;
-  updateDto = updateDto ?? options.dtos?.update;
-  conditionDto = conditionDto ?? options.dtos?.condition;
-
   const routeConfigs = getRouteConfigs(options.routes);
   const {
     ConditionDto,
@@ -160,7 +126,25 @@ export function BaseController<
     UpdateDto,
     UpdateManyIdsDto,
     validationPipes,
-  } = createBaseDtoBundle(entityType, createDto, updateDto, conditionDto);
+  } = createBaseDtoBundle(
+    entityType,
+    createDto ?? options.dtos?.create,
+    updateDto ?? options.dtos?.update,
+    conditionDto ?? options.dtos?.condition,
+  );
+
+  const ApiEntityOk = () =>
+    applyDecorators(
+      ApiOkResponse({ description: 'OK', type: entityType }),
+      ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Not Found' }),
+    );
+
+  const ApiUpdateBody = () =>
+    applyDecorators(
+      ApiEntityOk(),
+      ApiBody({ type: UpdateDto }),
+      UsePipes(validationPipes.update),
+    );
 
   class BaseControllerHost implements IBaseController<E, C, U, CD> {
     constructor(protected readonly service: BaseService<E>) {}
@@ -218,8 +202,7 @@ export function BaseController<
     }
 
     @Get(':id')
-    @ApiOkResponse({ description: 'OK', type: entityType })
-    @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Not Found' })
+    @ApiEntityOk()
     @ApiQueryOptions('one')
     async getById(
       @ReqUser() user: IAuthUser,
@@ -231,11 +214,8 @@ export function BaseController<
     }
 
     @Put('one')
-    @ApiOkResponse({ description: 'OK', type: entityType })
-    @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Not Found' })
-    @ApiBody({ type: UpdateDto })
+    @ApiUpdateBody()
     @ApiCondition(true)
-    @UsePipes(validationPipes.update)
     async updateOne(
       @ReqUser() user: IAuthUser,
       @RequestCondition(ConditionDto, true) condition: CD,
@@ -247,20 +227,6 @@ export function BaseController<
         condition as QueryCondition<E>,
         update as UpdateData<E>,
       );
-    }
-
-    @Put(':id')
-    @ApiOkResponse({ description: 'OK', type: entityType })
-    @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Not Found' })
-    @ApiBody({ type: UpdateDto })
-    @UsePipes(validationPipes.update)
-    async updateById(
-      @ReqUser() user: IAuthUser,
-      @Param('id') id: string,
-      @Body() body: U,
-    ): Promise<E | null> {
-      checkRouteEnabled(routeConfigs.updateById);
-      return this.service.updateById(user, id, body as UpdateData<E>);
     }
 
     @Put('bulk')
@@ -279,10 +245,19 @@ export function BaseController<
       );
     }
 
+    @Put(':id')
+    @ApiUpdateBody()
+    async updateById(
+      @ReqUser() user: IAuthUser,
+      @Param('id') id: string,
+      @Body() body: U,
+    ): Promise<E | null> {
+      checkRouteEnabled(routeConfigs.updateById);
+      return this.service.updateById(user, id, body as UpdateData<E>);
+    }
+
     @Delete('one')
-    @HttpCode(HttpStatus.NO_CONTENT)
-    @ApiResponse({ status: HttpStatus.NO_CONTENT, description: 'No Content' })
-    @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Not Found' })
+    @ApiNoContent()
     @ApiCondition(true)
     async deleteOne(
       @ReqUser() user: IAuthUser,
@@ -290,18 +265,6 @@ export function BaseController<
     ): Promise<void> {
       checkRouteEnabled(routeConfigs.deleteOne);
       await this.service.deleteOne(user, condition as QueryCondition<E>);
-    }
-
-    @Delete(':id')
-    @HttpCode(HttpStatus.NO_CONTENT)
-    @ApiResponse({ status: HttpStatus.NO_CONTENT, description: 'No Content' })
-    @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Not Found' })
-    async deleteById(
-      @ReqUser() user: IAuthUser,
-      @Param('id') id: string,
-    ): Promise<void> {
-      checkRouteEnabled(routeConfigs.deleteById);
-      await this.service.deleteById(user, id);
     }
 
     @Delete('bulk')
@@ -314,6 +277,16 @@ export function BaseController<
     ): Promise<{ deleted: number }> {
       checkRouteEnabled(routeConfigs.deleteByIds);
       return this.service.deleteManyByIds(user, body.ids);
+    }
+
+    @Delete(':id')
+    @ApiNoContent()
+    async deleteById(
+      @ReqUser() user: IAuthUser,
+      @Param('id') id: string,
+    ): Promise<void> {
+      checkRouteEnabled(routeConfigs.deleteById);
+      await this.service.deleteById(user, id);
     }
   }
 

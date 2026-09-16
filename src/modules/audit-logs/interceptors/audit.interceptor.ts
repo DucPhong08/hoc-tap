@@ -16,6 +16,17 @@ import {
 } from '@/common/decorators/auditable.decorator';
 import type { LogActionData } from '../constants/audit-log.constant';
 
+interface AuditRequestContext {
+  options: AuditableOptions;
+  executionContext: ExecutionContext;
+  user: any;
+  ipAddress: string;
+  userAgent: string;
+  endpoint: string;
+  method: string;
+  result?: any;
+}
+
 @Injectable()
 export class AuditInterceptor implements NestInterceptor {
   private readonly logger = new Logger(AuditInterceptor.name);
@@ -45,87 +56,48 @@ export class AuditInterceptor implements NestInterceptor {
       return next.handle();
     }
 
-    const ipAddress = this.getClientIp(request);
-    const userAgent = (request.headers['user-agent'] as string) || '';
-    const endpoint = request.url;
-    const method = request.method;
+    const baseCtx: Omit<AuditRequestContext, 'result'> = {
+      options: auditOptions,
+      executionContext: context,
+      user,
+      ipAddress: this.getClientIp(request),
+      userAgent: (request.headers['user-agent'] as string) || '',
+      endpoint: request.url,
+      method: request.method,
+    };
 
     return next.handle().pipe(
       tap((result) => {
-        this.emitAuditLog(
-          auditOptions,
-          context,
-          user,
-          ipAddress,
-          userAgent,
-          endpoint,
-          method,
-          result,
-        );
+        this.dispatchAuditLog({ ...baseCtx, result });
       }),
       catchError((error) => {
-        this.emitAuditLog(
-          auditOptions,
-          context,
-          user,
-          ipAddress,
-          userAgent,
-          endpoint,
-          method,
-        );
+        this.dispatchAuditLog(baseCtx);
         return throwError(() => error);
       }),
     );
   }
 
-  private emitAuditLog(
-    auditOptions: AuditableOptions,
-    context: ExecutionContext,
-    user: any,
-    ipAddress: string,
-    userAgent: string,
-    endpoint: string,
-    method: string,
-    result?: any,
-  ): void {
+  private dispatchAuditLog(ctx: AuditRequestContext): void {
     try {
-      const payload = this.buildLogPayload(
-        auditOptions,
-        context,
-        user,
-        ipAddress,
-        userAgent,
-        endpoint,
-        method,
-        result,
-      );
-      this.auditLogQueueService.push(payload);
+      const payload = this.buildLogPayload(ctx);
+      this.auditLogQueueService.dispatch(payload);
     } catch (error) {
-      this.logger.error('Audit logging push failed', error);
+      this.logger.error('Audit log dispatch failed', error);
     }
   }
 
-  private buildLogPayload(
-    options: AuditableOptions,
-    context: ExecutionContext,
-    user: any,
-    ipAddress: string,
-    userAgent: string,
-    endpoint: string,
-    method: string,
-    result?: any,
-  ): LogActionData {
+  private buildLogPayload(ctx: AuditRequestContext): LogActionData {
     return {
-      action: options.action,
-      entityType: this.extractEntityType(context),
-      entityId: this.extractEntityId(context, result),
-      userId: String(user.id ?? user.sub ?? 'unknown'),
-      userEmail: user.email as string | undefined,
-      ipAddress,
-      userAgent,
-      endpoint,
-      method,
-      description: options.description,
+      action: ctx.options.action,
+      entityType: this.extractEntityType(ctx.executionContext),
+      entityId: this.extractEntityId(ctx.executionContext, ctx.result),
+      userId: String(ctx.user.id ?? ctx.user.sub ?? 'unknown'),
+      userEmail: ctx.user.email as string | undefined,
+      ipAddress: ctx.ipAddress,
+      userAgent: ctx.userAgent,
+      endpoint: ctx.endpoint,
+      method: ctx.method,
+      description: ctx.options.description,
     };
   }
 
@@ -156,6 +128,9 @@ export class AuditInterceptor implements NestInterceptor {
       return String(result.email);
     }
 
+    this.logger.debug(
+      `Could not extract entityId for ${context.getClass().name}.${context.getHandler().name}, falling back to 'unknown'`,
+    );
     return 'unknown';
   }
 

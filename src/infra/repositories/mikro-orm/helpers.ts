@@ -1,85 +1,82 @@
 import {
   EntityManager,
   EntityRepository,
-  type Populate,
+  type Populate as PopulateHint,
 } from '@mikro-orm/core';
 import { BaseEntity } from '@/common/entity/base.entity';
 import { Sort } from './sort';
-import { parseFilterRules } from './filter';
+import { Where } from './filter';
 import type {
   PopulationQuery,
   FindQuery,
 } from '@/common/types/repository.types';
 
-export const resolveContext = <E extends BaseEntity>(
+/** em + repository theo transaction đang mở (nếu có). */
+export const Context = <E extends BaseEntity>(
   em: EntityManager,
   repo: EntityRepository<E>,
   opts?: { transaction?: EntityManager },
 ): { em: EntityManager; repository: EntityRepository<E> } => {
   const tx = opts?.transaction;
-  return !tx || tx === em
-    ? { em, repository: repo }
-    : {
-        em: tx,
-        repository: tx.getRepository(
-          repo.getEntityName(),
-        ) as unknown as EntityRepository<E>,
-      };
+  if (!tx || tx === em) return { em, repository: repo };
+
+  return {
+    em: tx,
+    repository: tx.getRepository(
+      repo.getEntityName(),
+    ) as unknown as EntityRepository<E>,
+  };
 };
 
-export const parseFields = (
-  select?: Record<string, any>,
-  prefix = '',
-): string[] => {
+export const Fields = (select?: Record<string, any>, prefix = ''): string[] => {
   if (!select) return [];
-  const fields = Object.keys(select).filter((k) => select[k]);
-  return prefix ? fields.map((f) => `${prefix}.${f}`) : fields;
+
+  const fields = Object.keys(select).filter((key) => select[key]);
+  return prefix ? fields.map((field) => `${prefix}.${field}`) : fields;
 };
 
-export function parsePopulation(
+export function Population(
   population?: PopulationQuery<any>[],
   prefix = '',
-): { populate: unknown[]; extraFields: string[] } {
-  if (!population?.length) return { populate: [], extraFields: [] };
+): { populate: unknown[]; fields: string[] } {
+  if (!population?.length) return { populate: [], fields: [] };
 
   const populate: unknown[] = [];
-  const extraFields: string[] = [];
+  const fields: string[] = [];
 
   for (const item of population) {
-    const { path, filters, sort, limit, select, population: nestedPop } = item;
-    const currPrefix = prefix ? `${prefix}.${path}` : path;
+    const { path, filters, sort, limit, select, population: nested } = item;
+    const currentPrefix = prefix ? `${prefix}.${path}` : path;
     const option: Record<string, any> = { field: path };
 
-    if (filters?.length) option.where = parseFilterRules(filters);
+    if (filters?.length) option.where = Where(filters);
     if (sort) option.orderBy = Sort(sort);
     if (limit) option.limit = limit;
-    if (select) extraFields.push(...parseFields(select, currPrefix));
+    if (select) fields.push(...Fields(select, currentPrefix));
 
-    if (nestedPop?.length) {
-      const child = parsePopulation(nestedPop, currPrefix);
+    if (nested?.length) {
+      const child = Population(nested, currentPrefix);
       if (child.populate.length) option.children = child.populate;
-      extraFields.push(...child.extraFields);
+      fields.push(...child.fields);
     }
+
     populate.push(option);
   }
-  return { populate, extraFields };
+
+  return { populate, fields };
 }
 
 export function findOptions(query?: FindQuery<any>): Record<string, any> {
   if (!query) return {};
 
   const options: Record<string, any> = {};
+  const { populate, fields } = Population(query.population);
+  const select = [...Fields(query.select), ...fields];
+  const orderBy = Sort(query.sort);
 
-  if (query.population?.length) {
-    const { populate, extraFields } = parsePopulation(query.population);
-    if (populate.length) options.populate = populate;
-    const fields = [...parseFields(query.select), ...extraFields];
-    if (fields.length) options.fields = fields;
-  } else if (query.select) {
-    options.fields = parseFields(query.select);
-  }
-
-  if (query.sort) options.orderBy = Sort(query.sort);
+  if (populate.length) options.populate = populate;
+  if (select.length) options.fields = select;
+  if (orderBy) options.orderBy = orderBy;
   if (query.limit) options.limit = query.limit;
   if (query.offset != null) options.offset = query.offset;
 
@@ -89,12 +86,13 @@ export function findOptions(query?: FindQuery<any>): Record<string, any> {
 export async function populateEntity<E extends BaseEntity>(
   em: EntityManager,
   entity: E,
-  opts?: FindQuery<E, EntityManager>,
+  query?: FindQuery<E, EntityManager>,
 ): Promise<E> {
-  if (!opts?.population?.length) return entity;
-  const { populate } = parsePopulation(opts.population);
+  const { populate } = Population(query?.population);
+
   if (populate.length) {
-    await em.populate(entity, populate as unknown as Populate<E>);
+    await em.populate(entity, populate as unknown as PopulateHint<E>);
   }
+
   return entity;
 }

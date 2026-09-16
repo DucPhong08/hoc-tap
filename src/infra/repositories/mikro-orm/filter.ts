@@ -6,14 +6,9 @@ import type {
 } from '@/common/types/repository.types';
 import { OperatorType } from '@/common/enums/operator-type.enum';
 
-export type OperatorConditionHandler = (
-  values: any,
-) => Record<string, any> | undefined;
+type OperatorHandler = (values: any) => Record<string, any>;
 
-export const OPERATOR_STRATEGIES: Record<
-  OperatorType,
-  OperatorConditionHandler
-> = {
+export const OPERATORS: Record<OperatorType, OperatorHandler> = {
   [OperatorType.EQUAL]: (values) => ({ $eq: values }),
   [OperatorType.NOT_EQUAL]: (values) => ({ $ne: values }),
   [OperatorType.INCLUDE]: (values) => ({ $in: values }),
@@ -32,22 +27,17 @@ export const OPERATOR_STRATEGIES: Record<
   [OperatorType.IS_NOT_NULL]: () => ({ $ne: null }),
 };
 
-export function getOperatorCondition(
-  operator: OperatorType,
-  values: unknown,
-): Record<string, any> | undefined {
-  return OPERATOR_STRATEGIES[operator]?.(values);
-}
+/** FilterRule[] -> where object. */
+export function Where<E>(rules: FilterRule<E>[]): Record<string, any> {
+  const conditions: Record<string, any>[] = [];
 
-export function parseFilterRules<E>(
-  rules: FilterRule<E>[],
-): Record<string, any> {
-  const andConditions = rules.map(({ field, operator, values }) => ({
-    [field as string]: OPERATOR_STRATEGIES[operator]?.(values),
-  }));
+  for (const { field, operator, values } of rules) {
+    const condition = OPERATORS[operator]?.(values);
+    if (condition) conditions.push({ [field as string]: condition });
+  }
 
-  if (andConditions.length <= 1) return andConditions[0] ?? {};
-  return { $and: andConditions };
+  if (conditions.length <= 1) return conditions[0] ?? {};
+  return { $and: conditions };
 }
 
 /**
@@ -57,13 +47,14 @@ export function Filter<E extends BaseEntity>(
   condition: QueryCondition<E> = {},
   options?: { softDelete?: boolean },
 ): FilterQuery<E> {
-  const parsed: Record<string, any> = Array.isArray(condition)
-    ? parseFilterRules(condition)
-    : condition;
+  const isRules = Array.isArray(condition);
+  const where: Record<string, any> = isRules ? Where(condition) : condition;
 
-  if (options?.softDelete || 'deletedAt' in parsed) {
-    return parsed as FilterQuery<E>;
-  }
+  const hasDeletedAt = isRules
+    ? condition.some((rule) => rule.field === 'deletedAt')
+    : 'deletedAt' in where;
 
-  return { ...parsed, deletedAt: null } as FilterQuery<E>;
+  if (options?.softDelete || hasDeletedAt) return where as FilterQuery<E>;
+
+  return { ...where, deletedAt: null } as FilterQuery<E>;
 }

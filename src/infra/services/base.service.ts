@@ -5,9 +5,10 @@ import type {
   PaginationResult,
   UpdateData,
   FindQuery,
-  QueryOptions,
+  BulkWriteResult,
+  BulkDeleteResult,
+  IBaseRepository,
 } from '@/common/interfaces/repository.interface';
-import type { IBaseRepository } from '@/common/interfaces/repository.interface';
 import { BaseEntity } from '@/common/entity/base.entity';
 import type { IAuthUser } from '@/common/interfaces/auth-user.interface';
 
@@ -20,6 +21,10 @@ export abstract class BaseService<
   TCondition = QueryCondition<E>,
 > {
   constructor(protected readonly repository: IBaseRepository<E, TContext>) {}
+
+  protected byIds(ids: string[]): TCondition {
+    return { id: { $in: ids } } as unknown as TCondition;
+  }
 
   async create(
     user: IAuthUser,
@@ -96,7 +101,7 @@ export abstract class BaseService<
     condition: TCondition,
     update: TUpdate,
     query?: FindQuery<E, TContext>,
-  ): Promise<{ affected: number }> {
+  ): Promise<BulkWriteResult> {
     return this.repository.updateMany(
       condition as QueryCondition<E>,
       update as UpdateData<E>,
@@ -109,13 +114,8 @@ export abstract class BaseService<
     ids: string[],
     update: TUpdate,
     query?: FindQuery<E, TContext>,
-  ): Promise<{ affected: number }> {
-    return this.updateMany(
-      user,
-      { id: { $in: ids } } as unknown as TCondition,
-      update,
-      query,
-    );
+  ): Promise<BulkWriteResult> {
+    return this.updateMany(user, this.byIds(ids), update, query);
   }
 
   async deleteById(
@@ -138,7 +138,7 @@ export abstract class BaseService<
     user: IAuthUser,
     condition: TCondition,
     query?: FindQuery<E, TContext>,
-  ): Promise<{ deleted: number }> {
+  ): Promise<BulkDeleteResult> {
     return this.repository.deleteMany(condition as QueryCondition<E>, query);
   }
 
@@ -146,27 +146,7 @@ export abstract class BaseService<
     user: IAuthUser,
     ids: string[],
     query?: FindQuery<E, TContext>,
-  ): Promise<{ deleted: number }> {
-    return this.deleteMany(
-      user,
-      { id: { $in: ids } } as unknown as TCondition,
-      query,
-    );
-  }
-
-  async count(
-    user: IAuthUser,
-    condition?: TCondition,
-    query?: QueryOptions<TContext>,
-  ): Promise<number> {
-    return this.repository.count(condition as QueryCondition<E>, query);
-  }
-
-  async exists(
-    user: IAuthUser,
-    condition: TCondition,
-    query?: QueryOptions<TContext>,
-  ): Promise<boolean> {
-    return this.repository.exists(condition as QueryCondition<E>, query);
+  ): Promise<BulkDeleteResult> {
+    return this.deleteMany(user, this.byIds(ids), query);
   }
 }
