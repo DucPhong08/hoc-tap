@@ -1,146 +1,150 @@
 import {
   Injectable,
+  Logger,
   OnModuleDestroy,
   OnModuleInit,
-  Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { CacheStrategy, CacheConfig } from './cache.interface';
 import type { RedisClientType } from './cache.constant';
 
+const SCAN_BATCH = 500;
+
 @Injectable()
 export class RedisCacheService
   implements CacheStrategy, OnModuleInit, OnModuleDestroy
 {
-  // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
-  private client: RedisClientType | null = null;
   private readonly logger = new Logger(RedisCacheService.name);
   private readonly config: CacheConfig;
-  private isConnected = false;
+  private client: RedisClientType | null = null;
 
   constructor(private readonly configService: ConfigService) {
-    this.config = this.configService.get<CacheConfig>('cache') ?? {
-      ttl: 300,
-      prefix: 'app',
-    };
+    this.config = this.configService.getOrThrow<CacheConfig>('cache');
+  }
+
+  /** Client chỉ khi thực sự sẵn sàng nhận lệnh. */
+  private get ready(): RedisClientType | null {
+    return this.client?.isReady ? this.client : null;
   }
 
   async onModuleInit() {
-    const redisConfig = this.config?.redis;
-    if (!redisConfig?.host) return;
+    const redis = this.config.redis;
+    if (!redis?.host) {
+      this.logger.log('Không cấu hình Redis, chạy không cache');
+      return;
+    }
 
     try {
       const { createClient } = await import('redis');
+
       this.client = createClient({
         socket: {
-          host: redisConfig.host,
-          port: redisConfig.port,
-          reconnectStrategy: (retries: number) => {
-            if (retries > 10) {
-              this.logger.error('Redis kết nối lại thất bại quá 10 lần.');
-              return new Error('Redis connection retry limit reached');
-            }
-            return Math.min(retries * 200, 3000);
-          },
+          host: redis.host,
+          port: redis.port,
+          reconnectStrategy: (retries: number) =>
+            retries > 10
+              ? new Error('Redis vượt quá 10 lần thử kết nối lại')
+              : Math.min(retries * 200, 3000),
         },
-        password: redisConfig.password,
-        database: redisConfig.db ?? 0,
-      });
+        password: redis.password,
+        database: redis.db ?? 0,
+      }) as RedisClientType;
 
       this.client.on('error', (err: Error) =>
         this.logger.warn(`Redis: ${err.message}`),
       );
-      this.client.on('connect', () => {
-        this.logger.log('Redis đã kết nối');
-        this.isConnected = true;
-      });
+      this.client.on('ready', () => this.logger.log('Redis sẵn sàng'));
+      this.client.on('end', () => this.logger.warn('Redis đã ngắt kết nối'));
 
       await this.client.connect();
-    } catch {
-      this.logger.warn('Không thể kết nối Redis, chuyển sang chạy không cache');
+    } catch (err) {
+      this.logger.warn(
+        `Không kết nối được Redis, chạy không cache: ${(err as Error).message}`,
+      );
     }
   }
 
   async onModuleDestroy() {
-    if (this.client && this.isConnected) {
+    if (!this.client?.isOpen) return;
+
+    try {
       await this.client.quit();
+    } catch {
+      this.client.destroy();
     }
   }
 
-  private key(k: string): string {
-    return `${this.config.prefix}:${k}`;
+  private key(key: string): string {
+    return `${this.config.prefix}:${key}`;
+  }
+
+  private async command<T>(
+    action: (client: RedisClientType) => Promise<T>,
+    fallback: T,
+  ): Promise<T> {
+    const client = this.ready;
+    if (!client) return fallback;
+
+    try {
+      return await action(client);
+    } catch (err) {
+      this.logger.warn(`Redis: ${(err as Error).message}`);
+      return fallback;
+    }
   }
 
   async get<T>(key: string): Promise<T | null> {
-    if (!this.isConnected || !this.client) return null;
-    try {
-      const raw = await this.client.get(this.key(key));
+    return this.command<T | null>(async (client) => {
+      const raw = await client.get(this.key(key));
       return raw ? (JSON.parse(raw) as T) : null;
-    } catch {
-      return null;
-    }
+    }, null);
   }
 
   async set<T>(key: string, value: T, ttl?: number): Promise<void> {
-    if (!this.isConnected || !this.client) return;
-    try {
-      await this.client.setEx(
+    await this.command(async (client) => {
+      await client.setEx(
         this.key(key),
         ttl ?? this.config.ttl,
         JSON.stringify(value),
       );
-    } catch {
-      /* bỏ qua */
-    }
+    }, undefined);
   }
 
   async del(key: string): Promise<void> {
-    if (!this.isConnected || !this.client) return;
-    try {
-      await this.client.unlink(this.key(key));
-    } catch {
-      /* bỏ qua */
-    }
+    await this.command(async (client) => {
+      await client.unlink(this.key(key));
+    }, undefined);
   }
 
   async delByPattern(pattern: string): Promise<void> {
-    if (!this.isConnected || !this.client) return;
-    try {
-      const BATCH_SIZE = 500;
+    await this.command(async (client) => {
       let batch: string[] = [];
-      for await (const key of this.client.scanIterator({
+
+      for await (const found of client.scanIterator({
         MATCH: this.key(pattern),
         COUNT: 100,
       })) {
-        batch.push(key);
-        if (batch.length >= BATCH_SIZE) {
-          await this.client.unlink(batch);
+        batch.push(...(Array.isArray(found) ? found : [found]));
+
+        if (batch.length >= SCAN_BATCH) {
+          await client.unlink(batch);
           batch = [];
         }
       }
-      if (batch.length > 0) {
-        await this.client.unlink(batch);
-      }
-    } catch (err) {
-      this.logger.warn(`Lỗi delByPattern: ${(err as Error).message}`);
-    }
+
+      if (batch.length) await client.unlink(batch);
+    }, undefined);
   }
 
+  /** Chỉ xoá key thuộc prefix của app, không đụng DB chung. */
   async clear(): Promise<void> {
-    if (!this.isConnected || !this.client) return;
-    try {
-      await this.client.flushDb();
-    } catch {
-      /* bỏ qua */
-    }
+    await this.delByPattern('*');
   }
 
   async has(key: string): Promise<boolean> {
-    if (!this.isConnected || !this.client) return false;
-    try {
-      return (await this.client.exists(this.key(key))) > 0;
-    } catch {
-      return false;
-    }
+    return this.command(
+      async (client) => (await client.exists(this.key(key))) > 0,
+      false,
+    );
   }
 }

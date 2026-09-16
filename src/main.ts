@@ -6,8 +6,8 @@ import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import { DatabaseErrorInterceptor } from './common/interceptors/database-error.interceptor';
+import type { AppConfig } from './config/configuration';
 import { TimeoutInterceptor } from './common/interceptors/timeout.interceptor';
-import type { HostConfig } from './config/configuration';
 
 const SWAGGER_PATH = 'api';
 const SWAGGER_TITLE = 'API Documentation';
@@ -29,7 +29,8 @@ export async function bootstrap() {
   const configService = app.get(ConfigService);
 
   // Fail-fast JWT validation in production
-  const mode = configService.get<string>('mode');
+  const appConfig = configService.get<AppConfig>('app');
+  const mode = appConfig?.mode;
   const authConfig = configService.get<any>('auth');
   if (mode === 'production') {
     const jwtSecret = authConfig?.jwtSecret;
@@ -91,10 +92,10 @@ export async function bootstrap() {
     },
   });
 
-  const host = configService.get<HostConfig>('host');
-  const port = host?.port ?? 3000;
+  const port = appConfig?.port ?? 3000;
+  const host = appConfig?.host ?? '0.0.0.0';
 
-  await app.listen(port);
+  await app.listen(port, host);
   console.log(`Application is running on: http://localhost:${port}`);
   console.log(
     `Swagger documentation: http://localhost:${port}/${SWAGGER_PATH}`,

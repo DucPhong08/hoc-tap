@@ -1,9 +1,5 @@
 import type { CacheConfig } from '@/infra/cache/cache.interface';
-
-export interface HostConfig {
-  host: string;
-  port: number;
-}
+import { mode, num, required, secret, str } from './env';
 
 export interface AppConfig {
   mode: 'development' | 'production' | 'test';
@@ -22,87 +18,60 @@ export interface AuthConfig {
   refreshGracePeriodSeconds: number;
 }
 
-export interface GoogleOAuthConfig {
+export interface OAuthProviderConfig {
   clientId: string;
   clientSecret: string;
   callbackUrl: string;
 }
 
-export interface FacebookOAuthConfig {
-  appId: string;
-  appSecret: string;
-  callbackUrl: string;
-}
-
 export interface OAuthConfig {
-  google: GoogleOAuthConfig;
-  facebook: FacebookOAuthConfig;
+  google: OAuthProviderConfig;
+  facebook: OAuthProviderConfig;
 }
 
 export interface AppConfiguration {
-  mode: string;
   app: AppConfig;
-  host: HostConfig;
   auth: AuthConfig;
   cache: CacheConfig;
   oauth: OAuthConfig;
 }
 
-export default (): AppConfiguration => {
-  const mode =
-    process.env.NODE_ENV === 'production' || process.env.MODE === 'production'
-      ? 'production'
-      : (process.env.NODE_ENV as 'development' | 'production' | 'test') ||
-        'development';
+const oauthProvider = (prefix: string): OAuthProviderConfig => ({
+  clientId: str(`${prefix}_CLIENT_ID`) ?? '',
+  clientSecret: str(`${prefix}_CLIENT_SECRET`) ?? '',
+  callbackUrl: str(`${prefix}_CALLBACK_URL`) ?? '',
+});
 
-  const host = process.env.HOST || '0.0.0.0';
-  const port = Number(process.env.PORT) || 3000;
-
-  return {
-    mode,
-    app: {
-      mode,
-      host,
-      port,
-    },
-    host: {
-      host,
-      port,
-    },
-    auth: {
-      jwtSecret: process.env.JWT_SECRET || 'your-secret-key',
-      jwtExpiresIn: process.env.JWT_EXPIRES_IN || '15m',
-      jwtRefreshSecret: process.env.JWT_REFRESH_SECRET || 'your-refresh-secret',
-      jwtRefreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
-      jwtIssuer: process.env.JWT_ISSUER || 'hoc-tap-auth',
-      jwtAudience: process.env.JWT_AUDIENCE || 'hoc-tap-client',
-      bcryptRounds: Number(process.env.BCRYPT_ROUNDS) || 10,
-      refreshGracePeriodSeconds:
-        Number(process.env.REFRESH_GRACE_PERIOD_SECONDS) || 15,
-    },
-    cache: {
-      ttl: Number(process.env.CACHE_TTL) || 300,
-      prefix: process.env.CACHE_PREFIX || 'app',
-      redis: process.env.REDIS_HOST
-        ? {
-            host: process.env.REDIS_HOST,
-            port: Number(process.env.REDIS_PORT) || 6379,
-            password: process.env.REDIS_PASSWORD || undefined,
-            db: Number(process.env.REDIS_DB) || 0,
-          }
-        : undefined,
-    },
-    oauth: {
-      google: {
-        clientId: process.env.GOOGLE_CLIENT_ID || '',
-        clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
-        callbackUrl: process.env.GOOGLE_CALLBACK_URL || '',
-      },
-      facebook: {
-        appId: process.env.FACEBOOK_APP_ID || '',
-        appSecret: process.env.FACEBOOK_APP_SECRET || '',
-        callbackUrl: process.env.FACEBOOK_CALLBACK_URL || '',
-      },
-    },
-  };
-};
+export default (): AppConfiguration => ({
+  app: {
+    mode: mode(),
+    host: str('HOST') ?? '0.0.0.0',
+    port: num('PORT') ?? 3000,
+  },
+  auth: {
+    jwtSecret: secret('JWT_SECRET', 'dev-access-secret'),
+    jwtExpiresIn: str('JWT_EXPIRES_IN') ?? '15m',
+    jwtRefreshSecret: secret('JWT_REFRESH_SECRET', 'dev-refresh-secret'),
+    jwtRefreshExpiresIn: str('JWT_REFRESH_EXPIRES_IN') ?? '7d',
+    jwtIssuer: str('JWT_ISSUER') ?? 'app-auth',
+    jwtAudience: str('JWT_AUDIENCE') ?? 'app-client',
+    bcryptRounds: num('BCRYPT_ROUNDS') ?? 10,
+    refreshGracePeriodSeconds: num('REFRESH_GRACE_PERIOD_SECONDS') ?? 15,
+  },
+  cache: {
+    ttl: num('CACHE_TTL') ?? 300,
+    prefix: str('CACHE_PREFIX') ?? 'app',
+    redis: str('REDIS_HOST')
+      ? {
+          host: required('REDIS_HOST'),
+          port: num('REDIS_PORT') ?? 6379,
+          password: str('REDIS_PASSWORD'),
+          db: num('REDIS_DB') ?? 0,
+        }
+      : undefined,
+  },
+  oauth: {
+    google: oauthProvider('GOOGLE'),
+    facebook: oauthProvider('FACEBOOK'),
+  },
+});

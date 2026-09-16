@@ -1,38 +1,40 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
-import { InjectMikroORM } from '@mikro-orm/nestjs';
+import { Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { MikroORM } from '@mikro-orm/core';
 import { PostgreSqlDriver } from '@mikro-orm/postgresql';
-import { DB_CONTEXTS } from '@/database/database.constants';
+import { bool, isProd } from '@/config/env';
+import { DB_ORMS, type DbContext } from './database.constants';
+import { DB_CONTEXT_NAMES } from './database.contexts';
 
 @Injectable()
 export class MigrationService implements OnModuleInit {
-  constructor(
-    @InjectMikroORM(DB_CONTEXTS.MAIN) private readonly mainOrm: MikroORM,
-    @InjectMikroORM(DB_CONTEXTS.LOGS) private readonly logsOrm: MikroORM,
-  ) {}
+  private readonly logger = new Logger(MigrationService.name);
+
+  constructor(@Inject(DB_ORMS) private readonly orms: MikroORM[]) {}
 
   async onModuleInit() {
-    await this.migrate(DB_CONTEXTS.MAIN, this.mainOrm);
-    await this.migrate(DB_CONTEXTS.LOGS, this.logsOrm);
+    await Promise.all(
+      this.orms.map((orm, index) => this.migrate(DB_CONTEXT_NAMES[index], orm)),
+    );
   }
 
-  private async migrate(contextName: string, orm: MikroORM) {
-    const prefix = `DB_${contextName.toUpperCase()}_`;
+  private async migrate(name: DbContext, orm: MikroORM) {
+    const prefix = `DB_${name.toUpperCase()}_`;
 
-    if (
-      orm.config.get('driver') !== PostgreSqlDriver ||
-      process.env.NODE_ENV === 'production' ||
-      process.env[`${prefix}AUTO_MIGRATE`] !== 'true'
-    )
+    if (isProd() || orm.config.get('driver') !== PostgreSqlDriver) return;
+
+    // Prototype: sync thẳng schema, KHÔNG dùng chung với migration.
+    if (bool(`${prefix}SYNC_SCHEMA`)) {
+      await orm.schema.updateSchema();
+      this.logger.warn(`[${name}] đã sync schema (không qua migration)`);
       return;
-
-    try {
-      const pending = await orm.migrator.getPendingMigrations();
-      if (pending.length) await orm.migrator.up();
-    } catch {
-      /* bỏ qua cảnh báo khởi động */
     }
 
-    await orm.schema.updateSchema();
+    if (!bool(`${prefix}AUTO_MIGRATE`)) return;
+
+    const pending = await orm.migrator.getPendingMigrations();
+    if (!pending.length) return;
+
+    await orm.migrator.up();
+    this.logger.log(`[${name}] đã chạy ${pending.length} migration`);
   }
 }

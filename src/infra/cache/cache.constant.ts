@@ -1,1 +1,3 @@
-export type RedisClientType = any;
+import type { RedisClientType } from 'redis';
+
+export type { RedisClientType };
