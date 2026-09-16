@@ -7,8 +7,8 @@
   "license": "UNLICENSED",
   "mikro-orm": {
     "configPaths": [
-      "./dist/database/cli/mikro-orm.cli.config.js",
-      "./src/database/cli/mikro-orm.cli.config.ts"
+      "./dist/database/mikro-orm.config.js",
+      "./src/database/mikro-orm.config.ts"
     ]
   },
   "scripts": {
