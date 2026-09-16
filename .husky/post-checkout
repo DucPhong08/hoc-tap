@@ -85,7 +85,7 @@ if [ -z "$GRAPHIFY_PYTHON" ]; then
 fi
 # Third probe: resolve via the graphify launcher on PATH.
 if [ -z "$GRAPHIFY_PYTHON" ]; then
-    GRAPHIFY_BIN=$(command -v graphify 2>/dev/null)
+    GRAPHIFY_BIN=$(command -v graphify 2>/dev/null || true)
     if [ -n "$GRAPHIFY_BIN" ]; then
         # Windows pip layout: Scripts/graphify(.exe) sits beside ..\python.exe
         # (or .\python.exe inside a venv's Scripts dir). NOTE: command -v may
