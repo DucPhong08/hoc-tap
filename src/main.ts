@@ -19,7 +19,7 @@ export async function bootstrap() {
     process.env.NODE_ENV === 'production' || process.env.MODE === 'production';
   const loggerLevels = isProduction
     ? ['error', 'warn']
-    : ['error', 'warn', 'log', 'debug', 'verbose'];
+    : ['error', 'warn', 'debug', 'verbose'];
 
   const app = await NestFactory.create(AppModule, {
     bufferLogs: true,

@@ -14,18 +14,24 @@ import { AuditCleanupService } from '../services/audit-cleanup.service';
 
 @ApiTags('audit-logs')
 @Controller('audit-logs')
-export class AuditLogController extends BaseController(AuditLog, {
-  defaultRoles: [Role.ADMIN],
-  routes: {
-    create: { enabled: false },
-    updateOne: { enabled: false },
-    updateById: { enabled: false },
-    updateByIds: { enabled: false },
-    deleteOne: { enabled: false },
-    deleteById: { enabled: false },
-    deleteByIds: { enabled: false },
+export class AuditLogController extends BaseController(
+  AuditLog,
+  undefined,
+  undefined,
+  undefined,
+  {
+    defaultRoles: [Role.ADMIN],
+    routes: {
+      create: { enabled: false },
+      updateOne: { enabled: false },
+      updateById: { enabled: false },
+      updateByIds: { enabled: false },
+      deleteOne: { enabled: false },
+      deleteById: { enabled: false },
+      deleteByIds: { enabled: false },
+    },
   },
-}) {
+) {
   constructor(
     private readonly auditLogService: AuditLogService,
     private readonly auditCleanupService: AuditCleanupService,

@@ -6,6 +6,21 @@ import { User } from '@/modules/users/entities/user.entity';
 import { RedisCacheService } from '@/infra/cache/redis-cache.service';
 import { TokenPair } from '../types/auth-result.type';
 
+interface SessionCacheEntry {
+  id: string;
+  isRevoked: boolean;
+  expiresAt: Date | string;
+  user: {
+    id: string;
+    email: string;
+    roles: string[];
+    isActive: boolean;
+    firstName: string;
+    lastName: string;
+    avatar?: string;
+  };
+}
+
 @Injectable()
 export class SessionService {
   private readonly sessionCachePrefix = 'auth:session:';
@@ -56,12 +71,13 @@ export class SessionService {
   async validate(sessionId: string): Promise<SessionEntity | null> {
     const cacheKey = `${this.sessionCachePrefix}${sessionId}`;
     if (this.redisCacheService) {
-      const cached = await this.redisCacheService.get<SessionEntity>(cacheKey);
+      const cached =
+        await this.redisCacheService.get<SessionCacheEntry>(cacheKey);
       if (cached) {
         if (cached.isRevoked || new Date(cached.expiresAt) <= new Date()) {
           return null;
         }
-        return cached;
+        return cached as unknown as SessionEntity;
       }
     }
 
@@ -74,14 +90,14 @@ export class SessionService {
     }
 
     if (this.redisCacheService && session.user) {
-      const sessionCachePayload = {
+      const sessionCachePayload: SessionCacheEntry = {
         id: session.id,
         isRevoked: session.isRevoked,
         expiresAt: session.expiresAt,
         user: {
           id: session.user.id,
           email: session.user.email,
-          roles: session.user.roles ?? [(session.user as any).role],
+          roles: session.user.roles,
           isActive: session.user.isActive,
           firstName: session.user.firstName,
           lastName: session.user.lastName,

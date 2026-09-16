@@ -1,4 +1,4 @@
-import { Injectable, Logger, Optional, Inject } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bull';
 import type { Queue } from 'bull';
 import { QueueName, AuditLogJob } from '@/common/constants/queue.constant';
@@ -11,7 +11,6 @@ export class AuditLogQueueService {
   private readonly logger = new Logger(AuditLogQueueService.name);
 
   constructor(
-    @Inject(AuditLogService)
     private readonly auditLogService: AuditLogService,
     @Optional()
     @InjectQueue(QueueName.AUDIT_LOG)

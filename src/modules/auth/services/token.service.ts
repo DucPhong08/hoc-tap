@@ -2,7 +2,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
-import type { StringValue } from 'ms';
+import ms, { type StringValue } from 'ms';
 import type { AuthConfig } from '@/config/configuration';
 import { JwtPayload } from '../types/jwt-payload.type';
 
@@ -69,22 +69,15 @@ export class TokenService {
 
   // Hạn dùng access token tính theo giây
   accessTtlSeconds(): number {
-    const authConfig = this.configService.get<AuthConfig>('auth');
-    const exp = authConfig?.jwtExpiresIn ?? '15m';
-    if (exp.endsWith('m')) return parseInt(exp, 10) * 60;
-    if (exp.endsWith('h')) return parseInt(exp, 10) * 3600;
-    if (exp.endsWith('d')) return parseInt(exp, 10) * 86400;
-    if (exp.endsWith('s')) return parseInt(exp, 10);
-    return 900;
+    const exp =
+      this.configService.get<AuthConfig>('auth')?.jwtExpiresIn ?? '15m';
+    return Math.floor(ms(exp as StringValue) / 1000);
   }
 
   // Hạn dùng refresh token tính theo mili-giây
   refreshTtlMs(): number {
-    const authConfig = this.configService.get<AuthConfig>('auth');
-    const exp = authConfig?.jwtRefreshExpiresIn ?? '7d';
-    if (exp.endsWith('d')) return parseInt(exp, 10) * 86400 * 1000;
-    if (exp.endsWith('h')) return parseInt(exp, 10) * 3600 * 1000;
-    if (exp.endsWith('m')) return parseInt(exp, 10) * 60 * 1000;
-    return 7 * 86400 * 1000;
+    const exp =
+      this.configService.get<AuthConfig>('auth')?.jwtRefreshExpiresIn ?? '7d';
+    return ms(exp as StringValue);
   }
 }

@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { plainToClass } from 'class-transformer';
 import { validate } from 'class-validator';
 import { BaseService } from '@/infra/services/base.service';
@@ -14,6 +14,8 @@ import { SettingKey } from '../enums/setting-key.enum';
 
 @Injectable()
 export class SettingService extends BaseService<Setting> {
+  private readonly logger = new Logger(SettingService.name);
+
   constructor(private readonly settingRepository: SettingRepository) {
     super(settingRepository);
   }
@@ -44,7 +46,10 @@ export class SettingService extends BaseService<Setting> {
       });
 
       if (validateResult.length > 0) {
-        console.error('Setting validation failed:', validateResult);
+        this.logger.error(
+          'Setting validation failed',
+          JSON.stringify(validateResult),
+        );
         throw new BadRequestException('error-setting-invalid');
       }
     }

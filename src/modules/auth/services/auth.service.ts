@@ -5,7 +5,7 @@ import {
   Optional,
   Logger,
 } from '@nestjs/common';
-import { UserRepository } from '@/modules/users/repositories/user.repository';
+import { UserService } from '@/modules/users/services/user.service';
 import { User } from '@/modules/users/entities/user.entity';
 import { PasswordService } from './password.service';
 import { SessionService } from './session.service';
@@ -17,13 +17,21 @@ import { AuthProvider } from '../enums/auth-provider.enum';
 import { Role } from '@/common/constants/role.constant';
 import { AuditLogService } from '@/modules/audit-logs/services/audit-log.service';
 import { AuthResult, TokenPair } from '../types/auth-result.type';
+import type { IAuthUser } from '@/common/interfaces/auth-user.interface';
+
+/** Token đại diện cho tác nhân hệ thống (không có user đăng nhập). */
+const SYSTEM_USER: IAuthUser = {
+  id: 'system',
+  email: 'system@internal',
+  roles: [Role.ADMIN],
+};
 
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
 
   constructor(
-    private readonly userRepository: UserRepository,
+    private readonly userService: UserService,
     private readonly passwordService: PasswordService,
     private readonly sessionService: SessionService,
     @Optional() private readonly auditLogService?: AuditLogService,
@@ -38,22 +46,14 @@ export class AuthService {
     ipAddress?: string,
     userAgent?: string,
   ): Promise<AuthResult> {
-    const emailNorm = email.toLowerCase().trim();
-
     if (!password || password.length < 8) {
       throw new BadRequestException('error-password-too-short');
     }
 
-    const emailExists = await this.userRepository.exists({ email: emailNorm });
-    if (emailExists) {
-      throw new BadRequestException('error-user-exist');
-    }
-
-    const hashedPassword = await this.passwordService.hash(password);
-
-    const user = await this.userRepository.create({
-      email: emailNorm,
-      password: hashedPassword,
+    // UserService.create() đã lo normalize email, check unique, hash password
+    const user = await this.userService.create(SYSTEM_USER, {
+      email,
+      password,
       firstName,
       lastName,
       isActive: true,
@@ -67,25 +67,18 @@ export class AuthService {
       userAgent,
     );
 
-    if (this.auditLogService) {
-      void this.auditLogService
-        .log({
-          action: 'USER_REGISTERED',
-          entityType: 'User',
-          entityId: user.id,
-          userId: user.id,
-          userEmail: user.email,
-          ipAddress,
-          userAgent,
-          description: 'Đăng ký tài khoản mới thành công',
-        })
-        .catch((err) => this.logger.error(`Lỗi audit log: ${err.message}`));
-    }
+    this.emitAuditLog({
+      action: 'USER_REGISTERED',
+      entityType: 'User',
+      entityId: user.id,
+      userId: user.id,
+      userEmail: user.email,
+      ipAddress,
+      userAgent,
+      description: 'Đăng ký tài khoản mới thành công',
+    });
 
-    return {
-      ...tokens,
-      user: this.formatUser(user),
-    };
+    return { ...tokens, user: this.formatUser(user) };
   }
 
   // Đăng nhập tài khoản, kiểm tra khóa tài khoản và sinh phiên
@@ -95,12 +88,13 @@ export class AuthService {
     ipAddress?: string,
     userAgent?: string,
   ): Promise<AuthResult> {
-    const emailNorm = email.toLowerCase().trim();
-    const user = await this.userRepository.getOne({ email: emailNorm });
+    const user = await this.userService.getOne(SYSTEM_USER, {
+      email: email.toLowerCase().trim(),
+    });
 
     // Tránh user enumeration: luôn trả lỗi chung nếu không tìm thấy hoặc sai provider
     if (!user?.password || user.provider !== AuthProvider.LOCAL) {
-      this.logFailedLogin(emailNorm, ipAddress, userAgent);
+      this.emitFailedLoginLog(email, ipAddress, userAgent);
       throw new UnauthorizedException('error-invalid-credentials');
     }
 
@@ -129,8 +123,8 @@ export class AuthService {
       if (attempts >= 5) {
         updatePayload.lockedUntil = new Date(Date.now() + 15 * 60 * 1000);
       }
-      await this.userRepository.updateById(user.id, updatePayload);
-      this.logFailedLogin(emailNorm, ipAddress, userAgent, user.id);
+      await this.userService.updateById(SYSTEM_USER, user.id, updatePayload);
+      this.emitFailedLoginLog(email, ipAddress, userAgent, user.id);
       throw new UnauthorizedException('error-invalid-credentials');
     }
 
@@ -140,7 +134,7 @@ export class AuthService {
 
     // Reset bộ đếm số lần đăng nhập sai khi thành công
     if ((user.failedLoginAttempts ?? 0) > 0 || user.lockedUntil) {
-      await this.userRepository.updateById(user.id, {
+      await this.userService.updateById(SYSTEM_USER, user.id, {
         failedLoginAttempts: 0,
         lockedUntil: undefined,
       });
@@ -152,25 +146,18 @@ export class AuthService {
       userAgent,
     );
 
-    if (this.auditLogService) {
-      void this.auditLogService
-        .log({
-          action: 'LOGIN_SUCCESS',
-          entityType: 'User',
-          entityId: user.id,
-          userId: user.id,
-          userEmail: user.email,
-          ipAddress,
-          userAgent,
-          description: 'Đăng nhập thành công',
-        })
-        .catch((err) => this.logger.error(`Lỗi audit log: ${err.message}`));
-    }
+    this.emitAuditLog({
+      action: 'LOGIN_SUCCESS',
+      entityType: 'User',
+      entityId: user.id,
+      userId: user.id,
+      userEmail: user.email,
+      ipAddress,
+      userAgent,
+      description: 'Đăng nhập thành công',
+    });
 
-    return {
-      ...tokens,
-      user: this.formatUser(user),
-    };
+    return { ...tokens, user: this.formatUser(user) };
   }
 
   // Làm mới access token từ refresh token
@@ -191,19 +178,15 @@ export class AuthService {
   ): Promise<{ success: boolean }> {
     await this.sessionService.revoke(sessionId);
 
-    if (this.auditLogService) {
-      void this.auditLogService
-        .log({
-          action: 'LOGOUT',
-          entityType: 'Session',
-          entityId: sessionId,
-          userId,
-          ipAddress,
-          userAgent,
-          description: 'Đăng xuất và hủy phiên làm việc',
-        })
-        .catch((err) => this.logger.error(`Lỗi audit log: ${err.message}`));
-    }
+    this.emitAuditLog({
+      action: 'LOGOUT',
+      entityType: 'Session',
+      entityId: sessionId,
+      userId,
+      ipAddress,
+      userAgent,
+      description: 'Đăng xuất và hủy phiên làm việc',
+    });
 
     return { success: true };
   }
@@ -217,26 +200,22 @@ export class AuthService {
   ): Promise<{ success: boolean; revokedCount: number }> {
     const count = await this.sessionService.revokeAll(userId, currentSessionId);
 
-    if (this.auditLogService) {
-      void this.auditLogService
-        .log({
-          action: 'ALL_SESSIONS_REVOKED',
-          entityType: 'User',
-          entityId: userId,
-          userId,
-          ipAddress,
-          userAgent,
-          description: `Đã hủy toàn bộ phiên làm việc (số lượng: ${count})`,
-        })
-        .catch((err) => this.logger.error(`Lỗi audit log: ${err.message}`));
-    }
+    this.emitAuditLog({
+      action: 'ALL_SESSIONS_REVOKED',
+      entityType: 'User',
+      entityId: userId,
+      userId,
+      ipAddress,
+      userAgent,
+      description: `Đã hủy toàn bộ phiên làm việc (số lượng: ${count})`,
+    });
 
     return { success: true, revokedCount: count };
   }
 
   // Lấy thông tin người dùng từ id
   async getUser(userId: string): Promise<AuthUserProfile> {
-    const user = await this.userRepository.getById(userId);
+    const user = await this.userService.getById(SYSTEM_USER, userId);
 
     if (!user) {
       throw new UnauthorizedException('error-user-not-found');
@@ -252,15 +231,15 @@ export class AuthService {
     userAgent?: string,
   ): Promise<AuthResult> {
     const emailNorm = profile.email.toLowerCase().trim();
-    let user = await this.userRepository.getOne({ email: emailNorm });
+    let user = await this.userService.getOne(SYSTEM_USER, { email: emailNorm });
 
     if (user) {
-      user = (await this.userRepository.updateById(user.id, {
+      user = (await this.userService.updateById(SYSTEM_USER, user.id, {
         provider: profile.provider,
         avatar: profile.avatar,
       }))!;
     } else {
-      user = await this.userRepository.create({
+      user = await this.userService.create(SYSTEM_USER, {
         email: emailNorm,
         firstName: profile.firstName,
         lastName: profile.lastName,
@@ -277,10 +256,7 @@ export class AuthService {
       userAgent,
     );
 
-    return {
-      ...tokens,
-      user: this.formatUser(user),
-    };
+    return { ...tokens, user: this.formatUser(user) };
   }
 
   // Chuẩn hóa dữ liệu user trả về client
@@ -297,26 +273,32 @@ export class AuthService {
     };
   }
 
+  // Đẩy audit log fire-and-forget
+  private emitAuditLog(data: Parameters<AuditLogService['log']>[0]): void {
+    if (!this.auditLogService) return;
+    void this.auditLogService
+      .log(data)
+      .catch((err: Error) =>
+        this.logger.error(`Lỗi audit log: ${err.message}`),
+      );
+  }
+
   // Ghi log đăng nhập thất bại
-  private logFailedLogin(
+  private emitFailedLoginLog(
     email: string,
     ipAddress?: string,
     userAgent?: string,
     userId?: string,
   ): void {
-    if (this.auditLogService) {
-      void this.auditLogService
-        .log({
-          action: 'LOGIN_FAILED',
-          entityType: 'User',
-          entityId: userId ?? 'unknown',
-          userId: userId ?? 'unknown',
-          userEmail: email,
-          ipAddress,
-          userAgent,
-          description: 'Đăng nhập thất bại: thông tin xác thực không đúng',
-        })
-        .catch((err) => this.logger.error(`Lỗi audit log: ${err.message}`));
-    }
+    this.emitAuditLog({
+      action: 'LOGIN_FAILED',
+      entityType: 'User',
+      entityId: userId ?? 'unknown',
+      userId: userId ?? 'unknown',
+      userEmail: email,
+      ipAddress,
+      userAgent,
+      description: 'Đăng nhập thất bại: thông tin xác thực không đúng',
+    });
   }
 }

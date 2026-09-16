@@ -58,7 +58,7 @@ export const getRouteConfigs = (
 
 export const checkRouteEnabled = (config: RouteConfig): void => {
   if (!config.enabled) {
-    throw new NotFoundException('error-route-not-available');
+    throw new NotFoundException();
   }
 };
 

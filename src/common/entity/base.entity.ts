@@ -1,16 +1,16 @@
-import { Entity, PrimaryKey, Property, OptionalProps } from '@mikro-orm/core';
+import { Entity, PrimaryKey, Property } from '@mikro-orm/core';
 import { IsOptional } from 'class-validator';
 import { v4 as uuidv4 } from 'uuid';
 
-const isMongo = !process.env.DB_MAIN_DRIVER?.toLowerCase().includes('postgres');
+function isMongoDriver(): boolean {
+  return !process.env.DB_MAIN_DRIVER?.toLowerCase().includes('postgres');
+}
 
 @Entity({ abstract: true })
 export abstract class BaseEntity {
-  [OptionalProps]?: 'createdAt' | 'updatedAt' | 'deletedAt';
-
   @PrimaryKey({
     type: 'string',
-    ...(isMongo ? { fieldName: '_id' } : {}),
+    ...(isMongoDriver() ? { fieldName: '_id' } : {}),
     onCreate: () => uuidv4(),
   })
   id!: string;

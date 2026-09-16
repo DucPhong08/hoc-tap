@@ -1,3 +1,20 @@
+/**
+ * @file base.controller.ts
+ *
+ * ## Mixin Pattern — tại sao không dùng `abstract class` thuần?
+ *
+ * NestJS resolve decorator metadata (Swagger `@ApiBody`, `@UsePipes`, v.v.)
+ * **tại thời điểm decoration**, không phải lúc runtime. Generic type param
+ * của TypeScript bị xoá sau khi compile (type erasure), nên `abstract class
+ * BaseController<C>` không thể truyền `CreateDto` vào `@ApiBody({ type: CreateDto })`
+ * một cách dynamic.
+ *
+ * Mixin factory là pattern chuẩn NestJS cho trường hợp này, nhất quán với
+ * cách NestJS docs hướng dẫn (https://docs.nestjs.com/techniques/mvc#class-inheritance).
+ * `BaseService` và `MikroOrmBaseRepository` dùng `abstract class` vì chúng
+ * không cần bind decorator metadata với concrete DTO.
+ */
+
 import {
   Body,
   Delete,
@@ -57,6 +74,7 @@ export type {
   RouteConfig,
 };
 
+/** Contract của mọi controller được tạo bởi BaseController mixin. */
 export interface IBaseController<
   E extends BaseEntity,
   C = Partial<E>,
@@ -98,16 +116,27 @@ export interface IBaseController<
   ): Promise<{ deleted: number }>;
 }
 
-export function BaseController<
-  E extends BaseEntity,
-  C = Partial<E>,
-  U = UpdateData<E>,
-  CD = QueryCondition<E>,
->(
-  entityType: Type<E>,
-  options?: BaseControllerOptions<C, U, CD>,
-): Type<IBaseController<E, C, U, CD>>;
-
+/**
+ * Tạo base controller class với đầy đủ CRUD routes, Swagger docs, và
+ * role-based access control được cấu hình sẵn.
+ *
+ * @example
+ * ```ts
+ * @ApiTags('users')
+ * @Controller('users')
+ * export class UserController extends BaseController(
+ *   User,
+ *   CreateUserDto,
+ *   UpdateUserDto,
+ *   UserConditionDto,
+ *   { defaultRoles: [Role.ADMIN] },
+ * ) {
+ *   constructor(private readonly userService: UserService) {
+ *     super(userService);
+ *   }
+ * }
+ * ```
+ */
 export function BaseController<
   E extends BaseEntity,
   C = Partial<E>,
@@ -118,39 +147,13 @@ export function BaseController<
   createDto?: Type<C>,
   updateDto?: Type<U>,
   conditionDto?: Type<CD>,
-  options?: BaseControllerOptions<C, U, CD>,
-): Type<IBaseController<E, C, U, CD>>;
-
-export function BaseController<
-  E extends BaseEntity,
-  C = Partial<E>,
-  U = UpdateData<E>,
-  CD = QueryCondition<E>,
->(
-  entityType: Type<E>,
-  createDtoOrOptions?: Type<C> | BaseControllerOptions<C, U, CD>,
-  updateDto?: Type<U>,
-  conditionDto?: Type<CD>,
   options: BaseControllerOptions<C, U, CD> = {},
 ): Type<IBaseController<E, C, U, CD>> {
-  let createDto: Type<C> | undefined;
-  let controllerOptions = options;
+  createDto = createDto ?? options.dtos?.create;
+  updateDto = updateDto ?? options.dtos?.update;
+  conditionDto = conditionDto ?? options.dtos?.condition;
 
-  if (
-    createDtoOrOptions &&
-    typeof createDtoOrOptions === 'object' &&
-    !('prototype' in createDtoOrOptions)
-  ) {
-    controllerOptions = createDtoOrOptions;
-  } else {
-    createDto = createDtoOrOptions as Type<C> | undefined;
-  }
-
-  createDto = createDto ?? controllerOptions.dtos?.create;
-  updateDto = updateDto ?? controllerOptions.dtos?.update;
-  conditionDto = conditionDto ?? controllerOptions.dtos?.condition;
-
-  const routeConfigs = getRouteConfigs(controllerOptions.routes);
+  const routeConfigs = getRouteConfigs(options.routes);
   const {
     ConditionDto,
     CreateDto,
@@ -163,10 +166,7 @@ export function BaseController<
     constructor(protected readonly service: BaseService<E>) {}
 
     @Post()
-    @ApiCreatedResponse({
-      description: 'Created',
-      type: entityType,
-    })
+    @ApiCreatedResponse({ description: 'Created', type: entityType })
     @ApiBody({ type: CreateDto })
     @UsePipes(validationPipes.create)
     async create(@ReqUser() user: IAuthUser, @Body() body: C): Promise<E> {
@@ -218,14 +218,8 @@ export function BaseController<
     }
 
     @Get(':id')
-    @ApiOkResponse({
-      description: 'OK',
-      type: entityType,
-    })
-    @ApiResponse({
-      status: HttpStatus.NOT_FOUND,
-      description: 'Not Found',
-    })
+    @ApiOkResponse({ description: 'OK', type: entityType })
+    @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Not Found' })
     @ApiQueryOptions('one')
     async getById(
       @ReqUser() user: IAuthUser,
@@ -237,14 +231,8 @@ export function BaseController<
     }
 
     @Put('one')
-    @ApiOkResponse({
-      description: 'OK',
-      type: entityType,
-    })
-    @ApiResponse({
-      status: HttpStatus.NOT_FOUND,
-      description: 'Not Found',
-    })
+    @ApiOkResponse({ description: 'OK', type: entityType })
+    @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Not Found' })
     @ApiBody({ type: UpdateDto })
     @ApiCondition(true)
     @UsePipes(validationPipes.update)
@@ -262,14 +250,8 @@ export function BaseController<
     }
 
     @Put(':id')
-    @ApiOkResponse({
-      description: 'OK',
-      type: entityType,
-    })
-    @ApiResponse({
-      status: HttpStatus.NOT_FOUND,
-      description: 'Not Found',
-    })
+    @ApiOkResponse({ description: 'OK', type: entityType })
+    @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Not Found' })
     @ApiBody({ type: UpdateDto })
     @UsePipes(validationPipes.update)
     async updateById(
@@ -299,14 +281,8 @@ export function BaseController<
 
     @Delete('one')
     @HttpCode(HttpStatus.NO_CONTENT)
-    @ApiResponse({
-      status: HttpStatus.NO_CONTENT,
-      description: 'No Content',
-    })
-    @ApiResponse({
-      status: HttpStatus.NOT_FOUND,
-      description: 'Not Found',
-    })
+    @ApiResponse({ status: HttpStatus.NO_CONTENT, description: 'No Content' })
+    @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Not Found' })
     @ApiCondition(true)
     async deleteOne(
       @ReqUser() user: IAuthUser,
@@ -318,14 +294,8 @@ export function BaseController<
 
     @Delete(':id')
     @HttpCode(HttpStatus.NO_CONTENT)
-    @ApiResponse({
-      status: HttpStatus.NO_CONTENT,
-      description: 'No Content',
-    })
-    @ApiResponse({
-      status: HttpStatus.NOT_FOUND,
-      description: 'Not Found',
-    })
+    @ApiResponse({ status: HttpStatus.NO_CONTENT, description: 'No Content' })
+    @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Not Found' })
     async deleteById(
       @ReqUser() user: IAuthUser,
       @Param('id') id: string,
@@ -351,13 +321,7 @@ export function BaseController<
     value: `${entityType.name}BaseController`,
   });
 
-  applyRouteMetadata(
-    BaseControllerHost,
-    routeConfigs,
-    controllerOptions?.defaultRoles,
-  );
+  applyRouteMetadata(BaseControllerHost, routeConfigs, options?.defaultRoles);
 
   return BaseControllerHost;
 }
-
-export const BaseControllerFactory = BaseController;
