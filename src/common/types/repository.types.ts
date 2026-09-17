@@ -1,37 +1,34 @@
-import { OperatorType } from '@/common/enums/operator-type.enum';
+import type { OperatorType } from '@/common/enums/operator-type.enum';
 import type { IAuthUser } from '@/common/interfaces/auth-user.interface';
 
 /* ---------- Path helpers ---------- */
 type Prev = [never, 0, 1, 2, 3, 4];
+type Scalar =
+  | Date
+  | RegExp
+  | { toHexString(): string }
+  | ((...args: any[]) => any);
 
 export type Paths<T, D extends number = 3> = [D] extends [never]
   ? never
-  : T extends Date | RegExp | ((...args: any[]) => any)
+  : T extends Scalar
     ? never
-    : T extends { toHexString(): string } // Exclude ObjectId
-      ? never
-      : T extends { getItems(): infer U } // Collection
-        ? Paths<U, D>
-        : T extends Array<infer U>
-          ? Paths<U, D>
-          : T extends object
-            ? {
-                [K in keyof T & (string | number)]: T[K] extends (
-                  ...args: any[]
-                ) => any
-                  ? never
-                  : `${K}` | `${K}.${Paths<T[K], Prev[D]>}`;
-              }[keyof T & (string | number)]
-            : never;
+    : T extends { getItems(): infer U } | Array<infer U>
+      ? Paths<U, D>
+      : T extends object
+        ? {
+            [K in keyof T & (string | number)]: T[K] extends (
+              ...args: any[]
+            ) => any
+              ? never
+              : `${K}` | `${K}.${Paths<T[K], Prev[D]>}`;
+          }[keyof T & (string | number)]
+        : never;
 
 /* ---------- Condition & Operators (ORM-Agnostic with Full Autocomplete) ---------- */
-export type ComparisonOperator<T> = {
-  $eq?: T;
-  $ne?: T;
-  $gt?: T;
-  $gte?: T;
-  $lt?: T;
-  $lte?: T;
+export type ComparisonOperator<T> = Partial<
+  Record<'$eq' | '$ne' | '$gt' | '$gte' | '$lt' | '$lte', T>
+> & {
   $in?: T[];
   $nin?: T[];
   $like?: string | RegExp;
@@ -62,25 +59,16 @@ export interface FilterRule<E = any> {
 export type QueryCondition<E> = WhereCondition<E> | FilterRule<E>[];
 
 /* ---------- Population ---------- */
-type Unwrap<T> = T extends { getItems(): (infer U)[] }
+type Unwrap<T> = T extends
+  | readonly (infer U)[]
+  | { getItems(): (infer U)[] }
+  | { unwrap(): infer U }
+  | { getEntity(): infer U }
   ? NonNullable<U>
-  : T extends (infer U)[]
-    ? NonNullable<U>
-    : T extends ReadonlyArray<infer U>
-      ? NonNullable<U>
-      : T extends { unwrap(): infer U }
-        ? NonNullable<U>
-        : T extends { getEntity(): infer U }
-          ? NonNullable<U>
-          : NonNullable<T>;
+  : NonNullable<T>;
 
 type IsPopulateTarget<T> = T extends object
-  ? T extends
-      | Date
-      | RegExp
-      | Uint8Array
-      | { toHexString(): string }
-      | ((...args: any[]) => any)
+  ? T extends Scalar | Uint8Array
     ? false
     : true
   : false;
@@ -109,11 +97,9 @@ export interface PopulationOptions<
   population?: PopulationQuery<Target<E, P>>[];
 }
 
-export type PopulationQuery<E extends object> = [PopulateKey<E>] extends [never]
-  ? never
-  : {
-      [P in PopulateKey<E>]: PopulationOptions<E, P>;
-    }[PopulateKey<E>];
+export type PopulationQuery<E extends object> = {
+  [P in PopulateKey<E>]: PopulationOptions<E, P>;
+}[PopulateKey<E>];
 
 /* ---------- Query options (ORM-Agnostic) ---------- */
 export interface BaseOptions<T = any> {
@@ -139,21 +125,18 @@ export interface FindQuery<
   soft?: boolean;
 }
 
-export interface RepositoryPopulateConfig<E extends object = any> {
-  getById?: PopulationQuery<E>[];
-  getOne?: PopulationQuery<E>[];
-  getMany?: PopulationQuery<E>[];
-  getPage?: PopulationQuery<E>[];
-}
+export type RepositoryPopulateConfig<E extends object = any> = Partial<
+  Record<'getById' | 'getOne' | 'getMany' | 'getPage', PopulationQuery<E>[]>
+>;
 
 export interface RepositoryConfig<E extends object = any> {
   populate?: RepositoryPopulateConfig<E>;
 }
 
 /* ---------- Update data & operators ---------- */
-export type NumericFieldMap<E> = Partial<{
-  [K in keyof E as NonNullable<E[K]> extends number ? K : never]: number;
-}>;
+export type NumericFieldMap<E> = {
+  [K in keyof E as NonNullable<E[K]> extends number ? K : never]?: number;
+};
 
 type IsArray<T> =
   NonNullable<T> extends readonly unknown[]
@@ -169,11 +152,11 @@ export type ArrayItem<T> =
       ? I
       : never;
 
-export type ArrayFieldMap<E> = Partial<{
-  [K in keyof E as IsArray<E[K]> extends true ? K : never]:
+export type ArrayFieldMap<E> = {
+  [K in keyof E as IsArray<E[K]> extends true ? K : never]?:
     | ArrayItem<E[K]>
     | ArrayItem<E[K]>[];
-}>;
+};
 
 export type UpdateOperator<E> = {
   $set?: Partial<E>;

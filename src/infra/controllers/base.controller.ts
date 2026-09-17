@@ -9,13 +9,12 @@ import {
   Post,
   Put,
   Type,
-  UsePipes,
 } from '@nestjs/common';
 import {
   ApiBody,
-  ApiCreatedResponse,
-  ApiOkResponse,
+  ApiExtraModels,
   ApiResponse,
+  getSchemaPath,
 } from '@nestjs/swagger';
 import { DeleteManyByIdsDto } from '@/common/dto/delete-many-by-ids.dto';
 import { PaginatedResponseDto } from '@/common/dto/pagination.dto';
@@ -28,6 +27,7 @@ import { ReqUser } from '@/common/decorators/request-user.decorator';
 import type { IAuthUser } from '@/common/interfaces/auth-user.interface';
 import {
   ApiCondition,
+  ApiDataResponse,
   ApiGet,
   ApiQueryOptions,
 } from '@/common/decorators/api-get.decorator';
@@ -135,25 +135,29 @@ export function BaseController<
 
   const ApiEntityOk = () =>
     applyDecorators(
-      ApiOkResponse({ description: 'OK', type: entityType }),
+      ApiDataResponse({
+        oneOf: [
+          { $ref: getSchemaPath(entityType) },
+          { type: 'object', nullable: true, enum: [null] },
+        ],
+      }),
       ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Not Found' }),
     );
 
   const ApiUpdateBody = () =>
-    applyDecorators(
-      ApiEntityOk(),
-      ApiBody({ type: UpdateDto }),
-      UsePipes(validationPipes.update),
-    );
+    applyDecorators(ApiEntityOk(), ApiBody({ type: UpdateDto }));
 
+  @ApiExtraModels(entityType)
   class BaseControllerHost implements IBaseController<E, C, U, CD> {
     constructor(protected readonly service: BaseService<E>) {}
 
     @Post()
-    @ApiCreatedResponse({ description: 'Created', type: entityType })
+    @ApiDataResponse({ $ref: getSchemaPath(entityType) }, HttpStatus.CREATED)
     @ApiBody({ type: CreateDto })
-    @UsePipes(validationPipes.create)
-    async create(@ReqUser() user: IAuthUser, @Body() body: C): Promise<E> {
+    async create(
+      @ReqUser() user: IAuthUser,
+      @Body(validationPipes.create) body: C,
+    ): Promise<E> {
       checkRouteEnabled(routeConfigs.create);
       return this.service.create(user, body as Partial<E>);
     }
@@ -219,7 +223,7 @@ export function BaseController<
     async updateOne(
       @ReqUser() user: IAuthUser,
       @RequestCondition(ConditionDto, true) condition: CD,
-      @Body() update: U,
+      @Body(validationPipes.update) update: U,
     ): Promise<E | null> {
       checkRouteEnabled(routeConfigs.updateOne);
       return this.service.updateOne(
@@ -230,12 +234,15 @@ export function BaseController<
     }
 
     @Put('bulk')
-    @ApiOkResponse({ description: 'OK' })
+    @ApiDataResponse({
+      type: 'object',
+      required: ['affected'],
+      properties: { affected: { type: 'integer' } },
+    })
     @ApiBody({ type: UpdateManyIdsDto })
-    @UsePipes(validationPipes.updateManyByIds)
     async updateByIds(
       @ReqUser() user: IAuthUser,
-      @Body() body: { ids: string[]; update: U },
+      @Body(validationPipes.updateManyByIds) body: { ids: string[]; update: U },
     ): Promise<{ affected: number }> {
       checkRouteEnabled(routeConfigs.updateByIds);
       return this.service.updateManyByIds(
@@ -250,7 +257,7 @@ export function BaseController<
     async updateById(
       @ReqUser() user: IAuthUser,
       @Param('id') id: string,
-      @Body() body: U,
+      @Body(validationPipes.update) body: U,
     ): Promise<E | null> {
       checkRouteEnabled(routeConfigs.updateById);
       return this.service.updateById(user, id, body as UpdateData<E>);
@@ -268,12 +275,15 @@ export function BaseController<
     }
 
     @Delete('bulk')
-    @ApiOkResponse({ description: 'OK' })
+    @ApiDataResponse({
+      type: 'object',
+      required: ['deleted'],
+      properties: { deleted: { type: 'integer' } },
+    })
     @ApiBody({ type: DeleteManyByIdsDto })
-    @UsePipes(validationPipes.deleteManyByIds)
     async deleteByIds(
       @ReqUser() user: IAuthUser,
-      @Body() body: DeleteManyByIdsDto,
+      @Body(validationPipes.deleteManyByIds) body: DeleteManyByIdsDto,
     ): Promise<{ deleted: number }> {
       checkRouteEnabled(routeConfigs.deleteByIds);
       return this.service.deleteManyByIds(user, body.ids);

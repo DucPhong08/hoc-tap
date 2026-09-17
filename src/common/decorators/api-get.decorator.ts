@@ -5,10 +5,33 @@ import {
   Type,
   applyDecorators,
 } from '@nestjs/common';
-import { ApiOkResponse, ApiQuery } from '@nestjs/swagger';
+import {
+  ApiExtraModels,
+  ApiQuery,
+  ApiResponse,
+  getSchemaPath,
+} from '@nestjs/swagger';
+import type { ReferenceObject, SchemaObject } from '@nestjs/swagger';
 import { PaginatedResponseDto } from '../dto/pagination.dto';
 
 type QueryMode = 'one' | 'many' | 'page';
+
+export const ApiDataResponse = (
+  data: SchemaObject | ReferenceObject,
+  status = HttpStatus.OK,
+) =>
+  ApiResponse({
+    status,
+    description: status === HttpStatus.CREATED ? 'Created' : 'OK',
+    schema: {
+      type: 'object',
+      required: ['success', 'data'],
+      properties: {
+        success: { type: 'boolean', enum: [true] },
+        data,
+      },
+    },
+  });
 
 export const ApiCondition = (required = false) =>
   ApiQuery({
@@ -53,20 +76,33 @@ export const ApiQueryOptions = (mode: QueryMode) => {
 };
 
 export const ApiGet = (mode: QueryMode, entityType: Type<unknown>) => {
+  const entity = { $ref: getSchemaPath(entityType) };
   const getOkResponse = () => {
     switch (mode) {
       case 'page':
-        return ApiOkResponse({ type: PaginatedResponseDto });
+        return ApiDataResponse({
+          allOf: [
+            { $ref: getSchemaPath(PaginatedResponseDto) },
+            {
+              type: 'object',
+              required: ['data'],
+              properties: { data: { type: 'array', items: entity } },
+            },
+          ],
+        });
       case 'many':
-        return ApiOkResponse({ type: entityType, isArray: true });
+        return ApiDataResponse({ type: 'array', items: entity });
       case 'one':
-        return ApiOkResponse({ type: entityType });
+        return ApiDataResponse({
+          oneOf: [entity, { type: 'object', nullable: true, enum: [null] }],
+        });
     }
   };
 
   return applyDecorators(
     Get(mode),
     HttpCode(HttpStatus.OK),
+    ApiExtraModels(entityType, PaginatedResponseDto),
     getOkResponse(),
     ApiCondition(mode === 'one'),
     ApiQueryOptions(mode),

@@ -1,4 +1,4 @@
-import { Type } from '@nestjs/common';
+import { Type, ValidationPipe } from '@nestjs/common';
 import { OmitType, PartialType, ApiProperty } from '@nestjs/swagger';
 import { Type as TransformType } from 'class-transformer';
 import { IsString, ValidateNested } from 'class-validator';
@@ -7,7 +7,6 @@ import type {
   QueryCondition,
   UpdateData,
 } from '@/common/interfaces/repository.interface';
-import { DtoValidationPipe } from '@/common/pipes/dto-validation.pipe';
 import { DeleteManyByIdsDto } from '@/common/dto/delete-many-by-ids.dto';
 
 const rename = <T>(name: string, cls: Type<T>): Type<T> => {
@@ -22,10 +21,10 @@ export interface BaseDtoBundle<C = unknown, U = unknown, CD = unknown> {
   UpdateDto: Type<U>;
   UpdateManyIdsDto: Type<object>;
   validationPipes: {
-    create: DtoValidationPipe;
-    update: DtoValidationPipe;
-    updateManyByIds: DtoValidationPipe;
-    deleteManyByIds: DtoValidationPipe;
+    create: ValidationPipe;
+    update: ValidationPipe;
+    updateManyByIds: ValidationPipe;
+    deleteManyByIds: ValidationPipe;
   };
 }
 
@@ -74,17 +73,19 @@ export const createBaseDtoBundle = <
     UpdateManyByIdsDto,
   );
 
+  const validationPipe = (expectedType: Type<unknown>) =>
+    new ValidationPipe({
+      expectedType,
+      whitelist: true,
+      transform: true,
+      transformOptions: { enableImplicitConversion: true },
+    });
+
   const validationPipes = {
-    create: new DtoValidationPipe({ whitelist: true }, { body: CreateDto }),
-    update: new DtoValidationPipe({ whitelist: true }, { body: UpdateDto }),
-    updateManyByIds: new DtoValidationPipe(
-      { whitelist: true },
-      { body: UpdateManyIdsDto },
-    ),
-    deleteManyByIds: new DtoValidationPipe(
-      { whitelist: true },
-      { body: DeleteManyByIdsDto },
-    ),
+    create: validationPipe(CreateDto),
+    update: validationPipe(UpdateDto),
+    updateManyByIds: validationPipe(UpdateManyIdsDto),
+    deleteManyByIds: validationPipe(DeleteManyByIdsDto),
   };
 
   return {
