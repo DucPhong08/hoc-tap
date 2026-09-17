@@ -1,6 +1,7 @@
 import {
   EntityManager,
   EntityRepository,
+  type FindOptions,
   type Populate as PopulateHint,
 } from '@mikro-orm/core';
 import { BaseEntity } from '@/common/entity/base.entity';
@@ -28,7 +29,10 @@ export const Context = <E extends BaseEntity>(
   };
 };
 
-export const Fields = (select?: Record<string, any>, prefix = ''): string[] => {
+export const Fields = (
+  select?: Partial<Record<string, 1 | 0>>,
+  prefix = '',
+): string[] => {
   if (!select) return [];
 
   const fields = Object.keys(select).filter((key) => select[key]);
@@ -66,17 +70,21 @@ export function Population(
   return { populate, fields };
 }
 
-export function findOptions(query?: FindQuery<any>): Record<string, any> {
+export function findOptions<E extends object>(
+  query?: FindQuery<E>,
+): FindOptions<E> {
   if (!query) return {};
 
-  const options: Record<string, any> = {};
+  const options: FindOptions<E> = {};
   const { populate, fields } = Population(query.population);
   const select = [...Fields(query.select), ...fields];
   const orderBy = Sort(query.sort);
 
-  if (populate.length) options.populate = populate;
-  if (select.length) options.fields = select;
-  if (orderBy) options.orderBy = orderBy;
+  if (populate.length)
+    options.populate = populate as unknown as PopulateHint<E>;
+  if (select.length)
+    options.fields = select as unknown as FindOptions<E>['fields'];
+  if (orderBy) options.orderBy = orderBy as FindOptions<E>['orderBy'];
   if (query.limit) options.limit = query.limit;
   if (query.offset != null) options.offset = query.offset;
 

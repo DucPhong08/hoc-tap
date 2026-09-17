@@ -32,6 +32,7 @@ import { RequestLoggingMiddleware } from './common/middleware/request-logging.mi
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { BullModule } from '@nestjs/bull';
 import { ConfigService } from '@nestjs/config';
+// PLOP: IMPORT_MODULE
 
 const hasRedis = Boolean(process.env.REDIS_HOST);
 

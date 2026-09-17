@@ -168,7 +168,7 @@ export function BaseController<
       return this.service.getMany(
         user,
         condition as QueryCondition<E>,
-        query as FindQuery<E>,
+        { ...query, limit: query.limit ?? 100 } as FindQuery<E>,
       );
     }
 

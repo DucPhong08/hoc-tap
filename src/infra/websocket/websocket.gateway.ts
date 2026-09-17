@@ -7,11 +7,18 @@ import {
   OnGatewayInit,
   MessageBody,
   ConnectedSocket,
+  WsException,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { Logger } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import { JwtPayload } from '@/modules/auth/strategies/jwt.strategy';
+import { CreateRequestContext, MikroORM } from '@mikro-orm/core';
+import { InjectMikroORM } from '@mikro-orm/nestjs';
+import { DB_CONTEXTS } from '@/database/database.constants';
+import {
+  JwtPayload,
+  JwtStrategy,
+} from '@/modules/auth/strategies/jwt.strategy';
+import { TokenService } from '@/modules/auth/services/token.service';
 
 interface AuthenticatedSocket extends Socket {
   userId?: string;
@@ -36,7 +43,11 @@ export class WebsocketGateway
   private readonly logger = new Logger(WebsocketGateway.name);
   private readonly userSockets = new Map<string, Set<string>>();
 
-  constructor(private readonly jwtService: JwtService) {}
+  constructor(
+    private readonly tokenService: TokenService,
+    private readonly jwtStrategy: JwtStrategy,
+    @InjectMikroORM(DB_CONTEXTS.MAIN) private readonly orm: MikroORM,
+  ) {}
 
   afterInit(): void {
     this.logger.log('Khởi tạo WebSocket Gateway thành công');
@@ -57,6 +68,13 @@ export class WebsocketGateway
 
   private getUserRoom(userId: string): string {
     return `${USER_ROOM_PREFIX}${userId}`;
+  }
+
+  @CreateRequestContext((gateway: WebsocketGateway) => gateway.orm)
+  private async authenticate(token: string): Promise<JwtPayload> {
+    const payload = this.tokenService.verifyAccess(token);
+    await this.jwtStrategy.validate(payload);
+    return payload;
   }
 
   private registerClient(client: AuthenticatedSocket): void {
@@ -106,13 +124,35 @@ export class WebsocketGateway
         return;
       }
 
-      // Xác thực token
-      const payload = await this.jwtService.verifyAsync<JwtPayload>(token);
+      const authentication = this.authenticate(token);
+      // Chặn packet đến trước khi xác thực xong và kiểm tra lại session mỗi lần.
+      client.use((_packet, next) => {
+        void authentication
+          .then(() => this.authenticate(token))
+          .then(
+            () => next(),
+            () => {
+              next(new Error('Unauthorized'));
+              client.disconnect(true);
+            },
+          );
+      });
+
+      const payload = await authentication;
+      if (!client.connected) return;
       client.userId = payload.sub;
       client.user = payload;
 
+      if (payload.exp) {
+        const expiryTimer = setTimeout(
+          () => client.disconnect(true),
+          Math.max(0, payload.exp * 1000 - Date.now()),
+        );
+        client.once('disconnect', () => clearTimeout(expiryTimer));
+      }
+
       this.registerClient(client);
-      void client.join(this.getUserRoom(payload.sub));
+      await client.join(this.getUserRoom(payload.sub));
       this.logConnectionStats(payload.sub, client.id);
 
       client.emit('connected', {
@@ -154,6 +194,9 @@ export class WebsocketGateway
     @MessageBody() room: string,
     @ConnectedSocket() client: AuthenticatedSocket,
   ): Promise<void> {
+    if (!client.userId || room !== this.getUserRoom(client.userId)) {
+      throw new WsException('Forbidden room');
+    }
     await client.join(room);
     this.logger.log(`User ${client.userId} tham gia room: ${room}`);
     client.emit('joined-room', { room });
@@ -164,6 +207,9 @@ export class WebsocketGateway
     @MessageBody() room: string,
     @ConnectedSocket() client: AuthenticatedSocket,
   ): Promise<void> {
+    if (!client.userId || room !== this.getUserRoom(client.userId)) {
+      throw new WsException('Forbidden room');
+    }
     await client.leave(room);
     this.logger.log(`User ${client.userId} rời khỏi room: ${room}`);
     client.emit('left-room', { room });

@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
-import { plainToClass } from 'class-transformer';
+import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { BaseService } from '@/infra/services/base.service';
 import { Setting } from '../entities/setting.entity';
@@ -36,11 +36,17 @@ export class SettingService extends BaseService<Setting> {
     value: SettingValue<T>,
     query?: FindQuery<Setting>,
   ): Promise<Setting> {
+    if (!Object.values(SettingKey).includes(key)) {
+      throw new BadRequestException('error-setting-invalid');
+    }
     const ValueClass = MAP_SETTING_ENTITY[key];
 
     if (ValueClass) {
-      const valueFromClass = plainToClass(ValueClass, value);
-      const validateResult = await validate(valueFromClass as any, {
+      if (!value || typeof value !== 'object' || Array.isArray(value)) {
+        throw new BadRequestException('error-setting-invalid');
+      }
+      const valueFromClass = plainToInstance(ValueClass, value);
+      const validateResult = await validate(valueFromClass as object, {
         whitelist: true,
         stopAtFirstError: true,
       });
@@ -52,6 +58,7 @@ export class SettingService extends BaseService<Setting> {
         );
         throw new BadRequestException('error-setting-invalid');
       }
+      value = valueFromClass as SettingValue<T>;
     }
 
     const existing = await this.settingRepository.getOne({ key }, query);

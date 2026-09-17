@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Body } from '@nestjs/common';
+import { Controller, Patch, Body } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { BaseController } from '@/infra/controllers/base.controller';
 import { User } from '../entities/user.entity';
@@ -20,7 +20,6 @@ export class UserController extends BaseController(
   {
     defaultRoles: [Role.ADMIN],
     routes: {
-      create: { enabled: false },
       updateOne: { enabled: false },
       updateByIds: { enabled: false },
       deleteOne: { enabled: false },
@@ -35,25 +34,10 @@ export class UserController extends BaseController(
   @Patch('profile')
   @Authorize(Role.USER, Role.ADMIN)
   @ApiBearerAuth()
-  async updateProfile(
+  updateProfile(
     @ReqUser() user: User,
     @Body() dto: UpdateProfileDto,
   ): Promise<User | null> {
     return this.userService.updateProfile(user, dto);
-  }
-
-  @Get('list-all')
-  @Authorize(Role.ADMIN)
-  async findAll(@ReqUser() user: User): Promise<User[]> {
-    return this.userService.getMany(user, {});
-  }
-
-  @Post('admin-create')
-  @Authorize(Role.ADMIN)
-  async adminCreate(
-    @ReqUser() user: User,
-    @Body() dto: CreateUserDto,
-  ): Promise<User> {
-    return this.userService.create(user, dto);
   }
 }

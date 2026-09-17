@@ -1,26 +1,9 @@
 import { Module } from '@nestjs/common';
-import { JwtModule } from '@nestjs/jwt';
-import { ConfigModule, ConfigService } from '@nestjs/config';
+import { AuthModule } from '@/modules/auth/auth.module';
 import { WebsocketGateway } from './websocket.gateway';
-import type { AuthConfig } from '@/config/configuration';
-import type { StringValue } from 'ms';
 
 @Module({
-  imports: [
-    JwtModule.registerAsync({
-      imports: [ConfigModule],
-      inject: [ConfigService],
-      useFactory: (configService: ConfigService) => {
-        const authConfig = configService.get<AuthConfig>('auth');
-        return {
-          secret: authConfig?.jwtSecret ?? 'default-secret',
-          signOptions: {
-            expiresIn: (authConfig?.jwtExpiresIn ?? '1h') as StringValue,
-          },
-        };
-      },
-    }),
-  ],
+  imports: [AuthModule],
   providers: [WebsocketGateway],
   exports: [WebsocketGateway],
 })

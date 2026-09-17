@@ -50,11 +50,10 @@ export class AuditLogService extends BaseService<AuditLog> {
 
   async getUserActions(userId: string, limit = 100): Promise<AuditLog[]> {
     const safeLimit = this.clampLimit(limit, 100);
-    const result = await this.repository.getPage(
+    return this.repository.getMany(
       { userId },
-      { limit: safeLimit, page: 1, sort: { createdAt: -1 } },
+      { limit: safeLimit, sort: { createdAt: -1 } },
     );
-    return result.data;
   }
 
   async getEntityHistory(
@@ -69,11 +68,10 @@ export class AuditLogService extends BaseService<AuditLog> {
 
   async getRecentActions(limit = 50): Promise<AuditLog[]> {
     const safeLimit = this.clampLimit(limit, 50);
-    const result = await this.repository.getPage(
+    return this.repository.getMany(
       {},
-      { limit: safeLimit, page: 1, sort: { createdAt: -1 } },
+      { limit: safeLimit, sort: { createdAt: -1 } },
     );
-    return result.data;
   }
 
   async cleanup(days: number): Promise<number> {

@@ -1,4 +1,11 @@
-import { Controller, Get, Param, Body, Put } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Param,
+  Body,
+  Put,
+  ParseEnumPipe,
+} from '@nestjs/common';
 import { ApiTags, ApiParam } from '@nestjs/swagger';
 import { Auditable } from '@/common/decorators/auditable.decorator';
 import { Setting } from '../entities/setting.entity';
@@ -21,7 +28,9 @@ export class SettingController {
     name: 'key',
     enum: SettingKey,
   })
-  async getByKey(@Param('key') key: SettingKey): Promise<Setting | null> {
+  async getByKey(
+    @Param('key', new ParseEnumPipe(SettingKey)) key: SettingKey,
+  ): Promise<Setting | null> {
     const setting = await this.settingService.getValue(key);
     if (!setting) return null;
     return { key, value: setting } as any;
@@ -38,7 +47,7 @@ export class SettingController {
   })
   async updateByKey(
     @ReqUser() user: User,
-    @Param('key') key: SettingKey,
+    @Param('key', new ParseEnumPipe(SettingKey)) key: SettingKey,
     @Body() dto: UpdateSettingDto,
   ): Promise<Setting> {
     return this.settingService.setValue(user, key, dto.value as any);

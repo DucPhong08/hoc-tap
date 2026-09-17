@@ -45,19 +45,19 @@ import { SessionRepository } from './repositories/session.repository';
     JwtStrategy,
     {
       provide: 'GOOGLE_STRATEGY',
-      useFactory: (config: ConfigService, authService: AuthService) => {
+      useFactory: (config: ConfigService) => {
         const clientId = config.get<string>('oauth.google.clientId');
-        return clientId ? new GoogleStrategy(config, authService) : null;
+        return clientId ? new GoogleStrategy(config) : null;
       },
-      inject: [ConfigService, AuthService],
+      inject: [ConfigService],
     },
     {
       provide: 'FACEBOOK_STRATEGY',
-      useFactory: (config: ConfigService, authService: AuthService) => {
-        const appId = config.get<string>('oauth.facebook.appId');
-        return appId ? new FacebookStrategy(config, authService) : null;
+      useFactory: (config: ConfigService) => {
+        const clientId = config.get<string>('oauth.facebook.clientId');
+        return clientId ? new FacebookStrategy(config) : null;
       },
-      inject: [ConfigService, AuthService],
+      inject: [ConfigService],
     },
   ],
   exports: [

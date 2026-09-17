@@ -163,12 +163,16 @@ export class AuthService {
     ipAddress?: string,
     userAgent?: string,
   ): Promise<AuthResult> {
+    if (!profile.email?.trim()) {
+      throw new UnauthorizedException('error-invalid-credentials');
+    }
     const emailNorm = profile.email.toLowerCase().trim();
     let user = await this.userService.getOne(SYSTEM_USER, { email: emailNorm });
 
     if (user) {
+      this.assertActive(user);
+      this.assertNotLocked(user);
       user = (await this.userService.updateById(SYSTEM_USER, user.id, {
-        provider: profile.provider,
         avatar: profile.avatar,
       }))!;
     } else {

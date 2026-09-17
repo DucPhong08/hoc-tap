@@ -45,7 +45,7 @@ export class User extends BaseEntity {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
-  @Exclude()
+  @Exclude({ toPlainOnly: true })
   @Property({ nullable: true, hidden: true })
   password?: string;
 

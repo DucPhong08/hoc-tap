@@ -2,18 +2,16 @@ import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { Strategy, Profile } from 'passport-facebook';
 import { ConfigService } from '@nestjs/config';
-import { AuthService } from '../services/auth.service';
 import { AuthProvider } from '../enums/auth-provider.enum';
+import type { OAuthProfile } from '../interfaces/oauth-profile.interface';
 
 @Injectable()
 export class FacebookStrategy extends PassportStrategy(Strategy, 'facebook') {
-  constructor(
-    private configService: ConfigService,
-    private authService: AuthService,
-  ) {
+  constructor(private configService: ConfigService) {
     super({
-      clientID: configService.get<string>('oauth.facebook.appId') ?? '',
-      clientSecret: configService.get<string>('oauth.facebook.appSecret') ?? '',
+      clientID: configService.get<string>('oauth.facebook.clientId') ?? '',
+      clientSecret:
+        configService.get<string>('oauth.facebook.clientSecret') ?? '',
       callbackURL:
         configService.get<string>('oauth.facebook.callbackUrl') ?? '',
       scope: ['email'],
@@ -21,15 +19,14 @@ export class FacebookStrategy extends PassportStrategy(Strategy, 'facebook') {
     });
   }
 
-  async validate(
+  validate(
     accessToken: string,
     refreshToken: string,
     profile: Profile,
-    done: (err: any, user: any, info?: any) => void,
-  ): Promise<any> {
+  ): OAuthProfile {
     const { id, emails, name, photos } = profile;
 
-    const oauthProfile = {
+    const oauthProfile: OAuthProfile = {
       provider: AuthProvider.FACEBOOK,
       providerId: id,
       email: emails?.[0]?.value ?? '',
@@ -38,7 +35,6 @@ export class FacebookStrategy extends PassportStrategy(Strategy, 'facebook') {
       avatar: photos?.[0]?.value,
     };
 
-    const user = await this.authService.validateOAuthUser(oauthProfile);
-    done(null, user);
+    return oauthProfile;
   }
 }

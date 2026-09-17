@@ -1,4 +1,5 @@
 import { OmitType } from '@nestjs/swagger';
+import { MaxLength, MinLength } from 'class-validator';
 import { User } from '../entities/user.entity';
 
 export class CreateUserDto extends OmitType(User, [
@@ -13,4 +14,8 @@ export class CreateUserDto extends OmitType(User, [
   'lockedUntil',
   'sessions',
   'sessionId',
-] as const) {}
+] as const) {
+  @MinLength(8)
+  @MaxLength(100)
+  declare password?: string;
+}

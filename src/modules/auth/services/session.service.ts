@@ -1,34 +1,15 @@
-import { Injectable, UnauthorizedException, Optional } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { SessionRepository } from '../repositories/session.repository';
 import { SessionEntity } from '../entities/session.entity';
 import { TokenService } from './token.service';
 import { User } from '@/modules/users/entities/user.entity';
-import { RedisCacheService } from '@/infra/cache/redis-cache.service';
 import { TokenPair } from '../types/auth-result.type';
-
-interface SessionCacheEntry {
-  id: string;
-  isRevoked: boolean;
-  expiresAt: Date | string;
-  user: {
-    id: string;
-    email: string;
-    roles: string[];
-    isActive: boolean;
-    firstName: string;
-    lastName: string;
-    avatar?: string;
-  };
-}
 
 @Injectable()
 export class SessionService {
-  private readonly sessionCachePrefix = 'auth:session:';
-
   constructor(
     private readonly sessionRepository: SessionRepository,
     private readonly tokenService: TokenService,
-    @Optional() private readonly redisCacheService?: RedisCacheService,
   ) {}
 
   /**
@@ -66,58 +47,21 @@ export class SessionService {
   }
 
   /**
-   * Xác thực phiên còn hợp lệ (ưu tiên đọc từ Redis cache)
+   * Đọc trạng thái hiện tại để thu hồi phiên và khóa tài khoản có hiệu lực ngay.
    */
   async validate(sessionId: string): Promise<SessionEntity | null> {
-    const cacheKey = `${this.sessionCachePrefix}${sessionId}`;
-    if (this.redisCacheService) {
-      const cached =
-        await this.redisCacheService.get<SessionCacheEntry>(cacheKey);
-      if (cached) {
-        if (cached.isRevoked || new Date(cached.expiresAt) <= new Date()) {
-          return null;
-        }
-        return cached as unknown as SessionEntity;
-      }
-    }
-
     const session = await this.sessionRepository.getById(sessionId, {
       population: [{ path: 'user' }],
     });
 
-    if (!session || session.isRevoked || session.expiresAt <= new Date()) {
+    if (
+      !session ||
+      session.isRevoked ||
+      session.expiresAt <= new Date() ||
+      !session.user?.isActive ||
+      session.user.deletedAt
+    ) {
       return null;
-    }
-
-    if (this.redisCacheService && session.user) {
-      const sessionCachePayload: SessionCacheEntry = {
-        id: session.id,
-        isRevoked: session.isRevoked,
-        expiresAt: session.expiresAt,
-        user: {
-          id: session.user.id,
-          email: session.user.email,
-          roles: session.user.roles,
-          isActive: session.user.isActive,
-          firstName: session.user.firstName,
-          lastName: session.user.lastName,
-          avatar: session.user.avatar,
-        },
-      };
-      const ttlSeconds = Math.min(
-        Math.max(
-          1,
-          Math.floor(
-            (new Date(session.expiresAt).getTime() - Date.now()) / 1000,
-          ),
-        ),
-        300,
-      );
-      void this.redisCacheService.set(
-        cacheKey,
-        sessionCachePayload,
-        ttlSeconds,
-      );
     }
 
     return session;
@@ -147,7 +91,7 @@ export class SessionService {
     if (session.expiresAt <= new Date()) {
       throw new UnauthorizedException('error-token-expired');
     }
-    if (!session.user?.isActive) {
+    if (!session.user?.isActive || session.user.deletedAt) {
       throw new UnauthorizedException('error-user-disabled');
     }
 
@@ -156,17 +100,24 @@ export class SessionService {
       Date.now() + this.tokenService.refreshTtlMs(),
     );
 
-    await this.sessionRepository.updateById(session.id, {
-      refreshTokenHash: newRefreshToken.tokenHash,
-      expiresAt: newExpiresAt,
-      ipAddress: ipAddress ?? session.ipAddress,
-      userAgent: userAgent ?? session.userAgent,
-    });
+    const { affected } = await this.sessionRepository.updateMany(
+      {
+        id: session.id,
+        refreshTokenHash: tokenHash,
+        isRevoked: false,
+        expiresAt: { $gt: new Date() },
+      },
+      {
+        refreshTokenHash: newRefreshToken.tokenHash,
+        expiresAt: newExpiresAt,
+        updatedAt: new Date(),
+        ipAddress: ipAddress ?? session.ipAddress,
+        userAgent: userAgent ?? session.userAgent,
+      },
+    );
 
-    if (this.redisCacheService) {
-      void this.redisCacheService.del(
-        `${this.sessionCachePrefix}${session.id}`,
-      );
+    if (affected !== 1) {
+      throw new UnauthorizedException('error-invalid-refresh-token');
     }
 
     const newAccessToken = this.tokenService.signAccess(
@@ -191,10 +142,6 @@ export class SessionService {
       revokedAt: new Date(),
     });
 
-    if (this.redisCacheService) {
-      void this.redisCacheService.del(`${this.sessionCachePrefix}${sessionId}`);
-    }
-
     return !!updated;
   }
 
@@ -214,10 +161,6 @@ export class SessionService {
       isRevoked: true,
       revokedAt: new Date(),
     });
-
-    if (this.redisCacheService) {
-      void this.redisCacheService.delByPattern(`${this.sessionCachePrefix}*`);
-    }
 
     return result.affected;
   }

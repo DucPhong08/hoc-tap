@@ -46,8 +46,12 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     const user =
       session.user ?? (await this.userRepository.getById(payload.sub));
 
-    if (!user) {
+    if (!user || user.deletedAt) {
       throw new UnauthorizedException('error-user-not-found');
+    }
+
+    if (user.id !== payload.sub) {
+      throw new UnauthorizedException('error-invalid-token-payload');
     }
 
     if (!user.isActive) {

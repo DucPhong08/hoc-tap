@@ -47,6 +47,9 @@ export class RequestConditionPipe<T = unknown> implements PipeTransform<
       throw new BadRequestException('Condition phải là JSON object hoặc array');
     }
 
+    const isRules = Array.isArray(parsed);
+    let fields: Record<string, unknown>;
+
     // Trường hợp mảng FilterRule[]
     if (Array.isArray(parsed)) {
       if (this.required && parsed.length === 0) {
@@ -74,22 +77,36 @@ export class RequestConditionPipe<T = unknown> implements PipeTransform<
           );
         }
       }
-      return parsed as unknown as T;
+      // Validate tên trường bằng cùng whitelist với condition dạng object.
+      fields = Object.fromEntries(
+        parsed.map((rule: { field: string }) => [rule.field, null]),
+      );
+    } else {
+      fields = parsed as Record<string, unknown>;
+      for (const key of Object.keys(fields)) {
+        assertSafeKey(key, 'condition');
+      }
     }
 
-    // Kiểm tra prototype pollution cho object keys
-    for (const key of Object.keys(parsed)) {
-      assertSafeKey(key, 'condition');
+    if (this.required && Object.keys(fields).length === 0) {
+      throw new BadRequestException('Condition không được để rỗng');
     }
 
     if (!this.schema) {
       return parsed as T;
     }
 
-    const instance = plainToInstance(this.schema, parsed, {
+    const instance = plainToInstance(this.schema, fields, {
       enableImplicitConversion: true,
       excludeExtraneousValues: false,
     });
+
+    // Mapped DTO kế thừa default của entity; query chỉ dùng trường client gửi.
+    for (const key of Object.keys(instance as object)) {
+      if (!Object.hasOwn(fields, key)) {
+        delete (instance as Record<string, unknown>)[key];
+      }
+    }
 
     const errors = await validate(instance as object, {
       whitelist: true,
@@ -108,7 +125,7 @@ export class RequestConditionPipe<T = unknown> implements PipeTransform<
       throw new BadRequestException('Condition không được để rỗng');
     }
 
-    return instance;
+    return isRules ? (parsed as T) : instance;
   }
 }
 

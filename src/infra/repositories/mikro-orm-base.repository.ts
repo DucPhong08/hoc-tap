@@ -103,7 +103,7 @@ export abstract class MikroOrmBaseRepository<
       query,
     );
 
-    return repository.findOne(filter, options) as Promise<E | null>;
+    return repository.findOne<never, '*'>(filter, options) as Promise<E | null>;
   }
 
   async getOne(
@@ -116,7 +116,7 @@ export abstract class MikroOrmBaseRepository<
       query,
     );
 
-    return repository.findOne(filter, options) as Promise<E | null>;
+    return repository.findOne<never, '*'>(filter, options) as Promise<E | null>;
   }
 
   async getMany(
