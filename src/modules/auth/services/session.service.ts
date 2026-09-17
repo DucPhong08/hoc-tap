@@ -1,5 +1,7 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { SessionRepository } from '../repositories/session.repository';
+import { Entity } from '@/common/enums/entity.enum';
+import { InjectRepository } from '@/infra/repositories/common/repository';
+import type { ISessionRepository } from '../repositories/session-repository.interface';
 import { SessionEntity } from '../entities/session.entity';
 import { TokenService } from './token.service';
 import { User } from '@/modules/users/entities/user.entity';
@@ -8,7 +10,8 @@ import { TokenPair } from '../types/auth-result.type';
 @Injectable()
 export class SessionService {
   constructor(
-    private readonly sessionRepository: SessionRepository,
+    @InjectRepository(Entity.SESSION)
+    private readonly sessionRepository: ISessionRepository,
     private readonly tokenService: TokenService,
   ) {}
 

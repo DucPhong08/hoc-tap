@@ -37,6 +37,11 @@ module.exports = function (plop) {
       },
       {
         type: 'add',
+        path: 'src/modules/{{kebabCase (pluralize name)}}/repositories/{{kebabCase (singularize name)}}-repository.interface.ts',
+        templateFile: 'nest-templates/module/repository-interface.ts.hbs',
+      },
+      {
+        type: 'add',
         path: 'src/modules/{{kebabCase (pluralize name)}}/dto/create-{{kebabCase (singularize name)}}.dto.ts',
         templateFile: 'nest-templates/module/create-dto.ts.hbs',
       },
@@ -80,6 +85,13 @@ module.exports = function (plop) {
         path: 'src/database/entity-registry.ts',
         pattern: /(\/\/ PLOP: ADD_MAIN_ENTITY)/,
         template: '{{pascalCase (singularize name)}},\n    $1',
+      },
+      {
+        type: 'modify',
+        path: 'src/common/enums/entity.enum.ts',
+        pattern: /(\/\/ PLOP: ADD_ENTITY_ENUM)/,
+        template:
+          "{{constantCase (singularize name)}} = '{{snakeCase (pluralize name)}}',\n  $1",
       },
     ],
   });

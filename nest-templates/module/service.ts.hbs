@@ -1,13 +1,17 @@
 import { Injectable } from '@nestjs/common';
 import { BaseService } from '@/infra/services/base.service';
+import { Entity } from '@/common/enums/entity.enum';
+import { InjectRepository } from '@/infra/repositories/common/repository';
 import { {{pascalCase (singularize name)}} } from '../entities/{{kebabCase (singularize name)}}.entity';
-import { {{pascalCase (singularize name)}}Repository } from '../repositories/{{kebabCase (singularize name)}}.repository';
+import type { I{{pascalCase (singularize name)}}Repository } from '../repositories/{{kebabCase (singularize name)}}-repository.interface';
 
 @Injectable()
 export class {{pascalCase (singularize name)}}Service extends BaseService<{{pascalCase (singularize name)}}> {
   constructor(
-    repository: {{pascalCase (singularize name)}}Repository,
+    @InjectRepository(Entity.{{constantCase (singularize name)}})
+    repository: I{{pascalCase (singularize name)}}Repository,
   ) {
     super(repository);
   }
 }
+

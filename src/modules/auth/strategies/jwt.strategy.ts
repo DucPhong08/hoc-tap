@@ -2,7 +2,9 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
-import { UserRepository } from '@/modules/users/repositories/user.repository';
+import { Entity } from '@/common/enums/entity.enum';
+import { InjectRepository } from '@/infra/repositories/common/repository';
+import type { IUserRepository } from '@/modules/users/repositories/user-repository.interface';
 import { SessionService } from '../services/session.service';
 import type { AuthConfig } from '@/config/configuration';
 import { User } from '@/modules/users/entities/user.entity';
@@ -14,7 +16,8 @@ export type { JwtPayload };
 export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   constructor(
     private readonly configService: ConfigService,
-    private readonly userRepository: UserRepository,
+    @InjectRepository(Entity.USER)
+    private readonly userRepository: IUserRepository,
     private readonly sessionService: SessionService,
   ) {
     const authConfig = configService.get<AuthConfig>('auth');

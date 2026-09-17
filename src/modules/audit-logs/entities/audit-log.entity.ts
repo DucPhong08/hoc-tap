@@ -1,8 +1,9 @@
 import { Entity, Property, Index } from '@mikro-orm/core';
 import { IsString, Allow } from 'class-validator';
 import { BaseEntity } from '@/common/entity/base.entity';
+import { Table } from '@/common/enums/entity.enum';
 
-@Entity({ tableName: 'audit_logs' })
+@Entity({ tableName: Table.AUDIT_LOG })
 @Index({ properties: ['userId', 'createdAt'] })
 @Index({ properties: ['action', 'createdAt'] })
 export class AuditLog extends BaseEntity {

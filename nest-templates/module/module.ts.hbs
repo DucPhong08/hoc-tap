@@ -1,11 +1,16 @@
 import { Module } from '@nestjs/common';
+import { Entity } from '@/common/enums/entity.enum';
+import { RepositoryProvider } from '@/infra/repositories/common/repository';
 import { {{pascalCase (singularize name)}}Repository } from './repositories/{{kebabCase (singularize name)}}.repository';
 import { {{pascalCase (singularize name)}}Service } from './services/{{kebabCase (singularize name)}}.service';
 import { {{pascalCase (singularize name)}}Controller } from './controllers/{{kebabCase (singularize name)}}.controller';
 
 @Module({
   controllers: [{{pascalCase (singularize name)}}Controller],
-  providers: [{{pascalCase (singularize name)}}Service, {{pascalCase (singularize name)}}Repository],
+  providers: [
+    RepositoryProvider(Entity.{{constantCase (singularize name)}}, {{pascalCase (singularize name)}}Repository),
+    {{pascalCase (singularize name)}}Service,
+  ],
   exports: [{{pascalCase (singularize name)}}Service],
 })
 export class {{pascalCase (pluralize name)}}Module {}

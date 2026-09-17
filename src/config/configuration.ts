@@ -5,6 +5,7 @@ export interface AppConfig {
   mode: 'development' | 'production' | 'test';
   host: string;
   port: number;
+  timeout?: number;
 }
 
 export interface AuthConfig {
@@ -47,6 +48,7 @@ export default (): AppConfiguration => ({
     mode: mode(),
     host: str('HOST') ?? '0.0.0.0',
     port: num('PORT') ?? 3000,
+    timeout: num('REQUEST_TIMEOUT_MS') ?? 15000,
   },
   auth: {
     jwtSecret: secret('JWT_SECRET', 'dev-access-secret'),

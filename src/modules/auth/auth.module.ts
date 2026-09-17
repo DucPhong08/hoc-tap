@@ -2,10 +2,13 @@ import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { Entity } from '@/common/enums/entity.enum';
+import { RepositoryProvider } from '@/infra/repositories/common/repository';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { GoogleStrategy } from './strategies/google.strategy';
 import { FacebookStrategy } from './strategies/facebook.strategy';
 import { UsersModule } from '../users/users.module';
+import { UserRepository } from '../users/repositories/user.repository';
 import type { AuthConfig } from '@/config/configuration';
 import type { StringValue } from 'ms';
 import { AuthService } from './services/auth.service';
@@ -41,7 +44,8 @@ import { SessionRepository } from './repositories/session.repository';
     PasswordService,
     TokenService,
     SessionService,
-    SessionRepository,
+    RepositoryProvider(Entity.SESSION, SessionRepository),
+    RepositoryProvider(Entity.USER, UserRepository),
     JwtStrategy,
     {
       provide: 'GOOGLE_STRATEGY',
@@ -65,7 +69,6 @@ import { SessionRepository } from './repositories/session.repository';
     PasswordService,
     TokenService,
     SessionService,
-    SessionRepository,
     JwtStrategy,
     PassportModule,
   ],

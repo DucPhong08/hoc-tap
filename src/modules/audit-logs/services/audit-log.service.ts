@@ -1,6 +1,8 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { BaseService } from '@/infra/services/base.service';
-import { AuditLogRepository } from '../repositories/audit-log.repository';
+import { Entity } from '@/common/enums/entity.enum';
+import { InjectRepository } from '@/infra/repositories/common/repository';
+import type { IAuditLogRepository } from '../repositories/audit-log-repository.interface';
 import { AuditLog } from '../entities/audit-log.entity';
 import type { LogActionData } from '../constants/audit-log.constant';
 
@@ -8,7 +10,10 @@ import type { LogActionData } from '../constants/audit-log.constant';
 export class AuditLogService extends BaseService<AuditLog> {
   private static readonly MAX_QUERY_LIMIT = 100;
 
-  constructor(protected readonly repository: AuditLogRepository) {
+  constructor(
+    @InjectRepository(Entity.AUDIT_LOG)
+    protected readonly repository: IAuditLogRepository,
+  ) {
     super(repository);
   }
 

@@ -1,8 +1,9 @@
 import { Entity, Property, ManyToOne, Index } from '@mikro-orm/core';
 import { BaseEntity } from '@/common/entity/base.entity';
+import { Table } from '@/common/enums/entity.enum';
 import { User } from '@/modules/users/entities/user.entity';
 
-@Entity({ tableName: 'sessions' })
+@Entity({ tableName: Table.SESSION })
 @Index({ properties: ['user', 'isRevoked'] })
 @Index({ properties: ['refreshTokenHash'] })
 export class SessionEntity extends BaseEntity {

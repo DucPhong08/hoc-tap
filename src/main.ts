@@ -1,13 +1,10 @@
-import { NestFactory, Reflector } from '@nestjs/core';
-import { ClassSerializerInterceptor, ValidationPipe } from '@nestjs/common';
+import { NestFactory } from '@nestjs/core';
+import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
-import { TransformInterceptor } from './common/interceptors/transform.interceptor';
-import { DatabaseErrorInterceptor } from './common/interceptors/database-error.interceptor';
 import type { AppConfig } from './config/configuration';
-import { TimeoutInterceptor } from './common/interceptors/timeout.interceptor';
 
 const SWAGGER_PATH = 'api';
 const SWAGGER_TITLE = 'API Documentation';
@@ -68,15 +65,6 @@ export async function bootstrap() {
 
   // Global filters - chỉ dùng AllExceptionsFilter
   app.useGlobalFilters(new AllExceptionsFilter());
-
-  const reflector = app.get(Reflector);
-
-  app.useGlobalInterceptors(
-    new DatabaseErrorInterceptor(),
-    new TimeoutInterceptor(),
-    new ClassSerializerInterceptor(reflector),
-    new TransformInterceptor(), // Transform response
-  );
 
   // Swagger
   const config = new DocumentBuilder()

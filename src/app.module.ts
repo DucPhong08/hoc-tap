@@ -1,11 +1,15 @@
 import {
+  ClassSerializerInterceptor,
   MiddlewareConsumer,
   Module,
   NestModule,
   RequestMethod,
 } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
-import { APP_GUARD } from '@nestjs/core';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { DatabaseErrorInterceptor } from './common/interceptors/database-error.interceptor';
+import { TimeoutInterceptor } from './common/interceptors/timeout.interceptor';
+import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import {
   I18nModule,
   AcceptLanguageResolver,
@@ -31,7 +35,6 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { RequestLoggingMiddleware } from './common/middleware/request-logging.middleware';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { BullModule } from '@nestjs/bull';
-import { ConfigService } from '@nestjs/config';
 // PLOP: IMPORT_MODULE
 
 const hasRedis = Boolean(process.env.REDIS_HOST);
@@ -107,6 +110,26 @@ const hasRedis = Boolean(process.env.REDIS_HOST);
     {
       provide: APP_GUARD,
       useClass: RolesGuard,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: DatabaseErrorInterceptor,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => {
+        const timeoutMs = configService.get<number>('app.timeout') ?? 15000;
+        return new TimeoutInterceptor(timeoutMs);
+      },
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: ClassSerializerInterceptor,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: TransformInterceptor,
     },
   ],
 })

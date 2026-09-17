@@ -1,17 +1,20 @@
 import { Injectable } from '@nestjs/common';
 import { EntityRepository } from '@mikro-orm/core';
-import { InjectEntityRepository } from '@/database/entity-registry.helper';
 import { MikroOrmBaseRepository } from '@/infra/repositories/mikro-orm-base.repository';
+import { InjectEntityRepository } from '@/database/entity-registry';
 import { {{pascalCase (singularize name)}} } from '../entities/{{kebabCase (singularize name)}}.entity';
+import type { I{{pascalCase (singularize name)}}Repository } from './{{kebabCase (singularize name)}}-repository.interface';
 
 @Injectable()
-export class {{pascalCase (singularize name)}}Repository extends MikroOrmBaseRepository<
-  {{pascalCase (singularize name)}}
-> {
+export class {{pascalCase (singularize name)}}Repository
+  extends MikroOrmBaseRepository<{{pascalCase (singularize name)}}>
+  implements I{{pascalCase (singularize name)}}Repository
+{
   constructor(
     @InjectEntityRepository({{pascalCase (singularize name)}})
-    repository: EntityRepository<{{pascalCase (singularize name)}}>,
+    private readonly repository: EntityRepository<{{pascalCase (singularize name)}}>,
   ) {
     super(repository);
   }
 }
+

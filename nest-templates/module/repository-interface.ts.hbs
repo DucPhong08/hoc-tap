@@ -1,0 +1,5 @@
+import type { IBaseRepository } from '@/common/interfaces/repository.interface';
+import type { {{pascalCase (singularize name)}} } from '../entities/{{kebabCase (singularize name)}}.entity';
+
+export interface I{{pascalCase (singularize name)}}Repository<TContext = any>
+  extends IBaseRepository<{{pascalCase (singularize name)}}, TContext> {}

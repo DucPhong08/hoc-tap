@@ -2,9 +2,11 @@ import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { BaseService } from '@/infra/services/base.service';
-import { Setting } from '../entities/setting.entity';
-import { SettingRepository } from '../repositories/setting.repository';
+import { Entity } from '@/common/enums/entity.enum';
+import { InjectRepository } from '@/infra/repositories/common/repository';
+import type { ISettingRepository } from '../repositories/setting-repository.interface';
 import type { FindQuery } from '@/common/interfaces/repository.interface';
+import { Setting } from '../entities/setting.entity';
 import type { User } from '@/modules/users/entities/user.entity';
 import {
   MAP_SETTING_ENTITY,
@@ -16,7 +18,10 @@ import { SettingKey } from '../enums/setting-key.enum';
 export class SettingService extends BaseService<Setting> {
   private readonly logger = new Logger(SettingService.name);
 
-  constructor(private readonly settingRepository: SettingRepository) {
+  constructor(
+    @InjectRepository(Entity.SETTING)
+    private readonly settingRepository: ISettingRepository,
+  ) {
     super(settingRepository);
   }
 

@@ -2,8 +2,10 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import { BaseService } from '@/infra/services/base.service';
+import { Entity } from '@/common/enums/entity.enum';
+import { InjectRepository } from '@/infra/repositories/common/repository';
 import { User } from '../entities/user.entity';
-import { UserRepository } from '../repositories/user.repository';
+import type { IUserRepository } from '../repositories/user-repository.interface';
 import type { FindQuery } from '@/common/interfaces/repository.interface';
 import type { IAuthUser } from '@/common/interfaces/auth-user.interface';
 import type { AuthConfig } from '@/config/configuration';
@@ -12,7 +14,8 @@ import type { UpdateProfileDto } from '../dto/update-user.dto';
 @Injectable()
 export class UserService extends BaseService<User> {
   constructor(
-    private readonly userRepository: UserRepository,
+    @InjectRepository(Entity.USER)
+    private readonly userRepository: IUserRepository,
     private readonly configService: ConfigService,
   ) {
     super(userRepository);
