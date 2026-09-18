@@ -18,18 +18,7 @@ export class AuditLogService extends BaseService<AuditLog> {
   }
 
   async log(data: LogActionData): Promise<AuditLog> {
-    return this.repository.create({
-      action: data.action,
-      entityType: data.entityType,
-      entityId: data.entityId,
-      userId: data.userId,
-      userEmail: data.userEmail,
-      ipAddress: data.ipAddress,
-      userAgent: data.userAgent,
-      endpoint: data.endpoint,
-      method: data.method,
-      description: data.description,
-    });
+    return this.repository.create(data);
   }
 
   async logMany(dataArray: LogActionData[]): Promise<{ n: number }> {
@@ -37,26 +26,13 @@ export class AuditLogService extends BaseService<AuditLog> {
       return { n: 0 };
     }
 
-    return this.repository.insertMany(
-      dataArray.map((data) => ({
-        action: data.action,
-        entityType: data.entityType,
-        entityId: data.entityId,
-        userId: data.userId,
-        userEmail: data.userEmail,
-        ipAddress: data.ipAddress,
-        userAgent: data.userAgent,
-        endpoint: data.endpoint,
-        method: data.method,
-        description: data.description,
-      })),
-    );
+    return this.repository.insertMany(dataArray);
   }
 
-  async getUserActions(userId: string, limit = 100): Promise<AuditLog[]> {
+  async getUserActions(uId: string, limit = 100): Promise<AuditLog[]> {
     const safeLimit = this.clampLimit(limit, 100);
     return this.repository.getMany(
-      { userId },
+      { uId },
       { limit: safeLimit, sort: { createdAt: -1 } },
     );
   }

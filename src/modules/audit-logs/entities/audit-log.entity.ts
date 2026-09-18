@@ -4,7 +4,7 @@ import { BaseEntity } from '@/common/entity/base.entity';
 import { Table } from '@/common/enums/entity.enum';
 
 @Entity({ tableName: Table.AUDIT_LOG })
-@Index({ properties: ['userId', 'createdAt'] })
+@Index({ properties: ['uId', 'createdAt'] })
 @Index({ properties: ['action', 'createdAt'] })
 export class AuditLog extends BaseEntity {
   @IsString()
@@ -12,24 +12,36 @@ export class AuditLog extends BaseEntity {
   action!: string;
 
   @IsString()
-  @Property({})
-  entityType!: string;
+  @Property({ nullable: true })
+  entityType?: string;
 
   @IsString()
-  @Property({})
-  entityId!: string;
+  @Property({ nullable: true })
+  entityId?: string;
+
+  @IsString()
+  @Property({ nullable: true })
+  sourceId?: string;
 
   @Allow()
   @Property({ type: 'json', nullable: true })
   changes?: Record<string, any>;
 
   @IsString()
-  @Property({})
-  userId!: string;
+  @Property({ nullable: true })
+  uId?: string;
 
   @IsString()
   @Property({ nullable: true })
-  userEmail?: string;
+  uCode?: string;
+
+  @IsString()
+  @Property({ nullable: true })
+  uName?: string;
+
+  @IsString()
+  @Property({ nullable: true })
+  uEmail?: string;
 
   @IsString()
   @Property({ nullable: true })
@@ -48,6 +60,34 @@ export class AuditLog extends BaseEntity {
   method?: string;
 
   @IsString()
+  @Property({ nullable: true })
+  requestType?: string;
+
+  @IsString()
   @Property({ type: 'text', nullable: true })
   description?: string;
+
+  @Allow()
+  @Property({ type: 'json', nullable: true })
+  metadata?: Record<string, any>;
+
+  @Allow()
+  @Property({ type: 'json', nullable: true })
+  data?: any;
+
+  @Allow()
+  @Property({ type: 'json', nullable: true })
+  query?: any;
+
+  @Allow()
+  @Property({ type: 'json', nullable: true })
+  param?: any;
+
+  @Allow()
+  @Property({ type: 'json', nullable: true })
+  response?: any;
+
+  @Allow()
+  @Property({ type: 'json', nullable: true })
+  error?: any;
 }

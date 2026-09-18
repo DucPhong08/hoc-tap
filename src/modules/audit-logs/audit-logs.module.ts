@@ -6,7 +6,10 @@ import { AuditLogRepository } from './repositories/audit-log.repository';
 import { AuditLogService } from './services/audit-log.service';
 import { AuditCleanupService } from './services/audit-cleanup.service';
 import { AuditLogController } from './controllers/audit-log.controller';
-import { AuditInterceptor } from './interceptors/audit.interceptor';
+import {
+  AuditInterceptor,
+  AuditLogInterceptor,
+} from './interceptors/audit.interceptor';
 import { AuditLogQueueService } from './services/audit-log-queue.service';
 import { BullModule } from '@nestjs/bull';
 import { QueueName } from '@/common/constants/queue.constant';
@@ -40,6 +43,7 @@ const hasRedis = Boolean(process.env.REDIS_HOST);
   ],
   exports: [
     AuditInterceptor,
+    AuditLogInterceptor,
     AuditLogQueueService,
     AuditLogService,
     ...(hasRedis ? [BullModule] : []),

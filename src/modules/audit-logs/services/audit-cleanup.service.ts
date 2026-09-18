@@ -17,34 +17,35 @@ export class AuditCleanupService {
 
   @Cron(CronExpression.EVERY_DAY_AT_2AM)
   @CreateRequestContext((service: AuditCleanupService) => service.logsOrm)
-  async dailyCleanup() {
-    this.logger.log('Starting scheduled audit log cleanup...');
-
+  async dailyCleanup(): Promise<void> {
     try {
-      const deleted = await this.auditLogService.cleanup(
-        this.DEFAULT_RETENTION_DAYS,
-      );
-
-      this.logger.log(
-        `Audit log cleanup completed. Deleted ${deleted} old records.`,
-      );
+      await this.runCleanup(this.DEFAULT_RETENTION_DAYS, 'Scheduled');
     } catch (error) {
-      this.logger.error('Failed to cleanup audit logs', error);
+      this.logger.error('Scheduled audit log cleanup failed', error as Error);
     }
   }
 
   @CreateRequestContext((service: AuditCleanupService) => service.logsOrm)
-  async cleanup(retentionDays: number): Promise<number> {
+  cleanup(retentionDays: number): Promise<number> {
+    return this.runCleanup(retentionDays, 'Manual');
+  }
+
+  private async runCleanup(
+    retentionDays: number,
+    label: 'Scheduled' | 'Manual',
+  ): Promise<number> {
     this.logger.log(
-      `Running manual cleanup (${retentionDays} days retention)...`,
+      `${label} audit log cleanup started (${retentionDays} days retention)...`,
     );
 
     try {
       const deleted = await this.auditLogService.cleanup(retentionDays);
-      this.logger.log(`Manual cleanup completed. Deleted ${deleted} records.`);
+      this.logger.log(
+        `${label} audit log cleanup completed. Deleted ${deleted} old records.`,
+      );
       return deleted;
     } catch (error) {
-      this.logger.error('Manual cleanup failed', error);
+      this.logger.error(`${label} audit log cleanup failed`, error as Error);
       throw error;
     }
   }

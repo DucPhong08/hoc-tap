@@ -3,159 +3,214 @@ import {
   NestInterceptor,
   ExecutionContext,
   CallHandler,
-  Logger,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
-import { Observable, throwError } from 'rxjs';
-import { tap, catchError } from 'rxjs/operators';
-import { AuditLogQueueService } from '../services/audit-log-queue.service';
+import { Observable } from 'rxjs';
+import { map, catchError } from 'rxjs/operators';
 import {
-  AUDITABLE_KEY,
-  AuditableOptions,
-} from '@/common/decorators/auditable.decorator';
-import type { LogActionData } from '../constants/audit-log.constant';
+  AUDIT_LOG_KEY,
+  AUDIT_LOG_METADATA,
+  AuditLogProps,
+  LogActionData,
+} from '../constants/audit-log.constant';
+import { AuditLogQueueService } from '../services/audit-log-queue.service';
 
-interface AuditRequestContext {
-  options: AuditableOptions;
-  executionContext: ExecutionContext;
-  user: any;
-  ipAddress: string;
-  userAgent: string;
-  endpoint: string;
-  method: string;
-  result?: any;
+interface AuditableUser {
+  id?: string;
+  _id?: string;
+  username?: string;
+  code?: string;
+  fullname?: string;
+  name?: string;
+  email?: string;
+  getUser?: () => Promise<AuditableUser> | AuditableUser;
+}
+
+interface AuditableRequest extends Request {
+  user?: AuditableUser;
 }
 
 @Injectable()
 export class AuditInterceptor implements NestInterceptor {
-  private readonly logger = new Logger(AuditInterceptor.name);
-  private static readonly entityTypeCache = new Map<string, string>();
-
   constructor(
     private readonly reflector: Reflector,
     private readonly auditLogQueueService: AuditLogQueueService,
   ) {}
 
-  intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
-    const auditOptions = this.reflector.get<AuditableOptions>(
-      AUDITABLE_KEY,
-      context.getHandler(),
+  async intercept(
+    context: ExecutionContext,
+    next: CallHandler,
+  ): Promise<Observable<any>> {
+    const props = this.reflector.getAllAndOverride<AuditLogProps>(
+      AUDIT_LOG_KEY,
+      [context.getHandler(), context.getClass()],
     );
 
-    if (!auditOptions) {
+    if (!props) {
       return next.handle();
     }
 
-    const request = context
-      .switchToHttp()
-      .getRequest<Request & { user?: any }>();
-    const user = request.user;
-
-    if (!user) {
+    const log = await this.buildBaseLog(context, props);
+    if (!log) {
       return next.handle();
     }
 
-    const baseCtx: Omit<AuditRequestContext, 'result'> = {
-      options: auditOptions,
-      executionContext: context,
-      user,
-      ipAddress: this.getClientIp(request),
-      userAgent: (request.headers['user-agent'] as string) || '',
-      endpoint: request.url,
-      method: request.method,
-    };
+    if (props.logResponse === false) {
+      this.auditLogQueueService.dispatch(log);
+      return next.handle();
+    }
 
     return next.handle().pipe(
-      tap((result) => {
-        this.dispatchAuditLog({ ...baseCtx, result });
+      map((data) => {
+        const meta = this.resolveMetadata(data, context);
+        if (meta) {
+          Object.assign(log, meta, {
+            metadata: { ...(log.metadata || {}), ...(meta.metadata || {}) },
+          });
+        }
+
+        if (props.logResponse) {
+          log.response = data;
+        }
+
+        this.auditLogQueueService.dispatch(log);
+        return this.stripInternalMetadata(data);
       }),
-      catchError((error) => {
-        this.dispatchAuditLog(baseCtx);
-        return throwError(() => error);
+      catchError((err) => {
+        if (props.logError) {
+          log.error = err;
+          this.auditLogQueueService.dispatch(log);
+        }
+        throw err;
       }),
     );
   }
 
-  private dispatchAuditLog(ctx: AuditRequestContext): void {
-    try {
-      const payload = this.buildLogPayload(ctx);
-      this.auditLogQueueService.dispatch(payload);
-    } catch (error) {
-      this.logger.error('Audit log dispatch failed', error);
+  private async buildBaseLog(
+    context: ExecutionContext,
+    props: AuditLogProps,
+  ): Promise<LogActionData | null> {
+    const type = context.getType<'http' | 'rpc'>();
+
+    if (type === 'http') {
+      return this.buildHttpLog(context, props);
     }
+
+    if (type === 'rpc') {
+      return this.buildRpcLog(context, props);
+    }
+
+    return null;
   }
 
-  private buildLogPayload(ctx: AuditRequestContext): LogActionData {
+  /** Field override dùng chung cho cả http lẫn rpc, tránh lặp code giữa 2 nhánh. */
+  private buildCommonOverrides(props: AuditLogProps) {
     return {
-      action: ctx.options.action,
-      entityType: this.extractEntityType(ctx.executionContext),
-      entityId: this.extractEntityId(ctx.executionContext, ctx.result),
-      userId: String(ctx.user.id ?? ctx.user.sub ?? 'unknown'),
-      userEmail: ctx.user.email as string | undefined,
-      ipAddress: ctx.ipAddress,
-      userAgent: ctx.userAgent,
-      endpoint: ctx.endpoint,
-      method: ctx.method,
-      description: ctx.options.description,
+      sourceId: props.sourceId,
+      uCode: props.uCode,
+      uName: props.uName,
+      uEmail: props.uEmail,
+      description: props.description,
+      metadata: { ...(props.metadata || {}) },
     };
   }
 
-  private extractEntityId(context: ExecutionContext, result?: any): string {
-    const request = context.switchToHttp().getRequest<any>();
+  private async buildHttpLog(
+    context: ExecutionContext,
+    props: AuditLogProps,
+  ): Promise<LogActionData> {
+    const req = context.switchToHttp().getRequest<AuditableRequest>();
+    const user = await this.resolveUser(req.user);
+    const ip = this.resolveIp(req);
 
-    // 1. Từ URL params (:id)
-    if (request.params?.id) {
-      return String(request.params.id);
-    }
-
-    // 2. Từ body.id
-    if (request.body?.id) {
-      return String(request.body.id);
-    }
-
-    // 3. Từ body.email
-    if (request.body?.email) {
-      return String(request.body.email);
-    }
-
-    // 4. Từ result (nếu create)
-    if (result?.id) {
-      return String(result.id);
-    }
-
-    if (result?.email) {
-      return String(result.email);
-    }
-
-    this.logger.debug(
-      `Could not extract entityId for ${context.getClass().name}.${context.getHandler().name}, falling back to 'unknown'`,
-    );
-    return 'unknown';
+    return {
+      ...this.buildCommonOverrides(props),
+      action: props.action || this.defaultHttpAction(req),
+      entityType: context
+        .getClass()
+        .name.replace(/Controller$/, '')
+        .toLowerCase(),
+      entityId:
+        (req.params as any)?.id || req.body?.id || props.sourceId || 'unknown',
+      uId: String(props.uId || user?.id || user?._id || 'unknown'),
+      uCode: props.uCode || user?.username || user?.code,
+      uName: props.uName || user?.fullname || user?.name,
+      uEmail: props.uEmail || user?.email,
+      requestType: 'http',
+      ipAddress: ip,
+      userAgent: (req.headers['user-agent'] as string) || '',
+      endpoint: req.originalUrl || req.url,
+      method: req.method,
+      data: req.body,
+      query: req.query,
+      param: req.params,
+    };
   }
 
-  private extractEntityType(context: ExecutionContext): string {
-    const className = context.getClass().name;
-    let entityType = AuditInterceptor.entityTypeCache.get(className);
-    if (!entityType) {
-      entityType = className
-        .replace(/Controller$/, '')
-        .replace(/([A-Z])/g, (match, p1, offset) =>
-          offset > 0 ? '-' + p1.toLowerCase() : p1.toLowerCase(),
-        );
-      AuditInterceptor.entityTypeCache.set(className, entityType);
-    }
-    return entityType;
+  private buildRpcLog(
+    context: ExecutionContext,
+    props: AuditLogProps,
+  ): LogActionData {
+    const rpc = context.switchToRpc();
+
+    return {
+      ...this.buildCommonOverrides(props),
+      action: props.action || 'RPC_ACTION',
+      uId: String(props.uId || 'unknown'),
+      requestType: 'rpc',
+      data: {
+        context: rpc.getContext(),
+        data: rpc.getData(),
+      },
+    };
   }
 
-  private getClientIp(request: any): string {
+  private defaultHttpAction(req: AuditableRequest): string {
+    return `${req.method} ${req.baseUrl || ''}${req.path || req.url || ''}`.toLowerCase();
+  }
+
+  private resolveIp(req: Request): string {
     return (
-      request.headers['x-forwarded-for']?.split(',')[0] ||
-      request.headers['x-client-ip'] ||
-      request.connection?.remoteAddress ||
-      request.socket?.remoteAddress ||
-      request.ip ||
+      req.headers['x-forwarded-for']?.toString().split(',')[0].trim() ||
+      req.socket?.remoteAddress ||
+      req.ip ||
       'unknown'
     );
   }
+
+  private async resolveUser(
+    rawUser: AuditableUser | undefined,
+  ): Promise<AuditableUser | undefined> {
+    if (typeof rawUser?.getUser === 'function') {
+      return rawUser.getUser();
+    }
+    return rawUser;
+  }
+
+  private resolveMetadata(data: any, context: ExecutionContext): any {
+    if (data && typeof data === 'object' && AUDIT_LOG_METADATA in data) {
+      return data[AUDIT_LOG_METADATA];
+    }
+    if (context.getType() === 'http') {
+      return context.switchToHttp().getRequest<any>()?.[AUDIT_LOG_METADATA];
+    }
+    return undefined;
+  }
+
+  /** Trả về bản sao không còn field metadata nội bộ, thay vì mutate `data` gốc. */
+  private stripInternalMetadata<T>(data: T): T {
+    if (
+      data &&
+      typeof data === 'object' &&
+      AUDIT_LOG_METADATA in (data as any)
+    ) {
+      const clone: any = { ...(data as any) };
+      delete clone[AUDIT_LOG_METADATA];
+      return clone;
+    }
+    return data;
+  }
 }
+
+export { AuditInterceptor as AuditLogInterceptor };
