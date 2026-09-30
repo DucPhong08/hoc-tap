@@ -16,13 +16,26 @@ export type BaseRoute =
 
 export type BaseHandlerName = BaseRoute;
 
+export type ControllerRole = Role | (string & {});
+
 export interface RouteConfig {
   enabled?: boolean;
-  roles?: Role[];
+  authorize?: boolean;
+  public?: boolean;
+  roles?: ControllerRole[];
 }
 
+export type ControllerRolesOption =
+  | ControllerRole[]
+  | {
+      read?: ControllerRole[];
+      manage?: ControllerRole[];
+    };
+
 export interface BaseControllerOptions<C = unknown, U = unknown, CD = unknown> {
-  defaultRoles?: Role[];
+  authorize?: boolean;
+  roles?: ControllerRolesOption;
+  defaultRoles?: ControllerRole[];
   routes?: Partial<Record<BaseRoute, RouteConfig>>;
   dtos?: {
     create?: Type<C>;

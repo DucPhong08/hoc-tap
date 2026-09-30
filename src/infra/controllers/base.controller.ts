@@ -42,12 +42,17 @@ import {
   applyRouteMetadata,
   checkRouteEnabled,
   getRouteConfigs,
+  isReadRoute,
+  resolveRouteRoles,
+  READ_ROUTES,
+  MANAGE_ROUTES,
 } from './helpers/helpers';
 import { createBaseDtoBundle } from './helpers/dto-factory';
 import type {
   BaseRoute,
   BaseControllerOptions,
   ControllerOptions,
+  ControllerRolesOption,
   RouteConfig,
 } from './helpers/types';
 
@@ -55,8 +60,11 @@ export type {
   BaseRoute,
   BaseControllerOptions,
   ControllerOptions,
+  ControllerRolesOption,
   RouteConfig,
 };
+
+export { isReadRoute, resolveRouteRoles, READ_ROUTES, MANAGE_ROUTES };
 
 const ApiNoContent = () =>
   applyDecorators(
@@ -304,7 +312,7 @@ export function BaseController<
     value: `${entityType.name}BaseController`,
   });
 
-  applyRouteMetadata(BaseControllerHost, routeConfigs, options?.defaultRoles);
+  applyRouteMetadata(BaseControllerHost, routeConfigs, options);
 
   return BaseControllerHost;
 }
