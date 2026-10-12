@@ -35,7 +35,6 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { RequestLoggingMiddleware } from './common/middleware/request-logging.middleware';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { BullModule } from '@nestjs/bull';
-// PLOP: IMPORT_MODULE
 
 const hasRedis = Boolean(process.env.REDIS_HOST);
 
@@ -95,7 +94,6 @@ const hasRedis = Boolean(process.env.REDIS_HOST);
         limit: 120,
       },
     ]),
-    // PLOP: IMPORT_ARRAY
   ],
   controllers: [],
   providers: [

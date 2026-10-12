@@ -16,7 +16,7 @@ const DATABASE_CONTEXTS: Record<DbContext, DatabaseContext> = {
   [DB_CONTEXTS.MAIN]: {
     name: DB_CONTEXTS.MAIN,
     entities: entitiesOf(DB_CONTEXTS.MAIN),
-    migrationPath: 'mikro-base/migrations',
+    migrationPath: 'mikro/migrations/main',
     poolMin: 1,
     poolMax: 10,
     timezone: '+07:00',
@@ -24,7 +24,7 @@ const DATABASE_CONTEXTS: Record<DbContext, DatabaseContext> = {
   [DB_CONTEXTS.LOGS]: {
     name: DB_CONTEXTS.LOGS,
     entities: entitiesOf(DB_CONTEXTS.LOGS),
-    migrationPath: 'mikro-logs/migrations',
+    migrationPath: 'mikro/migrations/logs',
     poolMin: 1,
     poolMax: 10,
     timezone: '+07:00',

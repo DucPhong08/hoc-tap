@@ -83,23 +83,27 @@ Nếu VS Code hỏi chọn TypeScript, chọn bản trong workspace; cũng có t
 
 ### Sinh module
 
-Tự động sinh toàn bộ code cấu trúc cho một Module mới:
+Sinh module bằng Nest CLI:
 
 ```bash
-npm run gen
+npm run gen:module -- products
+# hoặc: npx nest generate module products
 ```
 
 ## Database Migrations
 
 ```bash
 # Tạo migration mới
-npm run migration:create
+npm run db:migration:create
 
 # Chạy migrations
-npm run migration:up
+npm run db:migration:up
 
 # Rollback migration
-npm run migration:down
+npm run db:migration:down
+
+# Seed dữ liệu khởi tạo
+npm run db:seed
 ```
 
 ## Deployment

@@ -5,15 +5,9 @@ import { User } from '@/modules/users/entities/user.entity';
 import { Setting } from '@/modules/settings/entities/setting.entity';
 import { AuditLog } from '@/modules/audit-logs/entities/audit-log.entity';
 import { SessionEntity } from '@/modules/auth/entities/session.entity';
-// PLOP: IMPORT_ENTITY
 
 export const ENTITY_REGISTRY: Record<DbContext, EntityClass<AnyEntity>[]> = {
-  [DB_CONTEXTS.MAIN]: [
-    User,
-    Setting,
-    SessionEntity,
-    // PLOP: ADD_MAIN_ENTITY
-  ],
+  [DB_CONTEXTS.MAIN]: [User, Setting, SessionEntity],
   [DB_CONTEXTS.LOGS]: [AuditLog],
 };
 

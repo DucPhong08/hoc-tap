@@ -5,6 +5,8 @@
 
 # Logs
 logs
+!mikro/migrations/logs/
+!mikro/migrations/logs/**
 *.log
 npm-debug.log*
 pnpm-debug.log*

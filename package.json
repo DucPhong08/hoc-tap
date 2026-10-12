@@ -7,16 +7,17 @@
   "license": "UNLICENSED",
   "mikro-orm": {
     "configPaths": [
-      "./dist/database/mikro-orm.config.js",
-      "./src/database/mikro-orm.config.ts"
-    ]
+      "./mikro/mikro-orm.config.js"
+    ],
+    "useTsNode": false
   },
   "scripts": {
-    "gen": "plop",
+    "gen:module": "nest generate module",
     "build": "nest build",
-    "db:migration:create": "mikro-orm migration:create",
-    "db:migration:up": "mikro-orm migration:up",
-    "db:migration:down": "mikro-orm migration:down",
+    "db:migration:create": "npm run build && mikro-orm migration:create",
+    "db:migration:up": "npm run build && mikro-orm migration:up",
+    "db:migration:down": "npm run build && mikro-orm migration:down",
+    "db:seed": "npm run build && node mikro/seeds/auth.seed.js",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
     "start:dev": "nest start --watch",
@@ -88,8 +89,6 @@
     "husky": "^9.1.7",
     "jest": "^30.0.0",
     "lint-staged": "^17.3.0",
-    "plop": "^4.0.5",
-    "pluralize": "^8.0.0",
     "prettier": "^3.4.2",
     "ts-jest": "^29.2.5",
     "ts-node": "^10.9.2",

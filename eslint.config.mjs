@@ -1,29 +1,34 @@
-// @ts-check
+ // @ts-check
 import eslint from '@eslint/js';
+import { defineConfig, globalIgnores } from 'eslint/config';
 import eslintPluginPrettierRecommended from 'eslint-plugin-prettier/recommended';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
-export default tseslint.config(
-  {
-    ignores: ['eslint.config.mjs', 'plopfile.js', 'plop-templates/**/*', 'nest-templates/**/*'],
-  },
+export default defineConfig(
+  globalIgnores([
+    'eslint.config.mjs',
+    'mikro/**/*.js',
+    'dist/**/*',
+    'coverage/**/*',
+  ]),
+
   eslint.configs.recommended,
-  ...tseslint.configs.recommendedTypeChecked,
-  eslintPluginPrettierRecommended,
+  tseslint.configs.recommendedTypeChecked,
+
   {
     languageOptions: {
       globals: {
         ...globals.node,
-        ...globals.jest,
       },
-      sourceType: 'commonjs',
+      sourceType: 'module',
       parserOptions: {
         projectService: true,
         tsconfigRootDir: import.meta.dirname,
       },
     },
   },
+
   {
     rules: {
       '@typescript-eslint/no-empty-object-type': [
@@ -39,13 +44,29 @@ export default tseslint.config(
       '@typescript-eslint/no-unsafe-call': 'warn',
       '@typescript-eslint/require-await': 'warn',
       'no-prototype-builtins': 'warn',
-      'prettier/prettier': ['error', { endOfLine: 'auto' }],
     },
   },
+
   {
     files: ['**/*.spec.ts', '**/*.test.ts'],
+    languageOptions: {
+      globals: {
+        ...globals.jest,
+      },
+    },
     rules: {
       '@typescript-eslint/unbound-method': 'off',
+    },
+  },
+
+  eslintPluginPrettierRecommended,
+
+  {
+    rules: {
+      'prettier/prettier': [
+        'error',
+        { endOfLine: 'auto' },
+      ],
     },
   },
 );
